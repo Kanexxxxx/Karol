@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/**
+ * Paleta do Studio Karol Carvalho.
+ *
+ * Ela confirmou no briefing: manter o dourado com bege do feed, visual
+ * "clean e fácil de entender", e vetou cores muito escuras.
+ * Por isso o site tem um tema só, claro — sem modo escuro.
+ */
+@theme {
+  --color-creme: #faf5ee;
+  --color-creme-fundo: #f3ebdf;
+  --color-papel: #ffffff;
+
+  --color-dourado: #b08d4f;
+  --color-dourado-claro: #d9c08a;
+  --color-dourado-fundo: #f2e7d2;
+
+  --color-tinta: #40382f;
+  --color-tinta-suave: #6b6055;
+  --color-tinta-fraca: #94897c;
+
+  --color-linha: #e8dcc9;
+
+  --font-titulo: var(--font-cormorant), Georgia, serif;
+  --font-corpo: var(--font-jost), system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-creme);
+  color: var(--color-tinta);
+  font-family: var(--font-corpo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
