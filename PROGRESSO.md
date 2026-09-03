@@ -56,6 +56,7 @@ senão dia/hora saem 3h deslocados.
 | 4 | Notificações (WhatsApp/e-mail + lembrete agendado) | ✅ feito (envio depende de webhook) |
 | 5 | Polish: README, testes do motor, sitemap/robots, ícones | ✅ feito |
 | 6 | Robustez do site: 404, erro, loading, menu no celular | ✅ feito |
+| 7 | LGPD: política de privacidade + consentimento no agendamento | ✅ feito |
 
 ---
 
@@ -250,6 +251,22 @@ Buracos de experiência que o scaffold deixou.
 `/agendar` e `/agendar/confirmado` (fundo claro, sem foto) o "Karol Carvalho"
 ficava branco sobre bege — quase invisível. Agora tem a prop `sobreHero`: só a
 home passa `true`; as outras páginas usam a barra sólida com texto escuro.
+
+## Etapa 7 — LGPD (✅)
+
+O site coleta nome + WhatsApp de clientes reais e não tinha nenhuma
+política nem consentimento visível.
+
+| Arquivo | Papel |
+|---------|-------|
+| `src/app/privacidade/page.tsx` | Política escrita em linguagem direta: o que coleta (nome, WhatsApp, recado), pra quê (agendar + lembrar), com quem compartilha (ninguém, pra fins comerciais), retenção, direitos (acesso/correção/exclusão via WhatsApp). Sem cookie de rastreio, sem analytics. |
+| `src/components/Rodape.tsx` | Link "Política de privacidade" no rodapé. |
+| `src/app/agendar/FormularioDados.tsx` | Linha de consentimento acima do botão, com link pra política. |
+| `src/app/sitemap.ts` | Inclui `/privacidade`. |
+
+**A data da política** está fixa em `ATUALIZADO` no arquivo — atualize à mão se o texto mudar.
+**Não é peça jurídica revisada** — é uma base honesta. Se a Karol formalizar
+CNPJ/DPO, revisar com quem entende.
 
 ---
 

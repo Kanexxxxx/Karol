@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { agendar, ESTADO_INICIAL } from "./acoes";
 
@@ -83,6 +84,17 @@ export function FormularioDados({
       <p className="text-[13px] text-tinta-3">
         O horário fica reservado assim que você confirmar. A Karol não desmarca
         pelo site — qualquer mudança é direto com ela.
+      </p>
+      <p className="text-[13px] text-tinta-3">
+        Ao confirmar, você concorda que a Karol guarde seu nome e WhatsApp para
+        este atendimento.{" "}
+        <Link
+          href="/privacidade"
+          className="underline decoration-linha underline-offset-2 hover:text-ouro"
+        >
+          Como seus dados são tratados
+        </Link>
+        .
       </p>
     </form>
   );

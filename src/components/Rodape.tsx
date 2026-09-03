@@ -75,9 +75,14 @@ export function Rodape() {
           </div>
         </div>
 
-        <p className="mt-9 border-t border-linha pt-6 text-center text-xs text-tinta-3">
-          {NEGOCIO.nome} · {NEGOCIO.atuacaoCidades}
-        </p>
+        <div className="mt-9 flex flex-col items-center gap-1.5 border-t border-linha pt-6 text-center text-xs text-tinta-3">
+          <p>
+            {NEGOCIO.nome} · {NEGOCIO.atuacaoCidades}
+          </p>
+          <Link href="/privacidade" className="transition-colors hover:text-ouro">
+            Política de privacidade
+          </Link>
+        </div>
       </Env>
     </footer>
   );
