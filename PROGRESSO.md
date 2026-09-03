@@ -17,6 +17,12 @@ atende em Pereira Barreto e Bandeirantes D'Oeste). Stack:
 - **Supabase** (Postgres) pra agenda — só acessado pelo servidor
 - Sem libs de auth, sem ORM, sem lib de teste até a Etapa 5
 
+⚠️ **Fuso do servidor.** O motor de horários (`agenda.ts`, `agendamentos.ts`,
+`bloqueios.ts`) trabalha em **hora local do servidor** e assume que ela é a do
+Brasil — é decisão do projeto, está nos comentários. Na Vercel/serverless o
+default é UTC, então **defina `TZ=America/Sao_Paulo`** no ambiente de produção,
+senão dia/hora saem 3h deslocados.
+
 ⚠️ **Next 16 não é o Next que você conhece.** Mudanças que já morderam:
 - `middleware.ts` virou **`proxy.ts`** (mesma API, nome novo).
 - `cookies()` é **async**: `const c = await cookies()`.
@@ -32,7 +38,7 @@ atende em Pereira Barreto e Bandeirantes D'Oeste). Stack:
 |---|-------|--------|
 | 1 | Destravar build + fluxo de agendamento grava no banco | ✅ feito |
 | 2 | Painel da Karol + login por senha | ✅ feito |
-| 3 | Tela de bloqueios (férias / feriado) no painel | ⬜ a fazer |
+| 3 | Tela de bloqueios (férias / feriado) no painel | ✅ feito |
 | 4 | Notificações (WhatsApp/e-mail + lembrete agendado) | ⬜ a fazer |
 | 5 | Polish: README, testes do motor, sitemap/robots, ícones | ⬜ a fazer |
 
@@ -127,9 +133,29 @@ SESSAO_SECRET=<valor longo aleatório: openssl rand -base64 32>
 **Rough edge conhecido:** a lista não faz paginação (60 dias cabem à vontade no
 volume dela). Se um dia crescer, paginar por mês.
 
-## Etapa 3 — Bloqueios (⬜)
+## Etapa 3 — Bloqueios (✅)
 
-Tabela `bloqueios` já existe. Falta CRUD no painel + `src/lib/bloqueios.ts`.
+A tabela `bloqueios` já existia e `ocupadosNoPeriodo()` já somava os bloqueios
+ao que está ocupado — o motor de horários **já respeitava**. Faltava só a Karol
+poder criar/remover.
+
+**Arquivos novos:**
+
+| Arquivo | Papel |
+|---------|-------|
+| `src/lib/periodo.ts` | `lerPeriodo()` / `montarPeriodo()` — a ponte com o `tstzrange` do Postgres, agora num módulo só (sem `server-only`). `agendamentos.ts` passou a importar daqui (tinha uma cópia local + o literal `[a,b)` espalhado). |
+| `src/lib/bloqueios.ts` | `listarBloqueios()` (só os que ainda não terminaram, ordenados), `criarBloqueio()` (dia inteiro **ou** intervalo com hora; valida motivo 2–200, datas, ordem), `removerBloqueio(id)`. |
+| `src/app/painel/bloqueios/page.tsx` | Lista + formulário. Link ↔ `/painel`. |
+| `src/app/painel/bloqueios/Formulario.tsx` | Client. Datas de/até, checkbox "só um intervalo do dia" que revela hora início/fim, motivo. Reseta no sucesso. |
+| `src/app/painel/bloqueios/acoes.ts` | `adicionarBloqueio` (com estado, reconfere sessão) e `apagarBloqueio(id)` (bind por linha; sem sessão → volta pro login). |
+
+**Mudou:** `src/app/painel/page.tsx` ganhou o link "Bloqueios" no cabeçalho.
+
+**Modelo de dados:** dia inteiro é gravado como `[00:00 do 1º dia, 00:00 do dia
+seguinte ao último)`. `Bloqueio.diaInteiro` é derivado (as duas pontas à meia-noite).
+
+**Testar:** `/painel/bloqueios` → criar "Feriado" num dia → esse dia some de
+`/agendar`. Intervalo parcial: marcar o checkbox, pôr 13:00–17:00.
 
 ## Etapa 4 — Notificações (⬜)
 

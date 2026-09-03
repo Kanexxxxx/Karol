@@ -49,8 +49,14 @@ export default async function Painel() {
           </div>
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/painel/bloqueios"
               className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+            >
+              Bloqueios
+            </Link>
+            <Link
+              href="/"
+              className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro sm:inline"
             >
               Ver site
             </Link>

@@ -10,6 +10,7 @@ import {
   type Horario,
   type Intervalo,
 } from "./agenda";
+import { lerPeriodo, montarPeriodo } from "./periodo";
 import { buscarServico, type Servico } from "@/data/servicos";
 import { CIDADES } from "@/data/negocio";
 
@@ -32,16 +33,6 @@ function emData(dia: Date, minutos: number): Date {
   const d = new Date(dia);
   d.setHours(0, minutos, 0, 0);
   return d;
-}
-
-/**
- * Lê o `tstzrange` que o Postgres devolve como texto.
- * Ex.: `["2026-09-01 08:00:00+00","2026-09-01 09:00:00+00")`
- */
-function lerPeriodo(periodo: string): { inicio: Date; fim: Date } | null {
-  const m = periodo.match(/\[?"?([^",]+)"?,"?([^")]+)"?\)?/);
-  if (!m) return null;
-  return { inicio: new Date(m[1]), fim: new Date(m[2]) };
 }
 
 /** Converte uma linha da tabela `agendamentos` no tipo usado pela aplicação. */
@@ -70,7 +61,7 @@ async function ocupadosNoPeriodo(
   const bd = banco();
   if (!bd) return {};
 
-  const janela = `[${de.toISOString()},${ate.toISOString()})`;
+  const janela = montarPeriodo(de, ate);
 
   const [ags, blqs] = await Promise.all([
     bd
@@ -180,7 +171,7 @@ export async function criarAgendamento(dados: {
       servico_nome: servico.nome,
       servico_preco: servico.preco * 100,
       cidade: CIDADES[cidade].nome,
-      periodo: `[${inicio.toISOString()},${fim.toISOString()})`,
+      periodo: montarPeriodo(inicio, fim),
       observacao: dados.observacao?.trim() || null,
     })
     .select("id")
@@ -262,7 +253,7 @@ export async function agendaDaKarol(deDias = 0, ateDias = 30): Promise<Agendamen
   const { data } = await bd
     .from("agendamentos")
     .select("*")
-    .overlaps("periodo", `[${de.toISOString()},${ate.toISOString()})`)
+    .overlaps("periodo", montarPeriodo(de, ate))
     .order("periodo", { ascending: true });
 
   return (data ?? []).map(linhaParaAgendamento);
