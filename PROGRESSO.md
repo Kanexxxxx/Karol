@@ -57,6 +57,7 @@ senão dia/hora saem 3h deslocados.
 | 5 | Polish: README, testes do motor, sitemap/robots, ícones | ✅ feito |
 | 6 | Robustez do site: 404, erro, loading, menu no celular | ✅ feito |
 | 7 | LGPD: política de privacidade + consentimento no agendamento | ✅ feito |
+| 8 | Anti-spam no agendamento (honeypot, carimbo, freio por IP) | ✅ feito |
 
 ---
 
@@ -267,6 +268,25 @@ política nem consentimento visível.
 **A data da política** está fixa em `ATUALIZADO` no arquivo — atualize à mão se o texto mudar.
 **Não é peça jurídica revisada** — é uma base honesta. Se a Karol formalizar
 CNPJ/DPO, revisar com quem entende.
+
+## Etapa 8 — Anti-spam no agendamento (✅)
+
+Com `REGRAS.aprovacaoManual = false`, todo agendamento entra direto como
+`confirmado` e trava um horário. Um script podia lotar a agenda com nomes
+falsos. Três camadas baratas, sem serviço externo:
+
+| Onde | O quê |
+|------|-------|
+| `FormularioDados.tsx` | **Honeypot** — campo `site` fora da tela; cliente não vê, robô preenche. **Carimbo** — `carimbo={Date.now()}` renderizado na página (`force-dynamic`), num hidden input. |
+| `acoes.ts` (`agendar`) | Rejeita se o honeypot veio preenchido, ou se o formulário foi enviado em < 2s (robô) ou > 2h (formulário velho). Mensagem genérica, sem entregar o motivo. |
+| `src/lib/limite.ts` | `dentroDoLimite(chave)` — 5 agendamentos / hora / IP, `Map` em memória. |
+
+**Limitação assumida:** o freio por IP é em memória e por instância — some no
+deploy e não é compartilhado no serverless. É um quebra-galho contra script
+ingênuo, não proteção séria. Pra isso: Upstash Ratelimit, ou o próprio Supabase.
+O honeypot + carimbo são o que pega a maioria dos robôs de formulário.
+
+**IP:** lido de `x-forwarded-for` (primeiro valor). Na Vercel isso funciona.
 
 ---
 

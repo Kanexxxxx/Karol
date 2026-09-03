@@ -263,6 +263,10 @@ async function Confirmar({
             servicoId={servico.id}
             chaveDia={dia}
             inicioMin={inicioMin}
+            // Server Component com `dynamic = "force-dynamic"`: roda 1x por
+            // request, no servidor. É o instante em que a página foi servida.
+            // eslint-disable-next-line react-hooks/purity
+            carimbo={Date.now()}
           />
         </div>
 

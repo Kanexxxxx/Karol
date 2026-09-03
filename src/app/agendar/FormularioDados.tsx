@@ -15,10 +15,13 @@ export function FormularioDados({
   servicoId,
   chaveDia,
   inicioMin,
+  carimbo,
 }: {
   servicoId: string;
   chaveDia: string;
   inicioMin: number;
+  /** `Date.now()` no momento em que a página foi renderizada (anti-robô). */
+  carimbo: number;
 }) {
   const [estado, acao, enviando] = useActionState(agendar, ESTADO_INICIAL);
   const v = estado.valores;
@@ -28,6 +31,15 @@ export function FormularioDados({
       <input type="hidden" name="servicoId" value={servicoId} />
       <input type="hidden" name="chaveDia" value={chaveDia} />
       <input type="hidden" name="inicioMin" value={inicioMin} />
+      <input type="hidden" name="carimbo" value={carimbo} />
+
+      {/* Honeypot: fora da tela, sem foco. Cliente nunca vê; robô costuma preencher. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+        <label>
+          Site
+          <input type="text" name="site" tabIndex={-1} autoComplete="off" />
+        </label>
+      </div>
 
       {estado.erro && (
         <p

@@ -2,7 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { criarAgendamento } from "@/lib/agendamentos";
+import { dentroDoLimite } from "@/lib/limite";
 
 /**
  * Estado do formulário de agendamento, lido pelo `useActionState`.
@@ -18,6 +20,10 @@ export type EstadoAgendar = {
 
 export const ESTADO_INICIAL: EstadoAgendar = {};
 
+/** Mensagem genérica pra tentativa que cheira a robô — sem entregar o motivo. */
+const RECUSA_SILENCIOSA =
+  "Não consegui validar o envio. Recarregue a página e tente de novo.";
+
 export async function agendar(
   _estado: EstadoAgendar,
   form: FormData,
@@ -30,6 +36,27 @@ export async function agendar(
   const whatsapp = String(form.get("whatsapp") ?? "").trim();
   const observacao = String(form.get("observacao") ?? "").trim();
   const valores = { nome, whatsapp, observacao };
+
+  // 1. Honeypot: campo escondido que só robô preenche.
+  if (String(form.get("site") ?? "") !== "") return { erro: RECUSA_SILENCIOSA };
+
+  // 2. Carimbo de tempo do formulário: humano não preenche em < 2s,
+  //    e um formulário aberto há horas está velho demais.
+  const carimbo = Number(form.get("carimbo"));
+  const idade = Date.now() - carimbo;
+  if (!Number.isFinite(carimbo) || idade < 2_000 || idade > 2 * 60 * 60 * 1000) {
+    return { erro: RECUSA_SILENCIOSA };
+  }
+
+  // 3. Freio por IP.
+  const ip =
+    (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "sem-ip";
+  if (!dentroDoLimite(`agendar:${ip}`)) {
+    return {
+      erro: "Você fez vários agendamentos seguidos. Aguarde um pouco ou fale no WhatsApp.",
+      valores,
+    };
+  }
 
   if (!servicoId || !chaveDia || !Number.isFinite(inicioMin)) {
     return {
