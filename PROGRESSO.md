@@ -31,7 +31,7 @@ atende em Pereira Barreto e Bandeirantes D'Oeste). Stack:
 | # | Etapa | Status |
 |---|-------|--------|
 | 1 | Destravar build + fluxo de agendamento grava no banco | ✅ feito |
-| 2 | Painel da Karol + login por senha | ⬜ a fazer |
+| 2 | Painel da Karol + login por senha | ✅ feito |
 | 3 | Tela de bloqueios (férias / feriado) no painel | ⬜ a fazer |
 | 4 | Notificações (WhatsApp/e-mail + lembrete agendado) | ⬜ a fazer |
 | 5 | Polish: README, testes do motor, sitemap/robots, ícones | ⬜ a fazer |
@@ -84,12 +84,48 @@ mas ninguém chamava — nenhum agendamento era gravado.
 
 ---
 
-## Etapa 2 — Painel da Karol (⬜)
+## Etapa 2 — Painel da Karol (✅)
 
-Plano: senha única em `SENHA_PAINEL`, cookie de sessão assinado (HMAC, sem lib),
-`proxy.ts` protegendo `/painel/*`, e `verificarSessao()` chamado dentro de cada
-action do painel (proxy não é fronteira de segurança sozinho).
-Telas: login, lista da agenda (`agendaDaKarol`), ações confirmar/cancelar/concluir/faltou.
+Painel em `/painel` pra Karol ver e mexer na agenda. Uma senha só
+(`SENHA_PAINEL`), usada por ela e por quem testa.
+
+**Arquivos novos:**
+
+| Arquivo | Papel |
+|---------|-------|
+| `src/lib/sessao.ts` | Sessão sem biblioteca. Cookie `painel_sessao` = `<payload>.<HMAC-SHA256>` assinado com `SESSAO_SECRET`, carrega só a validade (7 dias). `tokenValido()` é puro (serve o proxy); `criarSessao/sessaoAtiva/encerrarSessao` usam `cookies()`. `senhaConfere()` compara em tempo constante. |
+| `src/proxy.ts` | O antigo `middleware`. Barra `/painel/*` sem sessão → `/painel/login`; manda logado que abre `/painel/login` de volta pro painel. Só a 1ª linha — a página confere de novo. |
+| `src/app/painel/login/page.tsx` + `Formulario.tsx` + `acoes.ts` | Login. Se faltar env, mostra o que configurar. Action `entrar` compara a senha (com 400 ms de atraso anti-brute-force) e cria a sessão. |
+| `src/app/painel/page.tsx` | Agenda de ontem até +60 dias, agrupada por dia. Cada card: hora, serviço, cliente + link `wa.me`, cidade, valor, recado, selo de situação. Cabeçalho com "Sair". `force-dynamic`, `noindex`. |
+| `src/app/painel/AcoesAgendamento.tsx` | Client. Botões que mudam a situação conforme o estado atual (ver `CAMINHOS`). Um `<form>` com vários `<button name="situacao" value="…">`, feedback inline via `useActionState`. |
+| `src/app/painel/acoes.ts` | `alterarSituacao` (confere `sessaoAtiva()`, chama `mudarSituacao`, revalida) e `sair`. |
+
+**Mudou:** `src/lib/agendamentos.ts` ganhou `mudarSituacao(id, situacao)` — valida
+o id e a situação, trata o `23P01` (reativar num horário já retomado) com mensagem.
+
+**Fluxo de situação:** `pendente → confirmado/cancelado` · `confirmado →
+concluido/faltou/cancelado` · `cancelado/faltou → confirmado` (reativar) ·
+`concluido` é ponto final.
+
+**Decisões:**
+- Sessão assinada em vez de sessão em banco: 2 pessoas, 1 senha, não vale a mesa extra.
+- `node:crypto` no `proxy.ts` funciona porque o proxy roda no runtime Node por
+  padrão no Next 16.
+- Aprovação manual (`REGRAS.aprovacaoManual`) segue `false`, então na prática todo
+  agendamento entra como `confirmado`. O caminho `pendente` no painel já está
+  pronto pra quando ela ligar isso.
+
+**Config necessária (`.env.local`):**
+```
+SENHA_PAINEL=<a senha que a Karol vai usar>
+SESSAO_SECRET=<valor longo aleatório: openssl rand -base64 32>
+```
+
+**Testar:** `/painel` sem sessão → redireciona pro login. Senha certa → agenda.
+"Sair" limpa o cookie. Sem `SENHA_PAINEL`/`SESSAO_SECRET`, o login explica o que falta.
+
+**Rough edge conhecido:** a lista não faz paginação (60 dias cabem à vontade no
+volume dela). Se um dia crescer, paginar por mês.
 
 ## Etapa 3 — Bloqueios (⬜)
 

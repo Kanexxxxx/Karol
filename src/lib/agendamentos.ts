@@ -212,6 +212,43 @@ export async function buscarAgendamento(id: string): Promise<Agendamento | null>
   return data ? linhaParaAgendamento(data) : null;
 }
 
+export type SituacaoAgendamento = Agendamento["situacao"];
+
+const SITUACOES: SituacaoAgendamento[] = [
+  "pendente",
+  "confirmado",
+  "cancelado",
+  "concluido",
+  "faltou",
+];
+
+/**
+ * Muda a situação de um agendamento (painel da Karol).
+ *
+ * Reativar um cancelado pode esbarrar na trava `sem_choque` se o horário já
+ * foi retomado — nesse caso o Postgres recusa e devolvemos o motivo.
+ */
+export async function mudarSituacao(
+  id: string,
+  situacao: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  const bd = banco();
+  if (!bd) return { ok: false, erro: "Banco não configurado." };
+  if (!/^[0-9a-f-]{32,36}$/i.test(id)) return { ok: false, erro: "Agendamento inválido." };
+  if (!SITUACOES.includes(situacao as SituacaoAgendamento)) {
+    return { ok: false, erro: "Situação inválida." };
+  }
+
+  const { error } = await bd.from("agendamentos").update({ situacao }).eq("id", id);
+  if (error) {
+    if (error.code === "23P01") {
+      return { ok: false, erro: "Esse horário já foi retomado por outra cliente." };
+    }
+    return { ok: false, erro: "Não consegui salvar agora." };
+  }
+  return { ok: true };
+}
+
 /** Agenda da Karol, para o painel. */
 export async function agendaDaKarol(deDias = 0, ateDias = 30): Promise<Agendamento[]> {
   const bd = banco();
