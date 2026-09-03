@@ -55,10 +55,10 @@ export default async function Painel() {
               Bloqueios
             </Link>
             <Link
-              href="/"
+              href="/painel/notificacoes"
               className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro sm:inline"
             >
-              Ver site
+              Notificações
             </Link>
             <form action={sair}>
               <button

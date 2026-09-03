@@ -39,7 +39,7 @@ senão dia/hora saem 3h deslocados.
 | 1 | Destravar build + fluxo de agendamento grava no banco | ✅ feito |
 | 2 | Painel da Karol + login por senha | ✅ feito |
 | 3 | Tela de bloqueios (férias / feriado) no painel | ✅ feito |
-| 4 | Notificações (WhatsApp/e-mail + lembrete agendado) | ⬜ a fazer |
+| 4 | Notificações (WhatsApp/e-mail + lembrete agendado) | ✅ feito (envio depende de webhook) |
 | 5 | Polish: README, testes do motor, sitemap/robots, ícones | ⬜ a fazer |
 
 ---
@@ -157,12 +157,51 @@ seguinte ao último)`. `Bloqueio.diaInteiro` é derivado (as duas pontas à meia
 **Testar:** `/painel/bloqueios` → criar "Feriado" num dia → esse dia some de
 `/agendar`. Intervalo parcial: marcar o checkbox, pôr 13:00–17:00.
 
-## Etapa 4 — Notificações (⬜)
+## Etapa 4 — Notificações (✅, mas o envio real precisa de um webhook)
 
-`NOTIFICACOES` em `src/data/negocio.ts` lista o que a Karol pediu. Plano:
-`src/lib/notificacoes.ts` com os templates + link `wa.me` pra Karol no momento do
-agendamento; Edge Function `supabase/functions/lembretes/` + `pg_cron` pro lembrete
-de 1 dia antes (documentado, envio real depende de credencial/serviço).
+`NOTIFICACOES` em `src/data/negocio.ts` diz o que a Karol pediu. A parte de
+**montar a mensagem e disparar o evento** está pronta. O **envio de WhatsApp**
+em si precisa de um serviço externo — aqui a gente só faz `POST` num webhook
+configurável e quem estiver do outro lado (n8n, Make, Zapier, função própria…)
+manda a mensagem.
+
+**Arquivos novos:**
+
+| Arquivo | Papel |
+|---------|-------|
+| `src/lib/notificacoes.ts` | Templates (`textoParaKarol`, `textoConfirmacao`, `textoLembrete`, `textoAgradecimento`) e `enviarEvento(evento, dados)` — `POST` JSON pra `NOTIFICADOR_WEBHOOK_URL`, com timeout de 5s, **nunca lança**. Respeita os interruptores de `NOTIFICACOES`. |
+| `src/lib/lembretes.ts` | `rodarLembretes()`: pega quem tem horário amanhã (`confirmado`) e quem foi atendida ontem (`concluido`), dispara os eventos. |
+| `src/app/api/lembretes/route.ts` | GET/POST protegido por `Authorization: Bearer $CRON_SECRET`. Sem `CRON_SECRET` no ambiente, fica 401. |
+| `vercel.json` | Cron diário às 12:00 UTC (09:00 BRT) chamando `/api/lembretes`. A Vercel injeta o header do `CRON_SECRET` sozinha. |
+| `src/app/painel/notificacoes/` | Página no painel: mostra o que está ligado, se o webhook/cron existem, e um botão "disparar agora" (útil pra testar). |
+
+**Mudou:**
+- `criarAgendamento` (`agendamentos.ts`) agora dispara `novo-agendamento` (pra
+  Karol) + `confirmacao` (pra cliente) logo depois de gravar.
+- `agendamentos.ts` ganhou `agendamentosDeAmanha()` e `agendamentosConcluidosOntem()`.
+- `painel/page.tsx`: link "Notificações".
+
+**Formato do POST no webhook:**
+```json
+{
+  "evento": "novo-agendamento | confirmacao | lembrete | agradecimento",
+  "agendamento": { "id","cliente","whatsappCliente","servico","cidade","inicioISO","valorCentavos" },
+  "mensagem": { "para": "<whatsapp destino>", "destinatario": "karol|cliente", "texto": "<texto pronto>" }
+}
+```
+
+**Pra ligar de verdade:**
+1. `NOTIFICADOR_WEBHOOK_URL` → endpoint que recebe o JSON e manda o WhatsApp.
+2. `CRON_SECRET` (`openssl rand -hex 32`) nas env vars da Vercel → o cron passa a rodar.
+3. Opcional: `KAROL_WHATSAPP` se o número de aviso for diferente do que está no site.
+
+**Decisão:** o agradecimento sai só pra quem a Karol marcou como **Atendida** no
+painel — não dá pra agradecer quem talvez não foi. Se ela não marcar, não sai.
+O lembrete não tem esse problema (é véspera).
+
+**Rough edge:** os templates estão só no lado Next. Se um dia o envio migrar pra
+uma Edge Function do Supabase (Deno), ou os textos vão junto, ou o webhook passa
+a renderizar. Hoje, com Vercel Cron, não há duplicação.
 
 ## Etapa 5 — Polish (⬜)
 

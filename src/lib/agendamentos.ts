@@ -11,6 +11,7 @@ import {
   type Intervalo,
 } from "./agenda";
 import { lerPeriodo, montarPeriodo } from "./periodo";
+import { enviarEvento } from "./notificacoes";
 import { buscarServico, type Servico } from "@/data/servicos";
 import { CIDADES } from "@/data/negocio";
 
@@ -185,7 +186,63 @@ export async function criarAgendamento(dados: {
     return { ok: false, erro: "Não consegui salvar agora. Tente de novo em instantes." };
   }
 
+  // Avisa a Karol e confirma pra cliente. Não bloqueia nem quebra o
+  // agendamento se falhar (enviarEvento engole o erro).
+  const notif = {
+    id: data.id,
+    cliente: dados.nome.trim(),
+    whatsappCliente: dados.whatsapp.replace(/\D/g, ""),
+    servico: servico.nome,
+    cidade: CIDADES[cidade].nome,
+    inicioISO: inicio.toISOString(),
+    valorCentavos: servico.preco * 100,
+  };
+  await Promise.all([
+    enviarEvento("novo-agendamento", notif),
+    enviarEvento("confirmacao", notif),
+  ]);
+
   return { ok: true, id: data.id, quando: inicio, cidade: CIDADES[cidade].nome };
+}
+
+/** Confirmados que começam amanhã — base do lembrete de 1 dia antes. */
+export async function agendamentosDeAmanha(): Promise<Agendamento[]> {
+  const bd = banco();
+  if (!bd) return [];
+
+  const hoje = new Date();
+  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 1);
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("*")
+    .eq("situacao", "confirmado")
+    .overlaps("periodo", montarPeriodo(inicio, fim))
+    .order("periodo", { ascending: true });
+
+  return (data ?? []).map(linhaParaAgendamento);
+}
+
+/** Atendimentos marcados como concluídos ontem — base do agradecimento. */
+export async function agendamentosConcluidosOntem(): Promise<Agendamento[]> {
+  const bd = banco();
+  if (!bd) return [];
+
+  const hoje = new Date();
+  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1);
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 1);
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("*")
+    .eq("situacao", "concluido")
+    .overlaps("periodo", montarPeriodo(inicio, fim))
+    .order("periodo", { ascending: true });
+
+  return (data ?? []).map(linhaParaAgendamento);
 }
 
 /** Um agendamento pelo id — tela de confirmação da cliente e painel da Karol. */
