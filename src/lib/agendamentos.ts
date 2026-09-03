@@ -34,6 +34,34 @@ function emData(dia: Date, minutos: number): Date {
   return d;
 }
 
+/**
+ * Lê o `tstzrange` que o Postgres devolve como texto.
+ * Ex.: `["2026-09-01 08:00:00+00","2026-09-01 09:00:00+00")`
+ */
+function lerPeriodo(periodo: string): { inicio: Date; fim: Date } | null {
+  const m = periodo.match(/\[?"?([^",]+)"?,"?([^")]+)"?\)?/);
+  if (!m) return null;
+  return { inicio: new Date(m[1]), fim: new Date(m[2]) };
+}
+
+/** Converte uma linha da tabela `agendamentos` no tipo usado pela aplicação. */
+function linhaParaAgendamento(r: Record<string, unknown>): Agendamento {
+  const p = lerPeriodo(r.periodo as string);
+  return {
+    id: r.id as string,
+    clienteNome: r.cliente_nome as string,
+    clienteWhatsapp: r.cliente_whatsapp as string,
+    servicoId: r.servico_id as string,
+    servicoNome: r.servico_nome as string,
+    servicoPreco: r.servico_preco as number,
+    cidade: r.cidade as string,
+    inicio: p?.inicio ?? new Date(),
+    fim: p?.fim ?? new Date(),
+    situacao: r.situacao as Agendamento["situacao"],
+    observacao: (r.observacao as string | null) ?? null,
+  };
+}
+
 /** Lê o que já está ocupado num intervalo de dias, agrupado por data. */
 async function ocupadosNoPeriodo(
   de: Date,
@@ -56,14 +84,11 @@ async function ocupadosNoPeriodo(
   const porDia: Record<string, Intervalo[]> = {};
 
   const somar = (periodo: string) => {
-    // formato do Postgres: ["2026-09-01 08:00:00+00","2026-09-01 09:00:00+00")
-    const m = periodo.match(/\[?"?([^",]+)"?,"?([^")]+)"?\)?/);
-    if (!m) return;
-    const inicio = new Date(m[1]);
-    const fim = new Date(m[2]);
-    const chave = paraChave(inicio);
+    const p = lerPeriodo(periodo);
+    if (!p) return;
+    const chave = paraChave(p.inicio);
     const minutos = (d: Date) => d.getHours() * 60 + d.getMinutes();
-    (porDia[chave] ??= []).push({ inicio: minutos(inicio), fim: minutos(fim) });
+    (porDia[chave] ??= []).push({ inicio: minutos(p.inicio), fim: minutos(p.fim) });
   };
 
   (ags.data ?? []).forEach((r) => somar(r.periodo as string));
@@ -172,6 +197,21 @@ export async function criarAgendamento(dados: {
   return { ok: true, id: data.id, quando: inicio, cidade: CIDADES[cidade].nome };
 }
 
+/** Um agendamento pelo id — tela de confirmação da cliente e painel da Karol. */
+export async function buscarAgendamento(id: string): Promise<Agendamento | null> {
+  const bd = banco();
+  if (!bd) return null;
+  if (!/^[0-9a-f-]{32,36}$/i.test(id)) return null;
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  return data ? linhaParaAgendamento(data) : null;
+}
+
 /** Agenda da Karol, para o painel. */
 export async function agendaDaKarol(deDias = 0, ateDias = 30): Promise<Agendamento[]> {
   const bd = banco();
@@ -188,20 +228,5 @@ export async function agendaDaKarol(deDias = 0, ateDias = 30): Promise<Agendamen
     .overlaps("periodo", `[${de.toISOString()},${ate.toISOString()})`)
     .order("periodo", { ascending: true });
 
-  return (data ?? []).map((r) => {
-    const m = (r.periodo as string).match(/\[?"?([^",]+)"?,"?([^")]+)"?\)?/);
-    return {
-      id: r.id,
-      clienteNome: r.cliente_nome,
-      clienteWhatsapp: r.cliente_whatsapp,
-      servicoId: r.servico_id,
-      servicoNome: r.servico_nome,
-      servicoPreco: r.servico_preco,
-      cidade: r.cidade,
-      inicio: m ? new Date(m[1]) : new Date(),
-      fim: m ? new Date(m[2]) : new Date(),
-      situacao: r.situacao,
-      observacao: r.observacao,
-    };
-  });
+  return (data ?? []).map(linhaParaAgendamento);
 }
