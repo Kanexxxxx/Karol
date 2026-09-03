@@ -10,6 +10,14 @@ export const NEGOCIO = {
   nome: "Studio Karol Carvalho",
   profissional: "Karol Carvalho Nunes",
   atuacao: "Maquiadora e designer de sobrancelhas",
+  atuacaoCidades: "Pereira Barreto e Bandeirantes D'Oeste, São Paulo",
+
+  /** Frase dela num reel. Vira a citação da home. */
+  lema: "Nem de humanas, nem de exatas. Eu sou da autoestima.",
+
+  /** Também dela, num reel. Vende o curso melhor que qualquer texto meu. */
+  lemaCurso:
+    "Um dia decidi fazer curso de design de sobrancelha, e hoje isso paga as minhas contas.",
 
   /** Resposta dela: "o que você faz?". Vira a primeira frase do site. */
   frase:

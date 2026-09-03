@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Jost } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import { NEGOCIO } from "@/data/negocio";
+import { Revelar } from "@/components/Revelar";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -10,26 +11,41 @@ const cormorant = Cormorant_Garamond({
   display: "swap",
 });
 
-const jost = Jost({
-  variable: "--font-jost",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: `${NEGOCIO.nome} — Sobrancelhas e Maquiagem`,
+  metadataBase: new URL("https://karolcarvalho.vercel.app"),
+  title: {
+    default: `${NEGOCIO.nome} — Sobrancelhas e Maquiagem em Pereira Barreto`,
+    template: `%s · ${NEGOCIO.nome}`,
+  },
   description:
-    "Design de sobrancelhas, brow lamination, maquiagem social e curso de automaquiagem em Pereira Barreto e Bandeirantes D'Oeste.",
+    "Design de sobrancelhas, brow lamination, maquiagem social e curso de automaquiagem em Pereira Barreto e Bandeirantes D'Oeste. Preços abertos e agendamento pelo site.",
+  openGraph: {
+    title: NEGOCIO.nome,
+    description:
+      "Sobrancelhas, maquiagem e curso de automaquiagem em Pereira Barreto e Bandeirantes D'Oeste.",
+    locale: "pt_BR",
+    type: "website",
+    images: ["/fotos/karol-capa.jpg"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${cormorant.variable} ${jost.variable} h-full antialiased`}
+      className={`${cormorant.variable} ${manrope.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <Revelar />
+      </body>
     </html>
   );
 }

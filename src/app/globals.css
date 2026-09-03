@@ -3,27 +3,30 @@
 /**
  * Paleta do Studio Karol Carvalho.
  *
- * Ela confirmou no briefing: manter o dourado com bege do feed, visual
- * "clean e fácil de entender", e vetou cores muito escuras.
- * Por isso o site tem um tema só, claro — sem modo escuro.
+ * Ela confirmou no briefing: manter o dourado com bege do feed, visual clean,
+ * e vetou cores muito escuras. Por isso o site tem um tema só, claro —
+ * sem modo escuro.
  */
 @theme {
-  --color-creme: #faf5ee;
-  --color-creme-fundo: #f3ebdf;
+  --color-osso: #fbf7f0;
+  --color-creme: #f3eadb;
+  --color-ouro-fundo: #efe0c4;
   --color-papel: #ffffff;
 
-  --color-dourado: #b08d4f;
-  --color-dourado-claro: #d9c08a;
-  --color-dourado-fundo: #f2e7d2;
+  --color-ouro: #96702b;
+  --color-ouro-claro: #c7a55e;
+  --color-ouro-luz: #e4ce9d;
 
-  --color-tinta: #40382f;
-  --color-tinta-suave: #6b6055;
-  --color-tinta-fraca: #94897c;
+  --color-tinta: #332b22;
+  --color-tinta-2: #6e6154;
+  --color-tinta-3: #9b8e7e;
 
-  --color-linha: #e8dcc9;
+  --color-linha: #e2d4bc;
 
   --font-titulo: var(--font-cormorant), Georgia, serif;
-  --font-corpo: var(--font-jost), system-ui, sans-serif;
+  --font-corpo: var(--font-manrope), system-ui, sans-serif;
+
+  --ease-marca: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 html {
@@ -31,19 +34,49 @@ html {
 }
 
 body {
-  background-color: var(--color-creme);
+  background-color: var(--color-osso);
   color: var(--color-tinta);
   font-family: var(--font-corpo);
 }
 
+/* ---------- movimento ---------- */
+
+/* revelação ao rolar. começa escondido só quando o JS assume o controle,
+   pra página nunca ficar em branco se o script falhar. */
+[data-surge] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.62s var(--ease-marca),
+    transform 0.62s var(--ease-marca);
+}
+[data-surge].dentro {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes respiro {
+  from { transform: scale(1); }
+  to { transform: scale(1.055); }
+}
+
+@keyframes desliza {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+  html { scroll-behavior: auto; }
+  [data-surge] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

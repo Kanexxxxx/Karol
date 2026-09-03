@@ -1,0 +1,166 @@
+/**
+ * Acervo de fotos do site.
+ *
+ * Origem: varredura completa dos posts públicos da Karol feita com a conta
+ * logada (311 posts na grade, 50 imagens baixadas em resolução original,
+ * de 1280 a 3505 px de largura). Todas foram apenas REDUZIDAS — nunca
+ * ampliadas, porque ampliar é o que deixa cara de inteligência artificial.
+ *
+ * Originais em `ferramentas/originais/`, processamento em
+ * `ferramentas/fotos2.py`.
+ *
+ * ATENÇÃO: são rostos de clientes reais. A Karol autorizou o uso em geral
+ * no briefing ("pode usar todas"), mas antes de publicar vale conferir com
+ * ela cliente por cliente.
+ */
+
+export type Foto = {
+  arquivo: string;
+  alt: string;
+  largura: number;
+  altura: number;
+  legenda?: string;
+  etiqueta?: string;
+};
+
+const P = "/fotos";
+const RETRATO = { largura: 780, altura: 1040 };
+
+export const FOTOS = {
+  capa: {
+    arquivo: `${P}/karol-capa.jpg`,
+    alt: "Karol Carvalho, maquiadora e designer de sobrancelhas",
+    largura: 1200,
+    altura: 1464,
+  },
+  retrato: {
+    arquivo: `${P}/karol-retrato.jpg`,
+    alt: "Sobrancelha desenhada pela Karol",
+    largura: 780,
+    altura: 975,
+  },
+  antesDepois: {
+    arquivo: `${P}/antes-depois.jpg`,
+    alt: "Sobrancelha de uma cliente antes e depois do design",
+    largura: 860,
+    altura: 1146,
+  },
+  atendimento: {
+    arquivo: `${P}/processo.jpg`,
+    alt: "Karol modelando a sobrancelha de uma cliente durante o atendimento",
+    ...RETRATO,
+  },
+} as const;
+
+/** Uma cliente diferente por serviço — nada se repete na tabela. */
+export const FOTO_DO_SERVICO: Record<string, Foto> = {
+  "design-simples": {
+    arquivo: `${P}/serv-design.jpg`,
+    alt: "Sobrancelha depois do design",
+    ...RETRATO,
+  },
+  "design-henna": {
+    arquivo: `${P}/serv-henna.jpg`,
+    alt: "Sobrancelha depois do design com henna",
+    ...RETRATO,
+    etiqueta: "Mais pedido",
+  },
+  "design-masculino": {
+    arquivo: `${P}/serv-masculino.jpg`,
+    alt: "Design de sobrancelha masculino",
+    ...RETRATO,
+  },
+  "brow-lamination": {
+    arquivo: `${P}/serv-lamination.jpg`,
+    alt: "Sobrancelha alinhada com brow lamination",
+    ...RETRATO,
+  },
+  "maquiagem-social": {
+    arquivo: `${P}/serv-maquiagem.jpg`,
+    alt: "Maquiagem social feita pela Karol",
+    ...RETRATO,
+    etiqueta: "Festa e formatura",
+  },
+  "curso-automaquiagem": {
+    arquivo: `${P}/serv-curso.jpg`,
+    alt: "Karol com uma aluna segurando o certificado do curso",
+    ...RETRATO,
+    etiqueta: "Com certificado",
+  },
+};
+
+const trabalho = (n: number, legenda: string, etiqueta?: string): Foto => ({
+  arquivo: `${P}/trab-${String(n).padStart(2, "0")}.jpg`,
+  alt: `${legenda} feito pela Karol`,
+  ...RETRATO,
+  legenda,
+  etiqueta,
+});
+
+/** Galeria de trabalhos: 20 clientes, nenhuma repetida. */
+export const GALERIA: Foto[] = [
+  {
+    arquivo: FOTOS.antesDepois.arquivo,
+    alt: FOTOS.antesDepois.alt,
+    largura: 860,
+    altura: 1146,
+    legenda: "Design com henna",
+    etiqueta: "Antes e depois",
+  },
+  trabalho(1, "Design com henna"),
+  trabalho(2, "Design de sobrancelha"),
+  trabalho(3, "Maquiagem social"),
+  trabalho(4, "Design com henna"),
+  trabalho(5, "Maquiagem social"),
+  trabalho(6, "Design de sobrancelha"),
+  trabalho(7, "Design com henna"),
+  trabalho(8, "Design de sobrancelha"),
+  trabalho(9, "Maquiagem social"),
+  trabalho(10, "Design de sobrancelha"),
+  trabalho(11, "Brow lamination", "Durante"),
+  trabalho(12, "Design de sobrancelha"),
+  trabalho(13, "Maquiagem social"),
+  trabalho(14, "Maquiagem social"),
+  trabalho(15, "Design de sobrancelha"),
+  trabalho(16, "Design de sobrancelha"),
+  trabalho(17, "Maquiagem social"),
+  trabalho(18, "Maquiagem social"),
+  trabalho(19, "Maquiagem social"),
+  trabalho(20, "Design de sobrancelha"),
+  {
+    arquivo: `${P}/processo.jpg`,
+    alt: "Karol modelando a sobrancelha de uma cliente",
+    ...RETRATO,
+    legenda: "No atendimento",
+    etiqueta: "Durante",
+  },
+  {
+    arquivo: `${P}/processo-3.jpg`,
+    alt: "Aplicação de henna na sobrancelha",
+    ...RETRATO,
+    legenda: "Aplicação da henna",
+    etiqueta: "Durante",
+  },
+];
+
+/** Seis alunas diferentes, todas com o certificado na mão. */
+export const ALUNAS: Foto[] = [
+  {
+    arquivo: `${P}/aluna-01.jpg`,
+    alt: "Karol e a aluna com o certificado do curso",
+    ...RETRATO,
+    legenda: "Com a Karol",
+  },
+  { arquivo: `${P}/aluna-02.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
+  { arquivo: `${P}/aluna-03.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
+  { arquivo: `${P}/aluna-04.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
+  { arquivo: `${P}/aluna-05.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
+  { arquivo: `${P}/aluna-06.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
+];
+
+/** Sequência da esteira do topo — mistura resultado, maquiagem e processo. */
+export const ESTEIRA: Foto[] = [
+  GALERIA[1], GALERIA[3], GALERIA[6], GALERIA[11],
+  GALERIA[9], GALERIA[13], GALERIA[16], GALERIA[21],
+  GALERIA[2], GALERIA[5],
+];
