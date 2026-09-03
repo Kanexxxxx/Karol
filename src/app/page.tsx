@@ -12,7 +12,7 @@ import { ChamadaFinal, Local } from "@/components/secoes/Local";
 export default function Home() {
   return (
     <>
-      <Cabecalho />
+      <Cabecalho sobreHero />
       <main className="flex-1 pb-20 lg:pb-0">
         <Abertura />
         <Faixa />

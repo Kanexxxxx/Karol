@@ -55,6 +55,7 @@ senão dia/hora saem 3h deslocados.
 | 3 | Tela de bloqueios (férias / feriado) no painel | ✅ feito |
 | 4 | Notificações (WhatsApp/e-mail + lembrete agendado) | ✅ feito (envio depende de webhook) |
 | 5 | Polish: README, testes do motor, sitemap/robots, ícones | ✅ feito |
+| 6 | Robustez do site: 404, erro, loading, menu no celular | ✅ feito |
 
 ---
 
@@ -233,6 +234,22 @@ a renderizar. Hoje, com Vercel Cron, não há duplicação.
 
 **Dependência nova:** `vitest` (só dev). É a primeira lib de teste do projeto;
 `package.json` e `package-lock.json` mudaram por causa disso.
+
+## Etapa 6 — Robustez do site (✅)
+
+Buracos de experiência que o scaffold deixou.
+
+| Arquivo | Papel |
+|---------|-------|
+| `src/app/not-found.tsx` | 404 com a cara do site (era a tela crua do Next). |
+| `src/app/error.tsx` | Fronteira de erro global. Client Component. "Algo deu errado" + tentar de novo + WhatsApp. |
+| `src/app/agendar/loading.tsx` | Esqueleto enquanto a disponibilidade carrega do Supabase. |
+| `src/components/MenuMobile.tsx` | Menu hambúrguer no celular (o `<nav>` era `hidden lg:flex` — no celular não dava pra navegar entre as seções). Fecha no toque, no Esc e fora. |
+
+**Bug corrigido:** o `Cabecalho` era sempre transparente com texto branco. Em
+`/agendar` e `/agendar/confirmado` (fundo claro, sem foto) o "Karol Carvalho"
+ficava branco sobre bege — quase invisível. Agora tem a prop `sobreHero`: só a
+home passa `true`; as outras páginas usam a barra sólida com texto escuro.
 
 ---
 
