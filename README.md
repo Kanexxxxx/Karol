@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Studio Karol Carvalho
 
-## Getting Started
+Site institucional + agenda online da Karol — maquiadora e designer de
+sobrancelhas em **Pereira Barreto** e **Bandeirantes D'Oeste (SP)**.
 
-First, run the development server:
+A cliente escolhe serviço, dia e horário pelo site e o horário fica reservado na
+hora. A Karol acompanha tudo por um painel próprio.
+
+- **Stack:** Next.js 16 (App Router) · React 19 · Tailwind 4 · Supabase (Postgres)
+- **Deploy:** Vercel
+- **Diário de bordo / o que ainda falta:** [`PROGRESSO.md`](./PROGRESSO.md)
+
+> ⚠️ Este projeto usa **Next.js 16**, que tem mudanças de API em relação ao 15
+> (`middleware` → `proxy`, `cookies()` assíncrono, etc.). Antes de mexer, veja
+> [`AGENTS.md`](./AGENTS.md) e os docs em `node_modules/next/dist/docs/`.
+
+---
+
+## Rodando localmente
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # e preencha (veja abaixo)
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+O **site institucional funciona sem nenhuma variável**. Só a agenda (`/agendar`)
+e o painel (`/painel`) precisam de configuração.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Variáveis de ambiente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Todas em [`.env.example`](./.env.example). Em resumo:
 
-## Learn More
+| Variável | Pra quê | Obrigatória? |
+|----------|---------|--------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Projeto Supabase | agenda + painel |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave de serviço (secreta, só servidor) | agenda + painel |
+| `SENHA_PAINEL` | Senha única de acesso ao `/painel` | painel |
+| `SESSAO_SECRET` | Assina o cookie de sessão (`openssl rand -base64 32`) | painel |
+| `KAROL_WHATSAPP` | Número que recebe o aviso de agendamento | não (usa o do site) |
+| `NOTIFICADOR_WEBHOOK_URL` | Webhook que dispara os WhatsApp de verdade | não (sem ele, mensagens não saem) |
+| `CRON_SECRET` | Protege `/api/lembretes` (a Vercel injeta o header) | só o cron |
+| `TZ` | **`America/Sao_Paulo`** em produção | sim, na Vercel |
 
-To learn more about Next.js, take a look at the following resources:
+### Banco de dados
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Rode [`supabase/schema.sql`](./supabase/schema.sql) **uma vez** no SQL Editor do
+Supabase. Ele cria as tabelas `agendamentos` e `bloqueios`, a trava anti-conflito
+(`sem_choque`) e as policies de RLS.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev      # servidor de desenvolvimento
+npm run build    # build de produção
+npm run start    # sobe o build
+npm run lint     # eslint
+npm test         # vitest (motor de horários)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Como está organizado
+
+```
+src/
+  app/
+    page.tsx              home (todas as seções)
+    agendar/              fluxo público: serviço → dia → hora → dados → confirmado
+    painel/               área da Karol (protegida por proxy.ts + sessão)
+      page.tsx              agenda
+      bloqueios/            férias, feriado, curso
+      notificacoes/         status + disparo manual de lembretes
+    api/lembretes/         rota chamada pelo cron diário
+  components/             cabeçalho, rodapé, seções da home, UI compartilhada
+  data/                   negocio.ts, servicos.ts, fotos.ts (fonte da verdade do conteúdo)
+  lib/
+    agenda.ts              motor de horários — função pura, sem Date por dentro
+    agendamentos.ts        leitura/escrita da agenda (server-only)
+    bloqueios.ts           CRUD de bloqueios
+    sessao.ts              sessão do painel (cookie assinado, sem lib)
+    notificacoes.ts        templates + webhook de notificação
+    banco.ts               cliente Supabase (server-only)
+  proxy.ts               protege /painel/*
+supabase/schema.sql      esquema do banco
+ferramentas/             scripts Python de processamento das fotos (uso único)
+briefing/                scripts do Google Forms usados no briefing (uso único)
+```
+
+O conteúdo do site (preços, textos, horários, fotos) vem de `src/data/`. Regras
+de negócio ainda pendentes de confirmação com a Karol estão marcadas
+`A_CONFIRMAR` no código — ver `PROGRESSO.md`.
+
+---
+
+## Deploy (Vercel)
+
+1. Importe o repositório na Vercel.
+2. Configure as variáveis de ambiente da tabela acima — **incluindo `TZ=America/Sao_Paulo`**.
+3. O cron de lembretes (`vercel.json`) roda sozinho; ele só envia de verdade se
+   `NOTIFICADOR_WEBHOOK_URL` e `CRON_SECRET` estiverem setados.

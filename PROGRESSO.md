@@ -6,6 +6,20 @@
 
 Última atualização: **2026-09-03** · Branch de trabalho: `main`
 
+## Onde está agora (resumo)
+
+As 5 etapas do plano estão feitas. `npm run build`, `npm run lint` e `npm test`
+passam limpos. O que falta pra ir ao ar de verdade **não é código**:
+
+1. Criar o projeto no Supabase e rodar `supabase/schema.sql`.
+2. Preencher as env vars (ver `README.md` / `.env.example`).
+3. Fechar as **pendências de negócio** com a Karol (lista no fim deste arquivo).
+4. (Opcional) Ligar o webhook de notificação pra os WhatsApp saírem sozinhos.
+
+Próximos passos naturais, se quiser continuar: PIX de sinal (`REGRAS.sinal`),
+página de política de privacidade/LGPD, e-mail além de WhatsApp, e um teste de
+integração do fluxo de agendamento.
+
 ---
 
 ## Visão geral do projeto
@@ -40,7 +54,7 @@ senão dia/hora saem 3h deslocados.
 | 2 | Painel da Karol + login por senha | ✅ feito |
 | 3 | Tela de bloqueios (férias / feriado) no painel | ✅ feito |
 | 4 | Notificações (WhatsApp/e-mail + lembrete agendado) | ✅ feito (envio depende de webhook) |
-| 5 | Polish: README, testes do motor, sitemap/robots, ícones | ⬜ a fazer |
+| 5 | Polish: README, testes do motor, sitemap/robots, ícones | ✅ feito |
 
 ---
 
@@ -203,10 +217,22 @@ O lembrete não tem esse problema (é véspera).
 uma Edge Function do Supabase (Deno), ou os textos vão junto, ou o webhook passa
 a renderizar. Hoje, com Vercel Cron, não há duplicação.
 
-## Etapa 5 — Polish (⬜)
+## Etapa 5 — Polish (✅)
 
-README de verdade, `src/app/sitemap.ts` + `robots.ts`, `icon.svg`, testes do
-`src/lib/agenda.ts` (motor de horários — função pura, fácil de cobrir).
+- **`README.md`** reescrito (era o boilerplate do create-next-app): stack, setup,
+  variáveis, estrutura de pastas, deploy.
+- **Testes** — `vitest` adicionado (`npm test`). `src/lib/agenda.test.ts` cobre o
+  motor de horários: formatação, ida-e-volta de data sem UTC, expediente por
+  dia/cidade, antecedência mínima, `horariosLivres` com e sem ocupação, sábado em
+  Bandeirantes, `proximosDiasComVaga` pulando domingo. 14 casos.
+  - `vitest.config.ts` resolve o alias `@/` (sem plugin, só `resolve.alias`).
+- **SEO** — `src/app/sitemap.ts` (só `/` e `/agendar`) e `src/app/robots.ts`
+  (bloqueia `/painel`, `/agendar/confirmado`, `/api/`).
+- **Ícone** — `src/app/icon.svg`, monograma "K" dourado. O `favicon.ico` default
+  continua como fallback.
+
+**Dependência nova:** `vitest` (só dev). É a primeira lib de teste do projeto;
+`package.json` e `package-lock.json` mudaram por causa disso.
 
 ---
 
