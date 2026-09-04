@@ -19,7 +19,11 @@ O que sobra: a parte de cima do certificado (o monograma e a palavra
 CERTIFICADO), que é o que dá sentido à foto. Some o nome, a data e as
 assinaturas, que ficam sempre na metade de baixo.
 
-Uso:  python ferramentas/anonimizar.py [--conferir]
+Uso:  python ferramentas/anonimizar.py [--originais] [--conferir]
+
+  sem argumento  -> as fotos publicadas em public/fotos
+  --originais    -> os originais em alta de ferramentas/originais
+  --conferir     -> so mostra as faixas, nao grava
 """
 
 import os
@@ -36,6 +40,22 @@ MANUAL = {
     "aluna-05.jpg": (0.80, 1.00),
     # a detecção mede o papel curto e sobra a assinatura da aluna embaixo
     "aluna-02.jpg": (0.62, 1.00),
+}
+
+# Os originais que trazem certificado. Conferidos um a um: as outras 44 fotos
+# de ferramentas/originais/ nao tem documento nenhum (a deteccao acusa fundo
+# claro e print de reel, que sao falso positivo).
+#
+# As faixas vão até o rodapé de propósito. Original é arquivo morto, não
+# vitrine: não custa nada apagar papel demais, e a assinatura da aluna fica
+# sempre abaixo do nome — foi o que quase escapou na primeira passada.
+ORIGINAIS = {
+    "09.jpg": (0.60, 1.00),
+    "44.jpg": (0.68, 1.00),
+    "46.jpg": (0.79, 1.00),  # regata listrada clara: a deteccao nao separa
+    "47.jpg": (0.44, 0.74),  # duas pessoas em pé, certificado no meio do quadro
+    "48.jpg": (0.70, 1.00),
+    "49.jpg": (0.74, 1.00),
 }
 
 ALVOS = [
@@ -135,16 +155,17 @@ def apagar(im: Image.Image, y0: int, y1: int) -> Image.Image:
     return im
 
 
-def processar(arquivo: str, conferir: bool) -> None:
-    caminho = os.path.join(PASTA, arquivo)
+def processar(arquivo: str, conferir: bool, pasta: str = PASTA, manual=None) -> None:
+    caminho = os.path.join(pasta, arquivo)
     if not os.path.exists(caminho):
         print(f"{arquivo:18} NAO ENCONTRADO")
         return
 
     im = Image.open(caminho).convert("RGB")
 
-    if arquivo in MANUAL:
-        topo, base = MANUAL[arquivo]
+    medida = manual if manual is not None else MANUAL.get(arquivo)
+    if medida:
+        topo, base = medida
         inicio, fim = int(im.height * topo), int(im.height * base)
         origem = "manual"
     else:
@@ -169,6 +190,14 @@ def processar(arquivo: str, conferir: bool) -> None:
 
 if __name__ == "__main__":
     conferir = "--conferir" in sys.argv
-    for arquivo in ALVOS:
-        processar(arquivo, conferir)
+
+    if "--originais" in sys.argv:
+        # Os originais em alta ficam versionados pra sobreviver à formatação da
+        # máquina. Só podem entrar no Git depois de passar por aqui.
+        for arquivo, medida in ORIGINAIS.items():
+            processar(arquivo, conferir, "ferramentas/originais", medida)
+    else:
+        for arquivo in ALVOS:
+            processar(arquivo, conferir)
+
     print("\npronto")

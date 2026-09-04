@@ -41,9 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Originais das fotos, baixados do Instagram pra gerar public/fotos.
-# Ficam FORA do Git: sao 21 MB e trazem os certificados das alunas em alta,
-# com nome completo, data e assinatura legiveis. Dado pessoal de terceiro
-# nao entra em repositorio. Quem precisar refazer os recortes roda
-# ferramentas/fotos2.py com os originais na maquina.
-ferramentas/originais/
+# cache do Python (scripts de ferramentas/)
+__pycache__/
+*.pyc
