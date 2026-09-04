@@ -8,7 +8,14 @@ hora. A Karol acompanha tudo por um painel próprio.
 
 - **Stack:** Next.js 16 (App Router) · React 19 · Tailwind 4 · Supabase (Postgres)
 - **Deploy:** Vercel
-- **Diário de bordo / o que ainda falta:** [`PROGRESSO.md`](./PROGRESSO.md)
+
+> ### 👉 Pegando o projeto agora? Leia [`PROGRESSO.md`](./PROGRESSO.md) primeiro.
+>
+> Este README é só o setup técnico. O **guia completo** — quem é a cliente, o
+> que ela respondeu no briefing, os nove protótipos já feitos e rejeitados, de
+> onde vieram as fotos, o que está pronto e o que falta — está no
+> [`PROGRESSO.md`](./PROGRESSO.md). Sem ele você vai refazer trabalho que já
+> existe.
 
 > ⚠️ Este projeto usa **Next.js 16**, que tem mudanças de API em relação ao 15
 > (`middleware` → `proxy`, `cookies()` assíncrono, etc.). Antes de mexer, veja

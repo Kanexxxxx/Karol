@@ -1,324 +1,494 @@
-# PROGRESSO — Studio Karol Carvalho
+# GUIA DO PROJETO — Studio Karol Carvalho
 
-> Diário de bordo pra quem pegar o projeto depois (humano ou outra sessão de IA).
-> Cada etapa vira um commit. Aqui fica **o que foi feito, por quê e o que falta**.
-> Detalhe de código está nos comentários dos arquivos; aqui é o mapa.
+> **Para quem está pegando este projeto agora — humano ou outra sessão de IA.**
+>
+> Leia este arquivo inteiro antes de escrever qualquer linha. Ele existe porque
+> o histórico de conversa se perde e o dono do projeto trabalha em máquinas
+> diferentes. Aqui está tudo: quem é a cliente, o que já foi decidido, o que já
+> foi tentado e rejeitado, o que está pronto e o que falta.
+>
+> Setup técnico e comandos: [`README.md`](./README.md).
+> Armadilhas do Next 16: [`AGENTS.md`](./AGENTS.md).
 
-Última atualização: **2026-09-03** · Branch de trabalho: `main`
-
-## Onde está agora (resumo)
-
-As 5 etapas do plano estão feitas. `npm run build`, `npm run lint` e `npm test`
-passam limpos. O que falta pra ir ao ar de verdade **não é código**:
-
-1. Criar o projeto no Supabase e rodar `supabase/schema.sql`.
-2. Preencher as env vars (ver `README.md` / `.env.example`).
-3. Fechar as **pendências de negócio** com a Karol (lista no fim deste arquivo).
-4. (Opcional) Ligar o webhook de notificação pra os WhatsApp saírem sozinhos.
-
-Próximos passos naturais, se quiser continuar: PIX de sinal (`REGRAS.sinal`),
-página de política de privacidade/LGPD, e-mail além de WhatsApp, e um teste de
-integração do fluxo de agendamento.
+Última atualização: **2026-09-04**
 
 ---
 
-## Visão geral do projeto
+## 0. Resumo em trinta segundos
 
-Site institucional + agenda online da Karol (maquiadora / designer de sobrancelhas,
-atende em Pereira Barreto e Bandeirantes D'Oeste). Stack:
+Site institucional + agenda online para a **Karol Carvalho**, maquiadora e
+designer de sobrancelhas em Pereira Barreto e Bandeirantes D'Oeste (interior de
+SP). Feito pelo **Kainã** (`Kanexxxxx`), que ofereceu o serviço a ela.
 
-- **Next.js 16** (App Router) + **React 19** + **Tailwind 4**
-- **Supabase** (Postgres) pra agenda — só acessado pelo servidor
-- Sem libs de auth, sem ORM, sem lib de teste até a Etapa 5
+| | |
+|---|---|
+| **Repositório** | `github.com/Kanexxxxx/Karol` — ⚠️ **público** (ver seção 5) |
+| **Stack** | Next.js 16 · React 19 · Tailwind 4 · Supabase · Vercel |
+| **Site institucional** | ✅ pronto e funcionando sem nenhuma configuração |
+| **Agenda online** | ✅ código pronto · ⛔ **nunca foi ligada** (falta Supabase) |
+| **Painel da Karol** | ✅ código pronto · ⛔ falta env var |
+| **Notificações** | ✅ código pronto · ⛔ falta webhook externo |
+| **Deploy** | ⛔ nunca foi feito |
+| **Build / testes** | ✅ `npm run build` limpo · ✅ 64 testes passando |
 
-⚠️ **Fuso do servidor.** O motor de horários (`agenda.ts`, `agendamentos.ts`,
-`bloqueios.ts`) trabalha em **hora local do servidor** e assume que ela é a do
-Brasil — é decisão do projeto, está nos comentários. Na Vercel/serverless o
-default é UTC, então **defina `TZ=America/Sao_Paulo`** no ambiente de produção,
-senão dia/hora saem 3h deslocados.
-
-⚠️ **Next 16 não é o Next que você conhece.** Mudanças que já morderam:
-- `middleware.ts` virou **`proxy.ts`** (mesma API, nome novo).
-- `cookies()` é **async**: `const c = await cookies()`.
-- Server Actions são POST na própria rota — **sempre** valide auth dentro da action.
-- `revalidatePath`/`revalidateTag` vêm de `next/cache`; `redirect` de `next/navigation`.
-- Docs offline em `node_modules/next/dist/docs/` — leia antes de inventar API.
+**O caminho crítico para o site sair do ar local e virar entrega real são três
+coisas, nenhuma delas código:** criar o projeto no Supabase, preencher as
+variáveis de ambiente, e fazer o deploy na Vercel. Ver seção 8.
 
 ---
 
-## Estado das etapas
+## 1. O contexto comercial (por que este projeto existe)
+
+O Kainã abordou a Karol por WhatsApp oferecendo um site personalizado. O acordo
+verbal, nas palavras dele para ela:
+
+> "O site fica 1 mês de teste pra você ver se gosta e se realmente vai ser útil.
+> Depois, se quiser continuar, a gente combina certinho."
+
+Ele também **prometeu a ela automação de WhatsApp**: aviso para a cliente quando
+agenda, lembrete antes do horário, e aviso para a Karol a cada novo agendamento.
+Isso é uma promessa feita, não uma ideia — ver seção 6.4 para o estado real e a
+armadilha técnica que existe aí.
+
+Não há contrato escrito, nem valor definido, nem prazo formal. O único
+compromisso é o mês de teste grátis.
+
+---
+
+## 2. Quem é a cliente
+
+**Karol Carvalho Nunes.** Duas contas no Instagram, com papéis diferentes:
+
+| Conta | Seguidores | Papel |
+|---|---|---|
+| `@studio_karol_carvalho_` | ~744 | o negócio: antes/depois, serviços, feedback |
+| `@karolcarvalhomakeup_` | ~4.288 | ela: rotina, outfit, autocuidado, links de afiliado |
+
+**A audiência está na conta pessoal**, não na do negócio — 5,7× maior. É de lá
+que saem os reels que estouram. O site é o lugar de juntar as duas pontas.
+
+**Ela atende em duas cidades diferentes.** Este é o fato que mais afeta o
+software: o horário livre não depende só da hora, depende de **onde ela está
+naquele dia**. Uma agenda genérica marca cliente na cidade errada na primeira
+semana. Está tratado em `src/lib/agenda.ts`.
+
+**Posicionamento:** ela não vende sobrancelha, vende autoestima. Frases dela,
+tiradas dos próprios reels e usadas no site:
+
+- *"Nem de humanas, nem de exatas. Eu sou da autoestima."* → citação da home
+- *"Um dia decidi fazer curso de design de sobrancelha, e hoje isso paga as
+  minhas contas."* → bloco do curso
+
+**Tem público masculino.** Destaque "Masculino" no perfil e serviço próprio. O
+site não pode ser cor-de-rosa delicado a ponto de espantar esse público.
+
+**A dor real, nas palavras dela:** a pergunta nº1 das clientes é *"o valor e os
+horários disponíveis"*. Toda intenção de compra vira conversa manual no
+WhatsApp. É isso que o site resolve — a página de serviços com preço aberto
+mata metade do trabalho dela sozinha, antes mesmo da agenda existir.
+
+---
+
+## 3. O que ela respondeu no briefing
+
+Coletado por Google Forms em **29/08/2026**. Os scripts que geraram o
+formulário estão em [`briefing/`](./briefing/) (uso único, já cumpriram o papel).
+
+### Serviços, preços e duração
+
+| Serviço | Preço | Duração | Bloco na agenda |
+|---|---|---|---|
+| Design de sobrancelha | R$ 25 | 30–40 min | 50 min |
+| Design com henna | R$ 30 | 40 min–1h | 70 min |
+| Design masculino | R$ 25 | 30–40 min | 50 min |
+| Brow lamination | R$ 80 | 1h–1h30 | 100 min |
+| Maquiagem social | R$ 100 | 40 min–1h | 70 min |
+| Curso de automaquiagem | R$ 120 | ~2h · **1 aluna** | 130 min |
+
+"Bloco na agenda" = duração máxima + os 10 min de intervalo que ela pediu. É
+esse número que o motor usa, não a duração crua.
+
+**O curso é individual (1 aluna).** Isso eliminou todo um módulo de turmas que
+estava previsto — é só mais um serviço agendável.
+
+### Agenda
+
+| Dia | Cidade | Horário |
+|---|---|---|
+| Segunda a sexta | Pereira Barreto | 7h às 11h (confirmado: é de manhã) |
+| Sábado | Bandeirantes D'Oeste | 11h às 22h |
+| Domingo | ⚠️ **A_CONFIRMAR** — ver abaixo | — |
+
+Sem pausa para almoço. Uma cliente por vez. **Agendamento só a partir do dia
+seguinte**, nunca no mesmo dia. Nenhuma folga prevista.
+
+⚠️ A janela de segunda a sexta é de **4 horas**. Cabem no máximo 2 brow
+laminations ou 4 designs simples por dia útil. O sábado em Bandeirantes é que
+carrega o volume.
+
+### Decisões dela
+
+| Assunto | Resposta |
+|---|---|
+| Preços no site | Mostrar **todos** |
+| Confirmação | Ela quer aprovar cada agendamento na mão |
+| Aviso pra ela | Sim, no WhatsApp, a cada novo agendamento |
+| Mensagens pra cliente | Confirmação na hora · lembrete 1 dia antes · agradecimento depois |
+| Não quis | Lembrete de horas antes · aviso automático de endereço |
+| Cancelamento | Cliente **não** desmarca sozinha — tem que chamar no WhatsApp |
+| Pix de sinal | **"Sim, quero desde já"** |
+| Fotos | Liberadas, todas |
+| Visual | Manter dourado e bege · clean · **sem cores escuras** |
+| CNPJ/MEI | **Não tem** |
+
+### A resposta mais importante
+
+Pergunta: *"Se você pudesse resolver UMA única coisa do seu atendimento hoje,
+qual seria?"*
+
+> **"A questão do agendamento com sinal."**
+
+E logo antes ela informou: **1 a 2 clientes desmarcam em cima da hora toda
+semana**. Com ticket de R$ 25 a R$ 100 e uma janela diária de 4 horas, cada furo
+é caro.
+
+⚠️ **Há uma divergência de interpretação não resolvida aqui.** O Kainã acha que
+ela quis dizer "sinal" no sentido de *aviso/notificação*. A leitura oposta — e a
+que o formulário sustenta — é *sinal = entrada em dinheiro*, porque duas
+perguntas antes o próprio formulário perguntou "você gostaria de pedir um **Pix
+de sinal** pra segurar o horário?" e ela respondeu "sim, quero desde já". Além
+disso a notificação já tinha sido respondida em separado.
+
+**Não construa nada de pagamento até perguntar a ela em palavras.** `REGRAS.sinal.ativo`
+está `false` em `src/data/negocio.ts` justamente por isso.
+
+### Copy pronta, nas palavras dela
+
+- Frase de abertura: *"Trabalho na área da maquiagem social, faço sobrancelhas
+  femininas e masculinas e também ministro cursos de automaquiagem."*
+- Antes de vir: *"Vir sem maquiagem, trazer no máximo 1 acompanhante (se for
+  trazer) por conta do espaço."* → aparece na confirmação, **não** na home
+
+---
+
+## 4. A jornada de design (não refaça este caminho)
+
+Foram feitos **nove protótipos** antes do código atual. Estão publicados como
+Artifacts e continuam acessíveis. Se a Karol pedir mudança visual, comece daqui
+em vez de inventar de novo.
+
+### Documentos
+
+| | |
+|---|---|
+| Briefing + análise dos perfis | https://claude.ai/code/artifact/9ae94bae-f6d0-4890-b172-6474e7f94968 |
+| Arquitetura e as 4 primeiras direções | https://claude.ai/code/artifact/74b09ab5-e0d9-4739-9a5f-9c84efff7a02 |
+
+### Primeira rodada — quatro direções estruturalmente diferentes
+
+| | Direção | Ideia | Link |
+|---|---|---|---|
+| A | Prova | antes/depois abre a página | https://claude.ai/code/artifact/99f36529-c2fd-4099-954b-a09d1645e843 |
+| B | Revista | editorial, capa com retrato dela | https://claude.ai/code/artifact/d7a4dd87-244a-4129-80ef-8395735708cf |
+| C | Balcão | cara de aplicativo, seletor de cidade | https://claude.ai/code/artifact/1002dbf3-9f2a-47c4-8f64-02d7e79a4e7a |
+| D | Vitrine | o portfólio **é** a tabela de preços | https://claude.ai/code/artifact/5aa1499a-0392-4e35-a233-b587f3bd8600 |
+
+**Reação do Kainã:** gostou de **B** (por ter a foto dela e título grande) e de
+**D** (pela forma de separar foto + valor + tempo + etiqueta). Pediu para juntar
+as duas. Reclamou que faltava versão desktop e que estava "básico demais".
+
+### Segunda rodada — mais completas, com desktop de verdade
+
+| | Direção | Link |
+|---|---|---|
+| E | Capa (nome acima do retrato) | https://claude.ai/code/artifact/14b1ebaa-95c3-46a0-a64b-d6adaa09c6a9 |
+| F | Ateliê (abertura dividida) | https://claude.ai/code/artifact/47bf6524-dc0c-443f-becf-6f106fd731c5 |
+| G | Feed (tira de fotos no topo) | https://claude.ai/code/artifact/53615b1d-0352-4f62-87f6-035669ae8ec0 |
+| H | Boutique (foto de capa inteira) | https://claude.ai/code/artifact/4a1a7bd5-f0f0-49b3-a461-a6ac15bb055b |
+
+**Escolha final:** **H no celular, F no computador.**
+
+### Versão I — a que virou o código
+
+https://claude.ai/code/artifact/3c7a7716-8fc0-4eda-b78b-05d85d87f994
+
+Fusão de H + F numa página só, com todas as correções. **É esta que
+`src/app/page.tsx` implementa.** Se precisar entender a intenção visual de
+alguma seção, olhe este protótipo.
+
+### Correções que ele pediu — não reintroduza nenhuma
+
+| O que estava errado | Como ficou |
+|---|---|
+| Faixa de cidades desalinhada | grade de 3 colunas no desktop, 3 linhas no celular |
+| Linha dourada cortando o antes/depois | removida; só as etiquetas "Antes" e "Depois" |
+| "Uma hora só sua" (achou esquisito) | "Uma cliente por vez, do começo ao fim" |
+| "Como funciona" citava WhatsApp | **nunca citar WhatsApp aqui** — o agendamento é no site |
+| "Onde eu atendo" | "Local de atendimento" |
+| Fotos repetidas entre serviços | cada serviço tem uma cliente diferente |
+| Uma aluna só na galeria | seis alunas diferentes |
+| "Antes de vir" na home | movido para a confirmação pós-agendamento |
+| Site estático demais | esteira de fotos em loop + revelação ao rolar |
+| Tipografia cobrindo o rosto dela | o rosto **sempre** fica livre |
+
+**Vetos da Karol:** nada de cores escuras (por isso o site tem tema único
+claro, sem modo escuro). Manter dourado e bege. Visual "clean e fácil de
+entender".
+
+### O que ele pediu e ainda não existe
+
+- **Vídeos do Instagram dela no site.** Não foi feito. No protótipo era
+  inviável (Artifact bloqueia mídia externa e o clipe inteiro embutido levaria a
+  página a ~7 MB). **No site real na Vercel não há esse impedimento** — é
+  trabalho pendente, não impossível.
+
+---
+
+## 5. As fotos e o incidente de privacidade
+
+### De onde vieram
+
+Todas dos posts públicos do Instagram dela, que autorizou no briefing ("pode
+usar todas").
+
+**Descoberta importante:** a grade do perfil serve miniaturas de **480 px** —
+foi a causa da perda de qualidade que o Kainã reclamou. As **páginas dos posts**
+servem o original, de **1280 a 3505 px**. Com a conta logada dá pra varrer o
+perfil inteiro (311 posts foram carregados; 50 imagens baixadas em resolução
+original).
+
+**Método, se precisar de mais fotos:** logar no Instagram no navegador, abrir o
+perfil, rolar até carregar tudo, abrir um post e colher `img` com
+`naturalWidth >= 700`. A API interna (`/api/v1/users/web_profile_info/`) devolve
+429 depois de rolagem pesada — espere ou use o DOM.
+
+### O processamento
+
+`ferramentas/fotos2.py` — **só reduz, nunca amplia.** Reduzir preserva detalhe;
+ampliar inventa, e é a ampliação por IA que deixa aquele aspecto plastificado em
+pele e olhos que o Kainã rejeitou explicitamente. Lanczos direto do original,
+máscara de nitidez de raio curto com limiar alto, JPEG progressivo.
+
+Acervo atual: 37 fotos em `public/fotos/` — 6 alunas diferentes, ~20 clientes
+distintas, fotos do atendimento acontecendo, retrato profissional dela.
+
+### ⚠️ O incidente
+
+As seis fotos de aluna com certificado traziam o **nome completo escrito à mão,
+a data do curso e a assinatura** — legíveis. Dado pessoal de terceiro, num site
+público e num repositório público.
+
+**Corrigido** (commit `d3450ab`): `ferramentas/anonimizar.py` apaga a faixa do
+certificado abaixo do título, por pixelização destrutiva (reduz a 10 px e
+reamplia em NEAREST). Não é desfoque — desfoque gaussiano pode ser parcialmente
+revertido; reduzir joga a informação fora de vez. O rosto e a palavra
+"CERTIFICADO" continuam.
+
+Também saiu do Git a pasta `ferramentas/originais/` (22 MB com os certificados
+em alta).
+
+### ⛔ O que continua aberto
+
+1. **O repositório está PÚBLICO.** Enquanto estiver, os originais continuam
+   baixáveis pelo histórico — apagar num commit novo não apaga o passado.
+   Deixar privado (Settings → Danger Zone → Change visibility) é a ação que
+   resolve, e leva 30 segundos.
+2. **Se as fotos precisarem sumir do histórico de vez**, é reescrita de
+   histórico com force push. Quebra o clone das outras máquinas. Decisão do
+   dono, não foi feita.
+3. **Conferir com a Karol foto por foto** antes de publicar. A autorização foi
+   genérica; são rostos de pessoas reais.
+
+---
+
+## 6. O que existe de código
+
+### 6.1 Arquitetura
+
+Estrutura de pastas e comandos: [`README.md`](./README.md). O essencial:
+
+- **Conteúdo** (preços, textos, horários, fotos) vem de `src/data/` — é a fonte
+  da verdade. Mudança de preço é uma linha lá, não caça no JSX.
+- **Motor de horários** (`src/lib/agenda.ts`) é função pura sobre minutos do
+  dia. Sem fuso, sem `Date` por dentro. Quem lida com data é quem chama.
+- **Nada do site público lê a tabela de agendamentos.** Nome e WhatsApp das
+  clientes nunca saem do servidor; só os horários livres chegam ao navegador.
+- **A trava anti-conflito é do banco**, não da aplicação: a constraint
+  `sem_choque` (`EXCLUDE USING gist`) recusa qualquer sobreposição. Conferir
+  antes e gravar depois abriria janela para duas clientes pegarem o mesmo
+  horário no mesmo instante.
+
+### 6.2 Armadilhas do Next 16 que já morderam
+
+- `middleware.ts` virou **`proxy.ts`** (mesma API, nome novo)
+- `cookies()` é **async**: `const c = await cookies()`
+- `params` e `searchParams` são **Promise** — precisam de `await`
+- Server Actions são POST na própria rota — **sempre** valide auth dentro da action
+- Docs offline em `node_modules/next/dist/docs/` — leia antes de inventar API
+
+### 6.3 ⚠️ Fuso horário
+
+O motor trabalha em **hora local do servidor** e assume Brasil. Na
+Vercel/serverless o default é UTC. **Defina `TZ=America/Sao_Paulo` em produção**,
+senão dia e hora saem 3h deslocados.
+
+### 6.4 A automação de WhatsApp — leia antes de prometer qualquer coisa
+
+**`WhatsApp Business` (o aplicativo) ≠ `WhatsApp Business API`.** O app grátis
+faz mensagem de saudação e ausência, mas **não** manda lembrete agendado para
+uma pessoa específica. Se instalar o WhatsApp no chip novo, ele fica
+inutilizável para a API oficial depois. **Não instale.**
+
+Opções levantadas, dado que **ela não tem CNPJ**:
+
+| Caminho | Custo | Risco |
+|---|---|---|
+| **Meta Cloud API** (oficial) | ~R$ 15–25/mês no volume dela | conta Meta Business pode ser pessoa física; sem verificação há limite de 250 destinatários/dia, muito acima do necessário |
+| Bibliotecas não oficiais (Baileys etc.) | grátis | **risco de banir o número** — não recomendado nem no chip novo |
+| **Sem API, custo zero** | grátis | arquivo de calendário (`.ics`) que a cliente salva e o próprio celular lembra; link `wa.me` pré-preenchido; notificação push pro painel instalado como app |
+
+**O que o código faz hoje:** monta as mensagens e faz `POST` num webhook
+configurável (`NOTIFICADOR_WEBHOOK_URL`). Quem estiver do outro lado (n8n, Make,
+Zapier, função própria) manda a mensagem de verdade. Sem o webhook, as
+mensagens são montadas e não saem. Formato do corpo em `src/lib/notificacoes.ts`.
+
+---
+
+## 7. Histórico das etapas
+
+Etapas 1 a 9 foram feitas por uma sessão anterior; as demais nesta. Cada uma é
+um commit.
 
 | # | Etapa | Status |
-|---|-------|--------|
-| 1 | Destravar build + fluxo de agendamento grava no banco | ✅ feito |
-| 2 | Painel da Karol + login por senha | ✅ feito |
-| 3 | Tela de bloqueios (férias / feriado) no painel | ✅ feito |
-| 4 | Notificações (WhatsApp/e-mail + lembrete agendado) | ✅ feito (envio depende de webhook) |
-| 5 | Polish: README, testes do motor, sitemap/robots, ícones | ✅ feito |
-| 6 | Robustez do site: 404, erro, loading, menu no celular | ✅ feito |
-| 7 | LGPD: política de privacidade + consentimento no agendamento | ✅ feito |
-| 8 | Anti-spam no agendamento (honeypot, carimbo, freio por IP) | ✅ feito |
-| 9 | Suíte de testes (sessão, limite, período, notificações, agendamentos, bloqueios, ação de agendar) | ✅ feito |
+|---|---|---|
+| — | Scaffold, home completa, acervo de fotos | ✅ |
+| 1 | Destravar build + agendamento grava no banco | ✅ |
+| 2 | Painel da Karol + login por senha | ✅ |
+| 3 | Tela de bloqueios (férias/feriado) | ✅ |
+| 4 | Notificações + lembrete agendado | ✅ (envio depende de webhook) |
+| 5 | Polish: README, testes, sitemap/robots, ícone | ✅ |
+| 6 | Robustez: 404, erro, loading, menu no celular | ✅ |
+| 7 | LGPD: política de privacidade + consentimento | ✅ |
+| 8 | Anti-spam (honeypot, carimbo, freio por IP) | ✅ |
+| 9 | Suíte de testes — 64 casos, 8 arquivos | ✅ |
+| 10 | Anonimização dos certificados + originais fora do Git | ✅ |
+
+### Detalhes que valem saber
+
+**Fluxo de situação do agendamento:** `pendente → confirmado/cancelado` ·
+`confirmado → concluido/faltou/cancelado` · `cancelado/faltou → confirmado`
+(reativar) · `concluido` é ponto final.
+
+**Sessão do painel:** cookie `painel_sessao` = `<payload>.<HMAC-SHA256>`
+assinado com `SESSAO_SECRET`, validade de 7 dias, `httpOnly` + `sameSite=lax` +
+`secure` em produção. Sem biblioteca. Duas pessoas, uma senha só.
+
+**`aprovacaoManual` está `false`**, então todo agendamento entra direto como
+`confirmado` — mesmo ela tendo pedido aprovação manual no briefing. O caminho
+`pendente` já existe no painel para quando ligar. Ver seção 8.
+
+**Anti-spam:** honeypot (campo escondido), carimbo de tempo (rejeita envio em
+< 2s ou > 2h) e freio de 5 agendamentos/hora por IP. O freio é `Map` em
+memória — some no deploy e não é compartilhado no serverless. É quebra-galho
+contra script ingênuo, não proteção séria.
+
+**Testes:** `npm test` (vitest). `test/mock-banco.ts` é um fake do cliente
+Supabase; `test/stubs/server-only.ts` substitui o pacote real, que lança fora do
+runtime do Next. `vitest.config.ts` fixa `TZ=America/Sao_Paulo`.
 
 ---
 
-## Etapa 1 — Fluxo de agendamento (✅)
+## 8. O que falta
 
-**Problema:** `src/app/agendar/page.tsx` importava `./FormularioDados` e `./Passos`
-que nunca foram commitados → `next build` quebrava. E `criarAgendamento()` existia
-mas ninguém chamava — nenhum agendamento era gravado.
+### 8.1 Bloqueantes para o site existir de verdade
 
-**O que foi criado:**
+Nenhum é código.
 
-| Arquivo | Papel |
-|---------|-------|
-| `src/app/agendar/Passos.tsx` | Trilha visual dos 4 passos (Serviço → Dia → Hora → Dados). Server Component, puramente visual. |
-| `src/app/agendar/acoes.ts` | Server Action `agendar(estado, formData)`. Valida nome/WhatsApp/recado, chama `criarAgendamento`, e em caso de sucesso faz `redirect('/agendar/confirmado?ag=<id>')`. Tipo `EstadoAgendar` + `ESTADO_INICIAL` exportados pro `useActionState`. |
-| `src/app/agendar/FormularioDados.tsx` | Client Component com `useActionState`. Campos ocultos levam serviço/dia/hora. Mostra erro por campo e preserva o que foi digitado. |
-| `src/app/agendar/confirmado/page.tsx` | Tela pós-agendamento. Lê `?ag=<id>`, busca no banco, mostra resumo + botão "Avisar a Karol no WhatsApp". `robots: noindex`, `force-dynamic`. |
+1. **Criar o projeto no Supabase** e rodar `supabase/schema.sql` uma vez no SQL
+   Editor.
+2. **Preencher as variáveis** — copiar `.env.example` para `.env.local`
+   (ver tabela no README). Sem elas o site institucional funciona, mas
+   `/agendar` mostra "a agenda online está sendo ligada" e `/painel` explica o
+   que falta configurar.
+3. **Deploy na Vercel** — importar o repositório, configurar as variáveis,
+   **incluindo `TZ=America/Sao_Paulo`**.
 
-**O que mudou em arquivo existente:**
+### 8.2 Pendências de negócio (dependem da Karol)
 
-- `src/lib/agendamentos.ts`
-  - Novos helpers `lerPeriodo()` (parse do `tstzrange`) e `linhaParaAgendamento()`
-    (linha do banco → tipo `Agendamento`), eliminando o regex repetido 3x.
-  - Nova função `buscarAgendamento(id)` — usada pela tela de confirmação (e vai
-    servir o painel na Etapa 2).
-  - `agendaDaKarol()` agora usa `linhaParaAgendamento`.
-- `.gitignore` — exceção `!.env.example`.
-- `.env.example` — **novo**, documenta todas as variáveis (Supabase, senha do
-  painel, segredo de sessão, WhatsApp da Karol).
+Marcadas `A_CONFIRMAR` no código.
 
-**Decisões:**
-- Validação manual (regex) em vez de Zod — mantém o projeto sem dependências novas.
-  O check de WhatsApp (`^\d{10,13}$`) casa com o `CHECK` da tabela.
-- A conferência de conflito continua sendo do banco (constraint `sem_choque`). A
-  action só dá uma mensagem amigável quando o insert é recusado (código `23P01`).
-- Tela de confirmação busca pelo id no banco em vez de confiar em query string —
-  não dá pra forjar um agendamento na URL.
+| Pendência | Onde | Impacto |
+|---|---|---|
+| **Domingo**: ela marcou a cidade mas não deu horário | `EXPEDIENTE` em `negocio.ts` | está fora da agenda; se ela atende, está perdendo dia |
+| **Endereço em Bandeirantes** | `CIDADES.bandeirantes.local = null` | a cidade aparece sem local |
+| **O que ela quis dizer com "sinal"** | `REGRAS.sinal` | ver seção 3 — divergência aberta |
+| **Aprovação manual** | `REGRAS.aprovacaoManual = false` | ela pediu, mas está desligado. Colide com o sinal: se a cliente paga e a Karol recusa, alguém estorna. Recomendação registrada: deixar o sinal fazer o filtro e oferecer o botão de aprovação manual no painel |
+| **Descrições dos serviços** | `servicos.ts` | são rascunho; precisam do aval dela |
+| **Qual serviço ela mais quer vender** | — | ficou em branco no formulário |
+| **Autorização foto a foto** | `public/fotos/` | são rostos de clientes reais |
 
-**Como testar localmente:**
-1. `.env.local` com `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`.
-2. Rodar `supabase/schema.sql` uma vez no SQL Editor do Supabase.
-3. `npm run dev` → `/agendar` → escolher serviço, dia, hora, preencher e confirmar.
-4. Sem `.env.local` a página mostra "a agenda online está sendo ligada" (esperado).
+### 8.3 Técnico pendente
 
-**Pendências que sobraram desta etapa:** nenhuma bloqueante. O aviso pra Karol hoje
-é um link `wa.me` que a **cliente** dispara; o disparo automático é a Etapa 4.
+- **Vídeos** dela no site (pedido dele, nunca feito)
+- **Pix de sinal** — depende de resolver a divergência acima
+- Freio por IP sério (Upstash Ratelimit ou o próprio Supabase) se virar problema
+- Teste de integração do fluxo completo de agendamento
 
----
+### 8.4 Revisão de segurança — parcial
 
-## Etapa 2 — Painel da Karol (✅)
+Foi iniciada e **não terminada**. O que já foi verificado e está bom:
 
-Painel em `/painel` pra Karol ver e mexer na agenda. Uma senha só
-(`SENHA_PAINEL`), usada por ela e por quem testa.
+- Nenhum segredo no código ou no histórico; tudo por env var, sem fallback fixo
+- `.env.example` com valores vazios; `.gitignore` bloqueia `.env*`
+- Sessão: HMAC-SHA256, comparação em tempo constante, flags de cookie corretas
+- Toda Server Action reconfere `sessaoAtiva()` — o proxy não é tratado como
+  fronteira de segurança
+- As três páginas do painel também conferem
+- IDs validados por regex antes de ir ao banco
 
-**Arquivos novos:**
+Dois pontos levantados e **não avaliados até o fim**:
 
-| Arquivo | Papel |
-|---------|-------|
-| `src/lib/sessao.ts` | Sessão sem biblioteca. Cookie `painel_sessao` = `<payload>.<HMAC-SHA256>` assinado com `SESSAO_SECRET`, carrega só a validade (7 dias). `tokenValido()` é puro (serve o proxy); `criarSessao/sessaoAtiva/encerrarSessao` usam `cookies()`. `senhaConfere()` compara em tempo constante. |
-| `src/proxy.ts` | O antigo `middleware`. Barra `/painel/*` sem sessão → `/painel/login`; manda logado que abre `/painel/login` de volta pro painel. Só a 1ª linha — a página confere de novo. |
-| `src/app/painel/login/page.tsx` + `Formulario.tsx` + `acoes.ts` | Login. Se faltar env, mostra o que configurar. Action `entrar` compara a senha (com 400 ms de atraso anti-brute-force) e cria a sessão. |
-| `src/app/painel/page.tsx` | Agenda de ontem até +60 dias, agrupada por dia. Cada card: hora, serviço, cliente + link `wa.me`, cidade, valor, recado, selo de situação. Cabeçalho com "Sair". `force-dynamic`, `noindex`. |
-| `src/app/painel/AcoesAgendamento.tsx` | Client. Botões que mudam a situação conforme o estado atual (ver `CAMINHOS`). Um `<form>` com vários `<button name="situacao" value="…">`, feedback inline via `useActionState`. |
-| `src/app/painel/acoes.ts` | `alterarSituacao` (confere `sessaoAtiva()`, chama `mudarSituacao`, revalida) e `sair`. |
-
-**Mudou:** `src/lib/agendamentos.ts` ganhou `mudarSituacao(id, situacao)` — valida
-o id e a situação, trata o `23P01` (reativar num horário já retomado) com mensagem.
-
-**Fluxo de situação:** `pendente → confirmado/cancelado` · `confirmado →
-concluido/faltou/cancelado` · `cancelado/faltou → confirmado` (reativar) ·
-`concluido` é ponto final.
-
-**Decisões:**
-- Sessão assinada em vez de sessão em banco: 2 pessoas, 1 senha, não vale a mesa extra.
-- `node:crypto` no `proxy.ts` funciona porque o proxy roda no runtime Node por
-  padrão no Next 16.
-- Aprovação manual (`REGRAS.aprovacaoManual`) segue `false`, então na prática todo
-  agendamento entra como `confirmado`. O caminho `pendente` no painel já está
-  pronto pra quando ela ligar isso.
-
-**Config necessária (`.env.local`):**
-```
-SENHA_PAINEL=<a senha que a Karol vai usar>
-SESSAO_SECRET=<valor longo aleatório: openssl rand -base64 32>
-```
-
-**Testar:** `/painel` sem sessão → redireciona pro login. Senha certa → agenda.
-"Sair" limpa o cookie. Sem `SENHA_PAINEL`/`SESSAO_SECRET`, o login explica o que falta.
-
-**Rough edge conhecido:** a lista não faz paginação (60 dias cabem à vontade no
-volume dela). Se um dia crescer, paginar por mês.
-
-## Etapa 3 — Bloqueios (✅)
-
-A tabela `bloqueios` já existia e `ocupadosNoPeriodo()` já somava os bloqueios
-ao que está ocupado — o motor de horários **já respeitava**. Faltava só a Karol
-poder criar/remover.
-
-**Arquivos novos:**
-
-| Arquivo | Papel |
-|---------|-------|
-| `src/lib/periodo.ts` | `lerPeriodo()` / `montarPeriodo()` — a ponte com o `tstzrange` do Postgres, agora num módulo só (sem `server-only`). `agendamentos.ts` passou a importar daqui (tinha uma cópia local + o literal `[a,b)` espalhado). |
-| `src/lib/bloqueios.ts` | `listarBloqueios()` (só os que ainda não terminaram, ordenados), `criarBloqueio()` (dia inteiro **ou** intervalo com hora; valida motivo 2–200, datas, ordem), `removerBloqueio(id)`. |
-| `src/app/painel/bloqueios/page.tsx` | Lista + formulário. Link ↔ `/painel`. |
-| `src/app/painel/bloqueios/Formulario.tsx` | Client. Datas de/até, checkbox "só um intervalo do dia" que revela hora início/fim, motivo. Reseta no sucesso. |
-| `src/app/painel/bloqueios/acoes.ts` | `adicionarBloqueio` (com estado, reconfere sessão) e `apagarBloqueio(id)` (bind por linha; sem sessão → volta pro login). |
-
-**Mudou:** `src/app/painel/page.tsx` ganhou o link "Bloqueios" no cabeçalho.
-
-**Modelo de dados:** dia inteiro é gravado como `[00:00 do 1º dia, 00:00 do dia
-seguinte ao último)`. `Bloqueio.diaInteiro` é derivado (as duas pontas à meia-noite).
-
-**Testar:** `/painel/bloqueios` → criar "Feriado" num dia → esse dia some de
-`/agendar`. Intervalo parcial: marcar o checkbox, pôr 13:00–17:00.
-
-## Etapa 4 — Notificações (✅, mas o envio real precisa de um webhook)
-
-`NOTIFICACOES` em `src/data/negocio.ts` diz o que a Karol pediu. A parte de
-**montar a mensagem e disparar o evento** está pronta. O **envio de WhatsApp**
-em si precisa de um serviço externo — aqui a gente só faz `POST` num webhook
-configurável e quem estiver do outro lado (n8n, Make, Zapier, função própria…)
-manda a mensagem.
-
-**Arquivos novos:**
-
-| Arquivo | Papel |
-|---------|-------|
-| `src/lib/notificacoes.ts` | Templates (`textoParaKarol`, `textoConfirmacao`, `textoLembrete`, `textoAgradecimento`) e `enviarEvento(evento, dados)` — `POST` JSON pra `NOTIFICADOR_WEBHOOK_URL`, com timeout de 5s, **nunca lança**. Respeita os interruptores de `NOTIFICACOES`. |
-| `src/lib/lembretes.ts` | `rodarLembretes()`: pega quem tem horário amanhã (`confirmado`) e quem foi atendida ontem (`concluido`), dispara os eventos. |
-| `src/app/api/lembretes/route.ts` | GET/POST protegido por `Authorization: Bearer $CRON_SECRET`. Sem `CRON_SECRET` no ambiente, fica 401. |
-| `vercel.json` | Cron diário às 12:00 UTC (09:00 BRT) chamando `/api/lembretes`. A Vercel injeta o header do `CRON_SECRET` sozinha. |
-| `src/app/painel/notificacoes/` | Página no painel: mostra o que está ligado, se o webhook/cron existem, e um botão "disparar agora" (útil pra testar). |
-
-**Mudou:**
-- `criarAgendamento` (`agendamentos.ts`) agora dispara `novo-agendamento` (pra
-  Karol) + `confirmacao` (pra cliente) logo depois de gravar.
-- `agendamentos.ts` ganhou `agendamentosDeAmanha()` e `agendamentosConcluidosOntem()`.
-- `painel/page.tsx`: link "Notificações".
-
-**Formato do POST no webhook:**
-```json
-{
-  "evento": "novo-agendamento | confirmacao | lembrete | agradecimento",
-  "agendamento": { "id","cliente","whatsappCliente","servico","cidade","inicioISO","valorCentavos" },
-  "mensagem": { "para": "<whatsapp destino>", "destinatario": "karol|cliente", "texto": "<texto pronto>" }
-}
-```
-
-**Pra ligar de verdade:**
-1. `NOTIFICADOR_WEBHOOK_URL` → endpoint que recebe o JSON e manda o WhatsApp.
-2. `CRON_SECRET` (`openssl rand -hex 32`) nas env vars da Vercel → o cron passa a rodar.
-3. Opcional: `KAROL_WHATSAPP` se o número de aviso for diferente do que está no site.
-
-**Decisão:** o agradecimento sai só pra quem a Karol marcou como **Atendida** no
-painel — não dá pra agradecer quem talvez não foi. Se ela não marcar, não sai.
-O lembrete não tem esse problema (é véspera).
-
-**Rough edge:** os templates estão só no lado Next. Se um dia o envio migrar pra
-uma Edge Function do Supabase (Deno), ou os textos vão junto, ou o webhook passa
-a renderizar. Hoje, com Vercel Cron, não há duplicação.
-
-## Etapa 5 — Polish (✅)
-
-- **`README.md`** reescrito (era o boilerplate do create-next-app): stack, setup,
-  variáveis, estrutura de pastas, deploy.
-- **Testes** — `vitest` adicionado (`npm test`). `src/lib/agenda.test.ts` cobre o
-  motor de horários: formatação, ida-e-volta de data sem UTC, expediente por
-  dia/cidade, antecedência mínima, `horariosLivres` com e sem ocupação, sábado em
-  Bandeirantes, `proximosDiasComVaga` pulando domingo. 14 casos.
-  - `vitest.config.ts` resolve o alias `@/` (sem plugin, só `resolve.alias`).
-- **SEO** — `src/app/sitemap.ts` (só `/` e `/agendar`) e `src/app/robots.ts`
-  (bloqueia `/painel`, `/agendar/confirmado`, `/api/`).
-- **Ícone** — `src/app/icon.svg`, monograma "K" dourado. O `favicon.ico` default
-  continua como fallback.
-
-**Dependência nova:** `vitest` (só dev). É a primeira lib de teste do projeto;
-`package.json` e `package-lock.json` mudaram por causa disso.
-
-## Etapa 6 — Robustez do site (✅)
-
-Buracos de experiência que o scaffold deixou.
-
-| Arquivo | Papel |
-|---------|-------|
-| `src/app/not-found.tsx` | 404 com a cara do site (era a tela crua do Next). |
-| `src/app/error.tsx` | Fronteira de erro global. Client Component. "Algo deu errado" + tentar de novo + WhatsApp. |
-| `src/app/agendar/loading.tsx` | Esqueleto enquanto a disponibilidade carrega do Supabase. |
-| `src/components/MenuMobile.tsx` | Menu hambúrguer no celular (o `<nav>` era `hidden lg:flex` — no celular não dava pra navegar entre as seções). Fecha no toque, no Esc e fora. |
-
-**Bug corrigido:** o `Cabecalho` era sempre transparente com texto branco. Em
-`/agendar` e `/agendar/confirmado` (fundo claro, sem foto) o "Karol Carvalho"
-ficava branco sobre bege — quase invisível. Agora tem a prop `sobreHero`: só a
-home passa `true`; as outras páginas usam a barra sólida com texto escuro.
-
-## Etapa 7 — LGPD (✅)
-
-O site coleta nome + WhatsApp de clientes reais e não tinha nenhuma
-política nem consentimento visível.
-
-| Arquivo | Papel |
-|---------|-------|
-| `src/app/privacidade/page.tsx` | Política escrita em linguagem direta: o que coleta (nome, WhatsApp, recado), pra quê (agendar + lembrar), com quem compartilha (ninguém, pra fins comerciais), retenção, direitos (acesso/correção/exclusão via WhatsApp). Sem cookie de rastreio, sem analytics. |
-| `src/components/Rodape.tsx` | Link "Política de privacidade" no rodapé. |
-| `src/app/agendar/FormularioDados.tsx` | Linha de consentimento acima do botão, com link pra política. |
-| `src/app/sitemap.ts` | Inclui `/privacidade`. |
-
-**A data da política** está fixa em `ATUALIZADO` no arquivo — atualize à mão se o texto mudar.
-**Não é peça jurídica revisada** — é uma base honesta. Se a Karol formalizar
-CNPJ/DPO, revisar com quem entende.
-
-## Etapa 8 — Anti-spam no agendamento (✅)
-
-Com `REGRAS.aprovacaoManual = false`, todo agendamento entra direto como
-`confirmado` e trava um horário. Um script podia lotar a agenda com nomes
-falsos. Três camadas baratas, sem serviço externo:
-
-| Onde | O quê |
-|------|-------|
-| `FormularioDados.tsx` | **Honeypot** — campo `site` fora da tela; cliente não vê, robô preenche. **Carimbo** — `carimbo={Date.now()}` renderizado na página (`force-dynamic`), num hidden input. |
-| `acoes.ts` (`agendar`) | Rejeita se o honeypot veio preenchido, ou se o formulário foi enviado em < 2s (robô) ou > 2h (formulário velho). Mensagem genérica, sem entregar o motivo. |
-| `src/lib/limite.ts` | `dentroDoLimite(chave)` — 5 agendamentos / hora / IP, `Map` em memória. |
-
-**Limitação assumida:** o freio por IP é em memória e por instância — some no
-deploy e não é compartilhado no serverless. É um quebra-galho contra script
-ingênuo, não proteção séria. Pra isso: Upstash Ratelimit, ou o próprio Supabase.
-O honeypot + carimbo são o que pega a maioria dos robôs de formulário.
-
-**IP:** lido de `x-forwarded-for` (primeiro valor). Na Vercel isso funciona.
-
-## Etapa 9 — Suíte de testes (✅)
-
-Antes só o motor (`agenda.ts`) tinha teste. Agora **64 casos, 8 arquivos**
-(`npm test`):
-
-| Arquivo | Cobre |
-|---------|-------|
-| `agenda.test.ts` | motor de horários (já existia) — 14 |
-| `sessao.test.ts` | assinar/validar token, expiração, segredo trocado, senha em tempo constante — 8 |
-| `limite.test.ts` | freio por chave, janela que reabre — 3 |
-| `periodo.test.ts` | parse/monta do `tstzrange`, ida e volta — 6 |
-| `notificacoes.test.ts` | templates, `enviarEvento` (webhook, corpo, engole erro) — 8 |
-| `agendamentos.test.ts` | `criarAgendamento` (grava, recusa, 23P01), `mudarSituacao`, `buscarAgendamento` — 9 |
-| `bloqueios.test.ts` | validação + matemática de datas (dia inteiro × intervalo), `listar`, `remover` — 7 |
-| `agendar` (`acoes.test.ts`) | honeypot, carimbo, freio, validação de campos, caminho feliz — 9 |
-
-**Infra de teste:**
-- `test/mock-banco.ts` — fake mínimo do cliente Supabase (builder encadeável).
-- `test/stubs/server-only.ts` — o `vitest.config.ts` aponta `server-only` pra cá
-  (o pacote real lança fora do runtime do Next).
-- `vitest.config.ts` fixa `TZ=America/Sao_Paulo` pros testes de data não
-  dependerem da máquina.
+1. **`/agendar/confirmado?ag=<id>`** mostra nome e detalhes sem sessão,
+   protegido só pelo UUID aleatório. É o padrão de página de confirmação, mas o
+   link vaza por histórico e prévia de link. Não expõe o WhatsApp da cliente.
+2. **Freio por IP** lê o *primeiro* valor de `x-forwarded-for`, que é
+   justamente o que o atacante controla. Na Vercel o correto seria o último
+   valor ou `x-real-ip`. Contorna-se trocando o cabeçalho.
 
 ---
 
-## Pendências de negócio (precisam da Karol, não são código)
+## 9. Como o dono do projeto trabalha
 
-Marcadas com `A_CONFIRMAR` no código:
-- **Domingo**: ela marcou no formulário mas não deu horário → fora da agenda.
-- **Endereço em Bandeirantes D'Oeste**: desconhecido (`CIDADES.bandeirantes.local = null`).
-- **Descrições dos serviços** (`src/data/servicos.ts`): rascunho, precisam do aval dela.
-- **PIX de sinal**: ela quer, mas não detalhou → `REGRAS.sinal.ativo = false`.
-- **Fotos de clientes**: autorização geral no briefing; conferir uma a uma antes de publicar.
+Observado ao longo da construção. Poupa retrabalho:
+
+- **Ele quer estudo antes de código.** Já rejeitou entrega feita "saindo
+  fazendo". Planeje, mostre o plano, depois construa.
+- **Ele revisa visual com olho fino** e aponta desalinhamento, foto repetida,
+  texto esquisito. Vale conferir a própria tela antes de entregar.
+- **Ele valoriza honestidade sobre limite.** Dizer "não consigo por causa de X"
+  funciona melhor do que entregar meia-boca sem avisar.
+- **Ele trabalha em vários notebooks.** Commite em etapas e faça push sempre;
+  o que não está no GitHub se perde.
+- **Português em tudo** — código, comentários, commits, documentação.
+
+---
+
+## 10. O que se perde se a máquina for formatada
+
+| Item | Situação |
+|---|---|
+| Código, fotos processadas, documentação | ✅ tudo no GitHub |
+| `.env.local` | não existe — nunca foi configurado |
+| **`ferramentas/originais/`** (50 fotos, 22 MB) | ⚠️ **fora do Git de propósito** |
+| Protótipos e documentos de briefing | ✅ são Artifacts na claude.ai (links na seção 4) |
+| Formulário de briefing | ✅ no Google Forms da conta dele |
+
+⚠️ **Antes de formatar:** o projeto está dentro do OneDrive
+(`OneDrive/Documentos/MALDITO/KAROL`), então `ferramentas/originais/` deve
+sincronizar sozinho. **Confirme que o OneDrive terminou de sincronizar** antes
+de apagar o disco. Se preferir garantia, copie a pasta para um pendrive — são
+os originais em alta resolução das fotos, e refazer a varredura exige login no
+Instagram e esbarra em limite de requisição.
+
+Esses originais **não podem voltar para o Git**: contêm os certificados das
+alunas com nome legível.
