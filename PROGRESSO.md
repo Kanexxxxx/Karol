@@ -284,16 +284,30 @@ reamplia em NEAREST). Não é desfoque — desfoque gaussiano pode ser parcialme
 revertido; reduzir joga a informação fora de vez. O rosto e a palavra
 "CERTIFICADO" continuam.
 
-Também saiu do Git a pasta `ferramentas/originais/` (22 MB com os certificados
-em alta).
+Os **originais em alta também foram anonimizados** (commit `393fbbf`) e
+voltaram para o Git. As 50 fotos foram conferidas uma a uma: seis tinham
+certificado de verdade (`09, 44, 46, 47, 48, 49`), três eram falso positivo da
+detecção — fundo claro e print de reel.
+
+`ferramentas/anonimizar.py` tem dois modos:
+
+```bash
+python ferramentas/anonimizar.py              # fotos publicadas (public/fotos)
+python ferramentas/anonimizar.py --originais  # os originais em alta
+python ferramentas/anonimizar.py --conferir   # só mostra as faixas, não grava
+```
+
+⚠️ **Se baixar fotos novas do Instagram, rode o script antes de commitar.**
+Qualquer foto de aluna com certificado tem nome legível.
 
 ### ⛔ O que continua aberto
 
-1. **O repositório está PÚBLICO.** Enquanto estiver, os originais continuam
-   baixáveis pelo histórico — apagar num commit novo não apaga o passado.
-   Deixar privado (Settings → Danger Zone → Change visibility) é a ação que
-   resolve, e leva 30 segundos.
-2. **Se as fotos precisarem sumir do histórico de vez**, é reescrita de
+1. **O repositório está PÚBLICO.** Os nomes já não estão em lugar nenhum do
+   estado atual, mas **o histórico anterior ao commit `d3450ab` ainda tem as
+   versões com nome legível** — e histórico de repositório público é baixável.
+   Deixar privado (Settings → General → Danger Zone → Change visibility) é a
+   ação que resolve, e leva 30 segundos.
+2. **Se as fotos antigas precisarem sumir do histórico de vez**, é reescrita de
    histórico com force push. Quebra o clone das outras máquinas. Decisão do
    dono, não foi feita.
 3. **Conferir com a Karol foto por foto** antes de publicar. A autorização foi
@@ -475,20 +489,25 @@ Observado ao longo da construção. Poupa retrabalho:
 
 ## 10. O que se perde se a máquina for formatada
 
+**Nada se perde.** Tudo que importa está no GitHub.
+
 | Item | Situação |
 |---|---|
-| Código, fotos processadas, documentação | ✅ tudo no GitHub |
+| Código, documentação, schema do banco | ✅ no GitHub |
+| Fotos processadas (`public/fotos/`, 37) | ✅ no GitHub |
+| Originais em alta (`ferramentas/originais/`, 50) | ✅ no GitHub desde `393fbbf` |
 | `.env.local` | não existe — nunca foi configurado |
-| **`ferramentas/originais/`** (50 fotos, 22 MB) | ⚠️ **fora do Git de propósito** |
-| Protótipos e documentos de briefing | ✅ são Artifacts na claude.ai (links na seção 4) |
+| Protótipos e documentos de briefing | ✅ Artifacts na claude.ai (links na seção 4) |
 | Formulário de briefing | ✅ no Google Forms da conta dele |
 
-⚠️ **Antes de formatar:** o projeto está dentro do OneDrive
-(`OneDrive/Documentos/MALDITO/KAROL`), então `ferramentas/originais/` deve
-sincronizar sozinho. **Confirme que o OneDrive terminou de sincronizar** antes
-de apagar o disco. Se preferir garantia, copie a pasta para um pendrive — são
-os originais em alta resolução das fotos, e refazer a varredura exige login no
-Instagram e esbarra em limite de requisição.
+Para retomar em máquina nova:
 
-Esses originais **não podem voltar para o Git**: contêm os certificados das
-alunas com nome legível.
+```bash
+git clone https://github.com/Kanexxxxx/Karol.git
+cd Karol
+npm install
+npm run dev
+```
+
+O site institucional sobe sem configuração nenhuma. Para a agenda e o painel,
+ver seção 8.1.
