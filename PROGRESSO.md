@@ -58,6 +58,7 @@ senão dia/hora saem 3h deslocados.
 | 6 | Robustez do site: 404, erro, loading, menu no celular | ✅ feito |
 | 7 | LGPD: política de privacidade + consentimento no agendamento | ✅ feito |
 | 8 | Anti-spam no agendamento (honeypot, carimbo, freio por IP) | ✅ feito |
+| 9 | Suíte de testes (sessão, limite, período, notificações, agendamentos, bloqueios, ação de agendar) | ✅ feito |
 
 ---
 
@@ -287,6 +288,29 @@ ingênuo, não proteção séria. Pra isso: Upstash Ratelimit, ou o próprio Sup
 O honeypot + carimbo são o que pega a maioria dos robôs de formulário.
 
 **IP:** lido de `x-forwarded-for` (primeiro valor). Na Vercel isso funciona.
+
+## Etapa 9 — Suíte de testes (✅)
+
+Antes só o motor (`agenda.ts`) tinha teste. Agora **64 casos, 8 arquivos**
+(`npm test`):
+
+| Arquivo | Cobre |
+|---------|-------|
+| `agenda.test.ts` | motor de horários (já existia) — 14 |
+| `sessao.test.ts` | assinar/validar token, expiração, segredo trocado, senha em tempo constante — 8 |
+| `limite.test.ts` | freio por chave, janela que reabre — 3 |
+| `periodo.test.ts` | parse/monta do `tstzrange`, ida e volta — 6 |
+| `notificacoes.test.ts` | templates, `enviarEvento` (webhook, corpo, engole erro) — 8 |
+| `agendamentos.test.ts` | `criarAgendamento` (grava, recusa, 23P01), `mudarSituacao`, `buscarAgendamento` — 9 |
+| `bloqueios.test.ts` | validação + matemática de datas (dia inteiro × intervalo), `listar`, `remover` — 7 |
+| `agendar` (`acoes.test.ts`) | honeypot, carimbo, freio, validação de campos, caminho feliz — 9 |
+
+**Infra de teste:**
+- `test/mock-banco.ts` — fake mínimo do cliente Supabase (builder encadeável).
+- `test/stubs/server-only.ts` — o `vitest.config.ts` aponta `server-only` pra cá
+  (o pacote real lança fora do runtime do Next).
+- `vitest.config.ts` fixa `TZ=America/Sao_Paulo` pros testes de data não
+  dependerem da máquina.
 
 ---
 
