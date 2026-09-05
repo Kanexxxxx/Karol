@@ -39,13 +39,13 @@ export function Abertura() {
 
         <div className="absolute inset-x-0 bottom-0 z-20 pb-[34px] text-white lg:static lg:flex lg:flex-col lg:justify-center lg:py-15 lg:text-tinta">
           <Env>
-            <h1 className="font-titulo text-[clamp(38px,8.6vw,60px)] leading-none font-light text-balance lg:text-[clamp(52px,4.6vw,74px)]">
+            <h1 className="font-titulo text-[clamp(29px,8.6vw,60px)] leading-[1.02] font-light text-balance lg:text-[clamp(52px,4.6vw,74px)]">
               Sobrancelha, maquiagem
               <br />e um pouco de{" "}
               <em className="text-ouro-luz italic lg:text-ouro">autoestima</em>.
             </h1>
 
-            <p className="mt-3.5 max-w-[44ch] text-[15px] text-[#F0E6D6] lg:mt-4 lg:max-w-[46ch] lg:text-[17px] lg:text-tinta-2">
+            <p className="mt-3 max-w-[44ch] text-[clamp(13.5px,3.6vw,16px)] text-[#F0E6D6] lg:mt-4 lg:max-w-[46ch] lg:text-[17px] lg:text-tinta-2">
               Design, henna, brow lamination, maquiagem social e curso de
               automaquiagem em {NEGOCIO.atuacaoCidades.replace(", São Paulo", "")}.
             </p>

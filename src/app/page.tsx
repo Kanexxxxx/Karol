@@ -15,7 +15,6 @@ export default function Home() {
       <Cabecalho sobreHero />
       <main className="flex-1 pb-20 lg:pb-0">
         <Abertura />
-        <Faixa />
         <Esteira />
         <Servicos />
         <Prova />
@@ -25,6 +24,7 @@ export default function Home() {
         <Curso />
         <Trabalhos />
         <Alunas />
+        <Faixa />
         <Local />
         <ChamadaFinal />
       </main>
