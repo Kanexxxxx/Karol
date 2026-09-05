@@ -11,7 +11,7 @@
  * Actions e Server Components.
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
 export const COOKIE_SESSAO = "painel_sessao";
@@ -27,10 +27,21 @@ function assinar(payload: string, chave: string): string {
   return createHmac("sha256", chave).update(payload).digest("base64url");
 }
 
+/**
+ * Compara sem entregar nada pelo tempo de resposta.
+ *
+ * A versão anterior fazia `a.length === b.length && timingSafeEqual(...)`.
+ * O curto-circuito no tamanho respondia mais rápido pra senha de tamanho
+ * errado — ou seja, vazava o comprimento da senha, que é a primeira coisa
+ * que um ataque de força bruta quer saber.
+ *
+ * Resumir os dois lados em SHA-256 antes dá dois buffers sempre de 32
+ * bytes: o tamanho da entrada deixa de influenciar.
+ */
 function comparaConstante(a: string, b: string): boolean {
-  const ba = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return ba.length === bb.length && timingSafeEqual(ba, bb);
+  const ha = createHash("sha256").update(a, "utf8").digest();
+  const hb = createHash("sha256").update(b, "utf8").digest();
+  return timingSafeEqual(ha, hb);
 }
 
 /** Valor do cookie: `<payload base64url>.<assinatura>`. */

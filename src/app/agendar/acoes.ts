@@ -32,9 +32,13 @@ export async function agendar(
   const chaveDia = String(form.get("chaveDia") ?? "");
   const inicioMin = Number(form.get("inicioMin"));
 
-  const nome = String(form.get("nome") ?? "").trim();
-  const whatsapp = String(form.get("whatsapp") ?? "").trim();
-  const observacao = String(form.get("observacao") ?? "").trim();
+  // Teto antes de qualquer processamento. Os campos eram lidos, aparados e
+  // passados por regex ANTES da checagem de tamanho — um POST de alguns MB
+  // fazia o servidor trabalhar de graça a cada requisição. Os limites reais
+  // (2..120, 500) são conferidos logo abaixo; aqui é só o teto de sanidade.
+  const nome = String(form.get("nome") ?? "").slice(0, 200).trim();
+  const whatsapp = String(form.get("whatsapp") ?? "").slice(0, 40).trim();
+  const observacao = String(form.get("observacao") ?? "").slice(0, 1000).trim();
   const valores = { nome, whatsapp, observacao };
 
   // 1. Honeypot: campo escondido que só robô preenche.

@@ -40,6 +40,17 @@ function varrer(janelaMs: number) {
 }
 
 /**
+ * Espera fixa do login.
+ *
+ * Fica aqui, e nao solta dentro da action, por dois motivos: o teste
+ * consegue substitui-la (nove tentativas a 400 ms custavam 10 s do
+ * `npm test`), e o motivo dela fica escrito num lugar so.
+ */
+export function pausaLogin(): Promise<void> {
+  return new Promise((r) => setTimeout(r, 400));
+}
+
+/**
  * O IP de quem está pedindo — a chave do freio.
  *
  * `x-forwarded-for` é uma cadeia `cliente, proxy1, proxy2`, e quem faz o
