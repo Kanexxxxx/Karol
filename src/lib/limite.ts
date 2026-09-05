@@ -38,3 +38,25 @@ function varrer(janelaMs: number) {
     if (agora - r.inicio > janelaMs) mapa.delete(chave);
   }
 }
+
+/**
+ * O IP de quem está pedindo — a chave do freio.
+ *
+ * `x-forwarded-for` é uma cadeia `cliente, proxy1, proxy2`, e quem faz o
+ * pedido pode **prepender** o que quiser: o PRIMEIRO item é justamente o
+ * que o atacante controla. Lendo dali, o freio era contornável só trocando
+ * um cabeçalho a cada tentativa.
+ *
+ * Na Vercel o valor confiável é o `x-real-ip`, escrito pela borda. No
+ * `x-forwarded-for`, é o ÚLTIMO item — o que a borda acrescentou.
+ */
+export function ipDoPedido(cabecalhos: { get(nome: string): string | null }): string {
+  const real = cabecalhos.get("x-real-ip")?.trim();
+  if (real) return real;
+
+  const cadeia = cabecalhos.get("x-forwarded-for");
+  if (!cadeia) return "sem-ip";
+
+  const partes = cadeia.split(",").map((p) => p.trim()).filter(Boolean);
+  return partes.at(-1) || "sem-ip";
+}

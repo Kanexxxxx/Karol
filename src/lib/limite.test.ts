@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dentroDoLimite } from "./limite";
+import { dentroDoLimite, ipDoPedido } from "./limite";
 
 describe("dentroDoLimite", () => {
   it("libera até o máximo e barra o excedente", () => {
@@ -24,5 +24,31 @@ describe("dentroDoLimite", () => {
     return new Promise((r) => setTimeout(r, 20)).then(() => {
       expect(dentroDoLimite(chave, 1, 10)).toBe(true);
     });
+  });
+});
+
+describe("ipDoPedido", () => {
+  const cab = (mapa: Record<string, string>) => ({
+    get: (n: string) => mapa[n] ?? null,
+  });
+
+  it("prefere x-real-ip, que é a borda quem escreve", () => {
+    expect(ipDoPedido(cab({ "x-real-ip": "203.0.113.9", "x-forwarded-for": "1.1.1.1" })))
+      .toBe("203.0.113.9");
+  });
+
+  // A regressão: o primeiro item da cadeia é o que quem chama controla.
+  it("ignora o que foi prependido em x-forwarded-for", () => {
+    expect(ipDoPedido(cab({ "x-forwarded-for": "9.9.9.9, 203.0.113.9" })))
+      .toBe("203.0.113.9");
+  });
+
+  it("um só valor continua valendo", () => {
+    expect(ipDoPedido(cab({ "x-forwarded-for": "203.0.113.9" }))).toBe("203.0.113.9");
+  });
+
+  it("sem cabeçalho nenhum, cai numa chave fixa", () => {
+    expect(ipDoPedido(cab({}))).toBe("sem-ip");
+    expect(ipDoPedido(cab({ "x-forwarded-for": " , " }))).toBe("sem-ip");
   });
 });

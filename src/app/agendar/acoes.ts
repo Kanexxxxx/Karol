@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { criarAgendamento } from "@/lib/agendamentos";
-import { dentroDoLimite } from "@/lib/limite";
+import { dentroDoLimite, ipDoPedido } from "@/lib/limite";
 
 /**
  * Estado do formulário de agendamento, lido pelo `useActionState`.
@@ -48,9 +48,9 @@ export async function agendar(
     return { erro: RECUSA_SILENCIOSA };
   }
 
-  // 3. Freio por IP.
-  const ip =
-    (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "sem-ip";
+  // 3. Freio por IP. Ver ipDoPedido: o primeiro valor de x-forwarded-for
+  //    é o que quem chama controla, então não serve de chave.
+  const ip = ipDoPedido(await headers());
   if (!dentroDoLimite(`agendar:${ip}`)) {
     return {
       erro: "Você fez vários agendamentos seguidos. Aguarde um pouco ou fale no WhatsApp.",

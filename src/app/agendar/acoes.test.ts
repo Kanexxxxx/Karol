@@ -8,7 +8,12 @@ vi.mock("next/headers", () => ({
   })),
 }));
 vi.mock("@/lib/agendamentos", () => ({ criarAgendamento: vi.fn() }));
-vi.mock("@/lib/limite", () => ({ dentroDoLimite: vi.fn(() => true) }));
+// só o freio é stub; ipDoPedido continua o de verdade, senão o teste
+// deixaria de cobrir de qual cabeçalho o IP sai.
+vi.mock("@/lib/limite", async (real) => ({
+  ...(await real<typeof import("@/lib/limite")>()),
+  dentroDoLimite: vi.fn(() => true),
+}));
 
 import { redirect } from "next/navigation";
 import { criarAgendamento } from "@/lib/agendamentos";
