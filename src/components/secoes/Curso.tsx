@@ -20,7 +20,7 @@ export function Curso() {
               width={foto.largura}
               height={foto.altura}
               sizes="(min-width: 1024px) 45vw, 100vw"
-              className="aspect-4/5 w-full object-cover outline outline-linha"
+              className="aspect-4/5 w-full object-cover object-top outline outline-linha"
             />
             <span className="absolute top-3.5 left-3.5 bg-osso px-[11px] py-1.5 text-[9px] font-bold uppercase tracking-[0.2em]">
               Com certificado

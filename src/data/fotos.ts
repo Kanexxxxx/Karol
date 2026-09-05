@@ -26,6 +26,21 @@ export type Foto = {
 const P = "/fotos";
 const RETRATO = { largura: 780, altura: 1040 };
 
+/**
+ * As fotos de aluna são quadradas, e por um motivo.
+ *
+ * O certificado que elas seguram traz o nome completo escrito à mão, a data
+ * e a assinatura. Isso foi coberto por um mosaico, que resolvia o problema
+ * legal e estragava a foto — na aluna-01 a faixa cortava as duas no meio.
+ *
+ * Agora a foto é CORTADA acima da faixa: o mosaico sai da tela e o dado
+ * pessoal sai do arquivo, que é melhor dos dois lados. O que sobra é o
+ * rosto e o topo do certificado (o monograma e a palavra CERTIFICADO), que
+ * é o que dá sentido à foto. Cada uma tem o lado que coube, por isso não
+ * usam RETRATO.
+ */
+const quadrado = (lado: number) => ({ largura: lado, altura: lado });
+
 export const FOTOS = {
   capa: {
     arquivo: `${P}/karol-capa.jpg`,
@@ -84,7 +99,8 @@ export const FOTO_DO_SERVICO: Record<string, Foto> = {
   "curso-automaquiagem": {
     arquivo: `${P}/serv-curso.jpg`,
     alt: "Karol com uma aluna segurando o certificado do curso",
-    ...RETRATO,
+    // mesma foto da aluna-01, cortada acima do certificado — ver `quadrado`
+    ...quadrado(475),
     etiqueta: "Com certificado",
   },
 };
@@ -148,14 +164,14 @@ export const ALUNAS: Foto[] = [
   {
     arquivo: `${P}/aluna-01.jpg`,
     alt: "Karol e a aluna com o certificado do curso",
-    ...RETRATO,
+    ...quadrado(475),
     legenda: "Com a Karol",
   },
-  { arquivo: `${P}/aluna-02.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-  { arquivo: `${P}/aluna-03.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-  { arquivo: `${P}/aluna-04.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-  { arquivo: `${P}/aluna-05.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-  { arquivo: `${P}/aluna-06.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
+  { arquivo: `${P}/aluna-02.jpg`, alt: "Aluna com o certificado do curso", ...quadrado(644), legenda: "Certificada" },
+  { arquivo: `${P}/aluna-03.jpg`, alt: "Aluna com o certificado do curso", ...quadrado(748), legenda: "Certificada" },
+  { arquivo: `${P}/aluna-04.jpg`, alt: "Aluna com o certificado do curso", ...quadrado(714), legenda: "Certificada" },
+  { arquivo: `${P}/aluna-05.jpg`, alt: "Aluna com o certificado do curso", ...quadrado(686), legenda: "Certificada" },
+  { arquivo: `${P}/aluna-06.jpg`, alt: "Aluna com o certificado do curso", ...quadrado(780), legenda: "Certificada" },
 ];
 
 /** Sequência da esteira do topo — mistura resultado, maquiagem e processo. */
