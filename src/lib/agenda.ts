@@ -145,3 +145,51 @@ export function proximosDiasComVaga({
 export function blocoDoAgendamento(inicio: number, servico: Servico): Intervalo {
   return { inicio, fim: inicio + blocoNaAgenda(servico) };
 }
+
+/** Minutos num dia inteiro. Um bloqueio de dia fechado vai de 0 a 1440. */
+export const MINUTOS_NO_DIA = 24 * 60;
+
+/**
+ * Recorta um período em fatias de um dia, em minutos.
+ *
+ * O motor raciocina em minutos dentro de um dia, mas um período do banco
+ * pode atravessar a meia-noite — férias de uma semana são um `tstzrange` só.
+ * Achatar esse período com `getHours()` nas duas pontas devolvia `{0, 0}`
+ * para um dia fechado (a ponta final cai à meia-noite do dia SEGUINTE), ou
+ * seja: um intervalo vazio, que não colidia com nada. Feriado e férias não
+ * bloqueavam a agenda.
+ *
+ * Aqui cada dia tocado pelo período vira uma fatia própria, e a meia-noite
+ * do dia seguinte vira 1440 em vez de 0.
+ */
+export function fatiarPorDia(
+  inicio: Date,
+  fim: Date,
+): { chave: string; inicio: number; fim: number }[] {
+  const fatias: { chave: string; inicio: number; fim: number }[] = [];
+  if (!(fim > inicio)) return fatias;
+
+  const minutos = (d: Date) => d.getHours() * 60 + d.getMinutes();
+  const cursor = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
+
+  // limite de segurança: um bloqueio absurdo não pode virar laço infinito
+  for (let i = 0; cursor < fim && i < 400; i++) {
+    const amanha = new Date(cursor);
+    amanha.setDate(amanha.getDate() + 1);
+
+    const de = inicio > cursor ? inicio : cursor;
+    const ate = fim < amanha ? fim : amanha;
+
+    if (ate > de) {
+      fatias.push({
+        chave: paraChave(cursor),
+        inicio: minutos(de),
+        // a meia-noite que FECHA o dia é o fim dele, não o começo
+        fim: ate.getTime() === amanha.getTime() ? MINUTOS_NO_DIA : minutos(ate),
+      });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return fatias;
+}

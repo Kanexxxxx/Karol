@@ -4,6 +4,7 @@ import { banco } from "./banco";
 import {
   blocoDoAgendamento,
   deChave,
+  fatiarPorDia,
   horariosLivres,
   paraChave,
   primeiroDiaDisponivel,
@@ -75,12 +76,15 @@ async function ocupadosNoPeriodo(
 
   const porDia: Record<string, Intervalo[]> = {};
 
+  // Um período pode atravessar a meia-noite (férias são um range só), então
+  // ele é recortado dia a dia. Achatar as duas pontas com getHours() fazia
+  // todo bloqueio de dia fechado virar intervalo vazio — ver fatiarPorDia.
   const somar = (periodo: string) => {
     const p = lerPeriodo(periodo);
     if (!p) return;
-    const chave = paraChave(p.inicio);
-    const minutos = (d: Date) => d.getHours() * 60 + d.getMinutes();
-    (porDia[chave] ??= []).push({ inicio: minutos(p.inicio), fim: minutos(p.fim) });
+    for (const fatia of fatiarPorDia(p.inicio, p.fim)) {
+      (porDia[fatia.chave] ??= []).push({ inicio: fatia.inicio, fim: fatia.fim });
+    }
   };
 
   (ags.data ?? []).forEach((r) => somar(r.periodo as string));

@@ -4,6 +4,8 @@ import {
   deChave,
   expedienteDoDia,
   horariosLivres,
+  fatiarPorDia,
+  MINUTOS_NO_DIA,
   paraChave,
   paraRotulo,
   primeiroDiaDisponivel,
@@ -144,5 +146,76 @@ describe("blocoDoAgendamento", () => {
   it("soma a duração máxima e o intervalo entre clientes", () => {
     expect(blocoDoAgendamento(7 * 60, design)).toEqual({ inicio: 420, fim: 470 });
     expect(blocoDoAgendamento(11 * 60, lamination)).toEqual({ inicio: 660, fim: 760 });
+  });
+});
+
+describe("fatiarPorDia", () => {
+  // A regressão que motivou esta função: um bloqueio de dia fechado é
+  // gravado como [dia 00:00, dia seguinte 00:00). Achatar as duas pontas
+  // com getHours() dava {0, 0} — intervalo vazio, que não bloqueava nada.
+  it("dia fechado vira o dia inteiro, não um intervalo vazio", () => {
+    const fatias = fatiarPorDia(new Date(2099, 5, 10), new Date(2099, 5, 11));
+    expect(fatias).toEqual([{ chave: "2099-06-10", inicio: 0, fim: MINUTOS_NO_DIA }]);
+  });
+
+  it("férias de vários dias marcam todos os dias, não só o primeiro", () => {
+    const fatias = fatiarPorDia(new Date(2099, 5, 10), new Date(2099, 5, 13));
+    expect(fatias.map((f) => f.chave)).toEqual(["2099-06-10", "2099-06-11", "2099-06-12"]);
+    for (const f of fatias) expect(f).toMatchObject({ inicio: 0, fim: MINUTOS_NO_DIA });
+  });
+
+  it("intervalo dentro de um dia fica como está", () => {
+    const de = new Date(2099, 5, 10, 13, 0);
+    const ate = new Date(2099, 5, 10, 17, 30);
+    expect(fatiarPorDia(de, ate)).toEqual([
+      { chave: "2099-06-10", inicio: 780, fim: 1050 },
+    ]);
+  });
+
+  it("período que atravessa a meia-noite recorta as pontas", () => {
+    const de = new Date(2099, 5, 10, 22, 0);
+    const ate = new Date(2099, 5, 12, 9, 30);
+    expect(fatiarPorDia(de, ate)).toEqual([
+      { chave: "2099-06-10", inicio: 1320, fim: MINUTOS_NO_DIA },
+      { chave: "2099-06-11", inicio: 0, fim: MINUTOS_NO_DIA },
+      { chave: "2099-06-12", inicio: 0, fim: 570 },
+    ]);
+  });
+
+  it("período vazio ou invertido não gera fatia", () => {
+    const d = new Date(2099, 5, 10);
+    expect(fatiarPorDia(d, d)).toEqual([]);
+    expect(fatiarPorDia(new Date(2099, 5, 11), new Date(2099, 5, 10))).toEqual([]);
+  });
+});
+
+describe("bloqueio somado ao motor de horários", () => {
+  // A costura que faltava: bloqueios.ts sabia gravar e agenda.ts sabia
+  // calcular, mas ninguém testava os dois juntos — e era exatamente ali
+  // que o feriado se perdia.
+  it("um feriado de dia fechado zera os horários daquele dia", () => {
+    const segunda = segundaDistante();
+    const amanha = new Date(segunda);
+    amanha.setDate(amanha.getDate() + 1);
+
+    expect(horariosLivres({ data: segunda, servico: design }).length).toBeGreaterThan(0);
+
+    const ocupados = fatiarPorDia(segunda, amanha).map((f) => ({
+      inicio: f.inicio,
+      fim: f.fim,
+    }));
+    expect(horariosLivres({ data: segunda, servico: design, ocupados })).toEqual([]);
+  });
+
+  it("bloqueio de 13h em diante deixa só a manhã livre", () => {
+    const sabado = sabadoDistante(); // Bandeirantes, 11h às 22h
+    const ocupados = fatiarPorDia(
+      new Date(sabado.getFullYear(), sabado.getMonth(), sabado.getDate(), 13, 0),
+      new Date(sabado.getFullYear(), sabado.getMonth(), sabado.getDate() + 1),
+    ).map((f) => ({ inicio: f.inicio, fim: f.fim }));
+
+    const livres = horariosLivres({ data: sabado, servico: design, ocupados });
+    expect(livres.length).toBeGreaterThan(0);
+    for (const h of livres) expect(h.inicio).toBeLessThan(13 * 60);
   });
 });
