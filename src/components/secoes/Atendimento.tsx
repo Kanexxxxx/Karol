@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { FOTOS } from "@/data/fotos";
-import { REGRAS } from "@/data/negocio";
+import { ANTES_DE_VIR } from "@/data/negocio";
 import { Cabeca, Env, Revela, Rotulo } from "../ui";
 
 export function Atendimento() {
@@ -29,25 +29,24 @@ export function Atendimento() {
             porta pra entrar depois de você.
           </p>
 
-          <dl className="mt-7 grid grid-cols-3 border-t border-linha">
-            <Numero valor="1" rotulo="Cliente por vez" />
-            <Numero valor={String(REGRAS.intervaloMin)} rotulo="Min de intervalo" />
-            <Numero valor="2" rotulo="Cidades" />
-          </dl>
+          <div className="mt-7 border-t border-linha pt-6">
+            <h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-ouro">
+              Antes de vir
+            </h3>
+            <ul className="flex flex-col gap-2">
+              {ANTES_DE_VIR.map((aviso) => (
+                <li key={aviso} className="flex gap-2.5 text-[15px] text-tinta-2">
+                  <span aria-hidden="true" className="text-ouro-claro">
+                    —
+                  </span>
+                  {aviso}
+                </li>
+              ))}
+            </ul>
+          </div>
         </Revela>
       </Env>
     </section>
-  );
-}
-
-function Numero({ valor, rotulo }: { valor: string; rotulo: string }) {
-  return (
-    <div className="px-1.5 pt-5 text-center">
-      <dt className="font-titulo text-[34px] font-light text-ouro">{valor}</dt>
-      <dd className="mt-0.5 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-tinta-2">
-        {rotulo}
-      </dd>
-    </div>
   );
 }
 

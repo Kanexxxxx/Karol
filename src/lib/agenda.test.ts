@@ -12,6 +12,7 @@ import {
   proximosDiasComVaga,
 } from "./agenda";
 import { buscarServico } from "@/data/servicos";
+import { REGRAS } from "@/data/negocio";
 
 const design = buscarServico("design-simples")!; // 40 min máx -> bloco de 50
 const lamination = buscarServico("brow-lamination")!; // 90 min máx -> bloco de 100
@@ -217,5 +218,66 @@ describe("bloqueio somado ao motor de horários", () => {
     const livres = horariosLivres({ data: sabado, servico: design, ocupados });
     expect(livres.length).toBeGreaterThan(0);
     for (const h of livres) expect(h.inicio).toBeLessThan(13 * 60);
+  });
+});
+
+describe("serviços de durações diferentes não colidem", () => {
+  /**
+   * A preocupação: a grade anda de 15 em 15 minutos, mas os serviços duram
+   * de 40 a 120 min. Se o motor só olhasse o passo da grade, um curso de
+   * 2h marcado às 07:00 deixaria as 07:15 "livres" — e duas clientes
+   * cairiam em cima uma da outra.
+   *
+   * O que segura isso é `blocoNaAgenda`: o bloco ocupado é a duração MÁXIMA
+   * do serviço mais o intervalo entre clientes, não o passo da grade.
+   */
+  const curso = buscarServico("curso-automaquiagem")!; // 120 + 10 = 130
+
+  it("um curso às 07:00 fecha a manhã inteira pros outros serviços", () => {
+    const segunda = segundaDistante();
+    const ocupado = [blocoDoAgendamento(7 * 60, curso)]; // 07:00 → 09:10
+
+    for (const s of [design, lamination, curso]) {
+      const livres = horariosLivres({ data: segunda, servico: s, ocupados: ocupado });
+      for (const h of livres) {
+        const bloco = blocoDoAgendamento(h.inicio, s);
+        // nada pode começar antes de 09:10, nem invadir o bloco do curso
+        expect(bloco.inicio).toBeGreaterThanOrEqual(9 * 60 + 10);
+      }
+    }
+  });
+
+  it("o intervalo entre clientes é respeitado, não só a duração", () => {
+    // design ocupa 40 min de trabalho + 10 de intervalo = 50
+    const bloco = blocoDoAgendamento(7 * 60, design);
+    expect(bloco.fim - bloco.inicio).toBe(design.duracaoMaxMin + REGRAS.intervaloMin);
+
+    const segunda = segundaDistante();
+    const livres = horariosLivres({ data: segunda, servico: design, ocupados: [bloco] });
+    // 07:45 ainda está dentro do intervalo; o primeiro livre é 07:50 ou depois
+    expect(Math.min(...livres.map((h) => h.inicio))).toBeGreaterThanOrEqual(bloco.fim);
+  });
+
+  it("nenhum horário oferecido ultrapassa o fim do expediente", () => {
+    const segunda = segundaDistante(); // 07:00 às 11:00
+    for (const s of [design, lamination, curso]) {
+      for (const h of horariosLivres({ data: segunda, servico: s })) {
+        expect(blocoDoAgendamento(h.inicio, s).fim).toBeLessThanOrEqual(11 * 60);
+      }
+    }
+  });
+
+  it("dois horários livres seguidos nunca se sobrepõem quando tomados", () => {
+    const sabado = sabadoDistante();
+    const livres = horariosLivres({ data: sabado, servico: lamination });
+    // pega o primeiro, e o próximo que ainda sobra depois dele
+    const primeiro = blocoDoAgendamento(livres[0].inicio, lamination);
+    const restantes = horariosLivres({
+      data: sabado,
+      servico: lamination,
+      ocupados: [primeiro],
+    });
+    const segundo = blocoDoAgendamento(restantes[0].inicio, lamination);
+    expect(segundo.inicio).toBeGreaterThanOrEqual(primeiro.fim);
   });
 });

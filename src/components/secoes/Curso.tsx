@@ -2,7 +2,8 @@ import Image from "next/image";
 import { FOTO_DO_SERVICO } from "@/data/fotos";
 import { NEGOCIO } from "@/data/negocio";
 import { buscarServico, formatarPreco } from "@/data/servicos";
-import { Botao, Env, Revela, Rotulo } from "../ui";
+import { linkWhatsapp } from "@/lib/whatsapp";
+import { Env, Revela, Rotulo } from "../ui";
 
 export function Curso() {
   const curso = buscarServico("curso-automaquiagem");
@@ -52,7 +53,23 @@ export function Curso() {
             <Ficha valor="1" rotulo="Aluna" comBorda />
           </dl>
 
-          <Botao href={`/agendar?servico=${curso.id}`}>Quero fazer o curso</Botao>
+          {/*
+            O curso NÃO passa pela agenda. Ele é uma aula individual de 2h com
+            data combinada entre as duas — mandar a aluna pro fluxo de
+            agendamento fazia ela escolher um horário que não existe pra isso.
+            Aqui a conversa começa direto no WhatsApp.
+          */}
+          <a
+            href={linkWhatsapp(
+              "Oi Karol! Vim pelo site e quero fazer o curso de automaquiagem. " +
+                "Como funciona e quais datas você tem?",
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-[50px] items-center justify-center bg-ouro px-[30px] py-4 text-[11.5px] font-bold uppercase tracking-[0.2em] text-white transition-opacity duration-300 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ouro"
+          >
+            Falar sobre o curso
+          </a>
         </Revela>
       </Env>
     </section>
