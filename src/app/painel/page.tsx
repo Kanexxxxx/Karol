@@ -8,6 +8,7 @@ import { formatarPreco } from "@/data/servicos";
 import { paraChave } from "@/lib/agenda";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
 import { AcoesAgendamento } from "./AcoesAgendamento";
+import { Remarcar } from "./Remarcar";
 import { sair } from "./acoes";
 
 export const metadata: Metadata = { title: "Painel", robots: { index: false } };
@@ -42,6 +43,12 @@ export default async function Painel() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              href="/painel/novo"
+              className="inline-flex min-h-[34px] items-center bg-ouro px-3.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-90"
+            >
+              + Marcar
+            </Link>
             <Link
               href="/painel/bloqueios"
               className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
@@ -115,8 +122,13 @@ export default async function Painel() {
                           {SITUACAO_ROTULO[ag.situacao].texto}
                         </span>
                       </div>
-                      <div className="mt-3">
+                      <div className="mt-3 flex flex-wrap items-start gap-2">
                         <AcoesAgendamento id={ag.id} situacao={ag.situacao} />
+                        <Remarcar
+                          id={ag.id}
+                          diaAtual={paraChave(ag.inicio)}
+                          horaAtual={HORA.format(ag.inicio)}
+                        />
                       </div>
                     </li>
                   ))}

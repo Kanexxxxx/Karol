@@ -17,7 +17,7 @@ import {
 import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
 import { buscarServico, type Servico } from "@/data/servicos";
-import { CIDADES, type CidadeId } from "@/data/negocio";
+import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
 
 export type Agendamento = {
   id: string;
@@ -399,4 +399,133 @@ export async function agendaDaKarol(deDias = 0, ateDias = 30): Promise<Agendamen
     .order("periodo", { ascending: true });
 
   return (data ?? []).map(linhaParaAgendamento);
+}
+
+/* ------------------------------------------------------------------ */
+/* O que a Karol faz pelo painel                                       */
+/* ------------------------------------------------------------------ */
+
+/** Constrói o período de um atendimento a partir do dia e da hora. */
+function periodoDe(chaveDia: string, horaMin: number, servico: Servico) {
+  const dia = deChave(chaveDia);
+  const bloco = blocoDoAgendamento(horaMin, servico);
+  return { inicio: emData(dia, bloco.inicio), fim: emData(dia, bloco.fim) };
+}
+
+/** "08:30" → 510. Devolve null se não for hora válida. */
+export function horaEmMinutos(hora: string): number | null {
+  const m = hora.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/**
+ * Agendamento criado pela própria Karol, no painel.
+ *
+ * Difere do fluxo da cliente de propósito: aqui ela escolhe QUALQUER
+ * horário, não só os da grade. É pra encaixar a mãe, o pai, uma cliente
+ * que ligou — casos que não cabem no passo de 15 minutos.
+ *
+ * A segurança contra choque continua sendo a mesma do site: a restrição
+ * `sem_choque` no banco. Ela é quem recusa sobreposição, aqui e lá.
+ */
+export async function criarAgendamentoNoPainel(dados: {
+  servicoId: string;
+  cidade: CidadeId;
+  chaveDia: string;
+  hora: string;
+  nome: string;
+  whatsapp: string;
+  observacao?: string;
+}): Promise<{ ok: boolean; id?: string; erro?: string }> {
+  const bd = banco();
+  if (!bd) return { ok: false, erro: "Banco não configurado." };
+
+  const servico = buscarServico(dados.servicoId);
+  if (!servico) return { ok: false, erro: "Serviço não encontrado." };
+
+  const horaMin = horaEmMinutos(dados.hora);
+  if (horaMin === null) return { ok: false, erro: "Hora no formato HH:MM." };
+
+  const nome = dados.nome.trim();
+  if (nome.length < 2 || nome.length > 120) {
+    return { ok: false, erro: "Escreva o nome (2 a 120 letras)." };
+  }
+
+  const whatsapp = dados.whatsapp.replace(/\D/g, "");
+  if (whatsapp && !/^\d{10,13}$/.test(whatsapp)) {
+    return { ok: false, erro: "WhatsApp com DDD, só números." };
+  }
+
+  const { inicio, fim } = periodoDe(dados.chaveDia, horaMin, servico);
+  if (Number.isNaN(inicio.getTime())) return { ok: false, erro: "Data inválida." };
+
+  const { data, error } = await bd
+    .from("agendamentos")
+    .insert({
+      cliente_nome: nome,
+      // sem WhatsApp (encaixe da família, por exemplo) o CHECK do banco
+      // recusaria vazio, então guarda o número dela mesma
+      cliente_whatsapp: whatsapp || NEGOCIO.whatsapp.numero,
+      servico_id: servico.id,
+      servico_nome: servico.nome,
+      servico_preco: servico.preco * 100,
+      cidade: CIDADES[dados.cidade].nome,
+      periodo: montarPeriodo(inicio, fim),
+      observacao: dados.observacao?.trim() || null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    if ((error as { code?: string }).code === "23P01") {
+      return { ok: false, erro: "Já existe atendimento nesse horário." };
+    }
+    return { ok: false, erro: "Não consegui salvar agora." };
+  }
+
+  return { ok: true, id: data.id };
+}
+
+/**
+ * Remarca um atendimento: muda o dia e a hora, mantendo o resto.
+ *
+ * O bloco é recalculado pela duração do serviço gravado, não pela duração
+ * antiga — se o serviço mudou de duração no meio do caminho, o horário
+ * remarcado sai com o tempo certo.
+ */
+export async function remarcarAgendamento(
+  id: string,
+  chaveDia: string,
+  hora: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  const bd = banco();
+  if (!bd) return { ok: false, erro: "Banco não configurado." };
+  if (!/^[0-9a-f-]{32,36}$/i.test(id)) return { ok: false, erro: "Agendamento inválido." };
+
+  const horaMin = horaEmMinutos(hora);
+  if (horaMin === null) return { ok: false, erro: "Hora no formato HH:MM." };
+
+  const atual = await buscarAgendamento(id);
+  if (!atual) return { ok: false, erro: "Agendamento não encontrado." };
+
+  const servico = buscarServico(atual.servicoId);
+  if (!servico) return { ok: false, erro: "Serviço do agendamento não existe mais." };
+
+  const { inicio, fim } = periodoDe(chaveDia, horaMin, servico);
+  if (Number.isNaN(inicio.getTime())) return { ok: false, erro: "Data inválida." };
+
+  const { error } = await bd
+    .from("agendamentos")
+    .update({ periodo: montarPeriodo(inicio, fim) })
+    .eq("id", id);
+
+  if (error) {
+    if ((error as { code?: string }).code === "23P01") {
+      return { ok: false, erro: "Já existe atendimento nesse horário." };
+    }
+    return { ok: false, erro: "Não consegui remarcar agora." };
+  }
+
+  return { ok: true };
 }

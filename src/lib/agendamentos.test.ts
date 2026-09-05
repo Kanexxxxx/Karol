@@ -11,7 +11,10 @@ import { banco } from "./banco";
 import {
   buscarAgendamento,
   criarAgendamento,
+  criarAgendamentoNoPainel,
+  horaEmMinutos,
   mudarSituacao,
+  remarcarAgendamento,
 } from "./agendamentos";
 
 const bancoMock = vi.mocked(banco);
@@ -159,5 +162,112 @@ describe("buscarAgendamento", () => {
       situacao: "confirmado",
     });
     expect(ag!.inicio.toISOString()).toBe("2026-09-10T10:00:00.000Z");
+  });
+});
+
+describe("horaEmMinutos", () => {
+  it("converte hora válida", () => {
+    expect(horaEmMinutos("07:00")).toBe(420);
+    expect(horaEmMinutos("8:30")).toBe(510);
+    expect(horaEmMinutos("23:59")).toBe(1439);
+  });
+
+  it("recusa o que não é hora", () => {
+    for (const ruim of ["24:00", "07:60", "sete", "", "7", "07:0"]) {
+      expect(horaEmMinutos(ruim)).toBeNull();
+    }
+  });
+});
+
+describe("criarAgendamentoNoPainel", () => {
+  const base = {
+    servicoId: "design-simples",
+    cidade: "pereira-barreto" as const,
+    chaveDia: diaUtilFuturo(),
+    hora: "07:00",
+    nome: "Mãe da Karol",
+    whatsapp: "",
+  };
+
+  it("grava e devolve o id", async () => {
+    const m = usarBanco({ insert: () => ({ data: { id: "ag-painel" } }) });
+    const r = await criarAgendamentoNoPainel(base);
+    expect(r).toEqual({ ok: true, id: "ag-painel" });
+    expect(m.chamadas.find((c) => c.op === "insert")?.tabela).toBe("agendamentos");
+  });
+
+  /**
+   * O ponto do formulário do painel: ela pode encaixar em QUALQUER horário,
+   * não só nos múltiplos de 15 que o site oferece. Quem impede choque é a
+   * trava do banco, então liberdade aqui não custa segurança.
+   */
+  it("aceita horário fora da grade de 15 em 15", async () => {
+    usarBanco({ insert: () => ({ data: { id: "ag-encaixe" } }) });
+    const r = await criarAgendamentoNoPainel({ ...base, hora: "07:07" });
+    expect(r.ok).toBe(true);
+  });
+
+  it("sem WhatsApp usa o número da própria Karol, que o banco exige", async () => {
+    const m = usarBanco({ insert: () => ({ data: { id: "x" } }) });
+    await criarAgendamentoNoPainel({ ...base, whatsapp: "" });
+    const gravado = m.chamadas.find((c) => c.op === "insert")?.valores;
+    expect(String(gravado?.cliente_whatsapp)).toMatch(/^\d{10,13}$/);
+  });
+
+  it("recusa choque com mensagem de gente", async () => {
+    usarBanco({ insert: () => ({ error: { code: "23P01" } }) });
+    const r = await criarAgendamentoNoPainel(base);
+    expect(r.ok).toBe(false);
+    expect(r.erro).toMatch(/já existe atendimento/i);
+  });
+
+  it("recusa hora e nome inválidos antes de tocar no banco", async () => {
+    const m = usarBanco({ insert: () => ({ data: { id: "x" } }) });
+    expect((await criarAgendamentoNoPainel({ ...base, hora: "25:00" })).ok).toBe(false);
+    expect((await criarAgendamentoNoPainel({ ...base, nome: "A" })).ok).toBe(false);
+    expect((await criarAgendamentoNoPainel({ ...base, whatsapp: "123" })).ok).toBe(false);
+    expect(m.chamadas.filter((c) => c.op === "insert")).toHaveLength(0);
+  });
+});
+
+describe("remarcarAgendamento", () => {
+  const linha = (periodo: string) => ({
+    id: "0".repeat(36),
+    cliente_nome: "Fulana",
+    cliente_whatsapp: "5518999998888",
+    servico_id: "design-simples",
+    servico_nome: "Design de sobrancelha",
+    servico_preco: 2500,
+    cidade: "Pereira Barreto",
+    periodo,
+    situacao: "confirmado",
+    observacao: null,
+  });
+
+  it("muda o período mantendo o resto", async () => {
+    const m = usarBanco({
+      select: () => ({ data: linha('["2099-06-01 10:00:00+00","2099-06-01 10:50:00+00")') }),
+      update: () => ({}),
+    });
+    const r = await remarcarAgendamento("0".repeat(36), diaUtilFuturo(), "09:00");
+    expect(r.ok).toBe(true);
+    const gravado = m.chamadas.find((c) => c.op === "update")?.valores;
+    expect(Object.keys(gravado ?? {})).toEqual(["periodo"]);
+  });
+
+  it("recusa choque ao remarcar", async () => {
+    usarBanco({
+      select: () => ({ data: linha('["2099-06-01 10:00:00+00","2099-06-01 10:50:00+00")') }),
+      update: () => ({ error: { code: "23P01" } }),
+    });
+    const r = await remarcarAgendamento("0".repeat(36), diaUtilFuturo(), "09:00");
+    expect(r.ok).toBe(false);
+    expect(r.erro).toMatch(/já existe atendimento/i);
+  });
+
+  it("recusa id e hora inválidos", async () => {
+    usarBanco({ select: () => ({ data: null }) });
+    expect((await remarcarAgendamento("nao-e-uuid", "2099-06-01", "09:00")).ok).toBe(false);
+    expect((await remarcarAgendamento("0".repeat(36), "2099-06-01", "9h")).ok).toBe(false);
   });
 });
