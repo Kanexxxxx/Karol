@@ -7,11 +7,16 @@
  * de jeitos diferentes.
  *
  * `Intl.DateTimeFormat` é caro de construir, então cada um é criado uma vez
- * e reaproveitado. Todos usam o fuso do servidor — ver o aviso sobre `TZ`
- * no README.
+ * e reaproveitado.
  */
 
-const pt = (opcoes: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("pt-BR", opcoes);
+import { FUSO } from "@/data/negocio";
+
+// O fuso vai explícito de propósito. Estes formatadores nascem no
+// carregamento do módulo; depender do fuso do processo aqui seria depender
+// da ordem em que os módulos carregam — ver `src/instrumentation.ts`.
+const pt = (opcoes: Intl.DateTimeFormatOptions) =>
+  new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO, ...opcoes });
 
 /** "segunda-feira, 10 de junho" */
 export const DIA_POR_EXTENSO = pt({ weekday: "long", day: "2-digit", month: "long" });

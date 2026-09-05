@@ -343,8 +343,27 @@ Estrutura de pastas e comandos: [`README.md`](./README.md). O essencial:
 ### 6.3 ⚠️ Fuso horário
 
 O motor trabalha em **hora local do servidor** e assume Brasil. Na
-Vercel/serverless o default é UTC. **Defina `TZ=America/Sao_Paulo` em produção**,
-senão dia e hora saem 3h deslocados.
+Vercel/serverless o default é UTC.
+
+**Não dá pra resolver por variável de ambiente:** a Vercel **reserva** o nome
+`TZ` e recusa quem tenta defini-lo no painel. Descoberto no deploy.
+
+Resolvido no código, em duas camadas:
+
+1. `src/instrumentation.ts` — o `register()` do Next roda uma vez e termina
+   antes do servidor aceitar a primeira requisição; ali `process.env.TZ` recebe
+   `FUSO`. É o que conserta a **aritmética de datas** (`getHours`, `setHours`,
+   `getFullYear`) espalhada por `agenda.ts`, `agendamentos.ts` e `bloqueios.ts`.
+2. `src/lib/datas.ts` — cada formatador declara `timeZone: FUSO`. Eles nascem
+   no carregamento do módulo, então depender do fuso do processo seria depender
+   da ordem em que os módulos carregam. Cinto e suspensório de propósito.
+
+A constante única é `FUSO` em `data/negocio.ts`.
+
+O estrago quando falta é discreto, que é o pior tipo: das 21h à meia-noite o
+servidor já virou o dia e a agenda oferece as datas erradas, sem erro na tela.
+`datas.test.ts` carrega o módulo com o processo em UTC e em Tóquio pra provar
+que o resultado não muda.
 
 ### 6.4 A automação de WhatsApp — leia antes de prometer qualquer coisa
 
@@ -387,6 +406,7 @@ um commit.
 | 9 | Suíte de testes — 64 casos, 8 arquivos (hoje 75) | ✅ |
 | 10 | Anonimização dos certificados + originais fora do Git | ✅ |
 | 11 | Bloqueios corrigidos, duplicações, mobile, freio por IP | ✅ |
+| 12 | Fuso resolvido no código (a Vercel reserva `TZ`) | ✅ |
 
 ### Detalhes que valem saber
 
@@ -463,8 +483,9 @@ Nenhum é código.
    (ver tabela no README). Sem elas o site institucional funciona, mas
    `/agendar` mostra "a agenda online está sendo ligada" e `/painel` explica o
    que falta configurar.
-3. **Deploy na Vercel** — importar o repositório, configurar as variáveis,
-   **incluindo `TZ=America/Sao_Paulo`**.
+3. **Deploy na Vercel** — importar o repositório e configurar as variáveis.
+   **Não tente definir `TZ`**: o nome é reservado lá e a Vercel recusa. O fuso
+   está resolvido no código — ver 6.3.
 
 ### 8.2 Pendências de negócio (dependem da Karol)
 

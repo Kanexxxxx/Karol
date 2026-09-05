@@ -47,7 +47,7 @@ Todas em [`.env.example`](./.env.example). Em resumo:
 | `KAROL_WHATSAPP` | Número que recebe o aviso de agendamento | não (usa o do site) |
 | `NOTIFICADOR_WEBHOOK_URL` | Webhook que dispara os WhatsApp de verdade | não (sem ele, mensagens não saem) |
 | `CRON_SECRET` | Protege `/api/lembretes` (a Vercel injeta o header) | só o cron |
-| `TZ` | **`America/Sao_Paulo`** em produção | sim, na Vercel |
+| ~~`TZ`~~ | **Não use** — a Vercel reserva esse nome. O fuso está no código (`FUSO` em `negocio.ts`) | — |
 | `NEXT_PUBLIC_SITE_URL` | Domínio público (sitemap, robots, prévia de link) | não (usa o da Vercel) |
 
 ### Banco de dados
@@ -106,6 +106,7 @@ de negócio ainda pendentes de confirmação com a Karol estão marcadas
 ## Deploy (Vercel)
 
 1. Importe o repositório na Vercel.
-2. Configure as variáveis de ambiente da tabela acima — **incluindo `TZ=America/Sao_Paulo`**.
+2. Configure as variáveis de ambiente da tabela acima. **Não tente definir `TZ`**: a
+   Vercel reserva esse nome e recusa. O fuso já está resolvido no código.
 3. O cron de lembretes (`vercel.json`) roda sozinho; ele só envia de verdade se
    `NOTIFICADOR_WEBHOOK_URL` e `CRON_SECRET` estiverem setados.

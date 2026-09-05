@@ -37,6 +37,15 @@ export const NEGOCIO = {
 } as const;
 
 /**
+ * Fuso em que a Karol atende.
+ *
+ * O motor de horários raciocina em hora local e assume que ela é a do
+ * Brasil. Aplicado em `src/instrumentation.ts` e declarado explicitamente
+ * nos formatadores de `lib/datas.ts`.
+ */
+export const FUSO = "America/Sao_Paulo";
+
+/**
  * Endereço público do site — sitemap, robots e prévia de link.
  *
  * Estava chumbado em três arquivos. Quando o domínio definitivo existir,
