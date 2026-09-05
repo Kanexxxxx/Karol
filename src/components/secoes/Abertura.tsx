@@ -43,17 +43,24 @@ export function Abertura() {
               automaquiagem em {NEGOCIO.atuacaoCidades.replace(", São Paulo", "")}.
             </p>
 
+            {/*
+              Um botão de cada, com a cor mudando no breakpoint: no celular
+              ele fica sobre a foto (claro), no computador sobre o creme
+              (dourado).
+
+              Antes eram DOIS de cada, um escondido por `hidden lg:inline-flex`
+              — e os dois apareciam no celular, porque `Botao` fixa
+              `inline-flex` nas classes base e o `hidden` não vence isso.
+            */}
             <div className="mt-6 flex flex-wrap gap-2.5 lg:mt-7">
-              <Botao href="/agendar" variante="claro" className="lg:hidden">
+              <Botao href="/agendar" variante="claro" className="lg:bg-ouro lg:text-white">
                 Agendar horário
               </Botao>
-              <Botao href="/agendar" className="hidden lg:inline-flex">
-                Agendar horário
-              </Botao>
-              <Botao href="/#servicos" variante="vazado-claro" className="lg:hidden">
-                Ver preços
-              </Botao>
-              <Botao href="/#servicos" variante="vazado" className="hidden lg:inline-flex">
+              <Botao
+                href="/#servicos"
+                variante="vazado-claro"
+                className="lg:border-ouro-claro lg:text-ouro lg:hover:bg-ouro-fundo"
+              >
                 Ver preços
               </Botao>
             </div>

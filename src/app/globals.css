@@ -80,3 +80,49 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- barra de carregamento ---------- */
+/* Ver components/BarraCarregando.tsx. O avanço é daqui, não do JS. */
+
+@keyframes avanca {
+  0%   { width: 0%;   opacity: 0; }
+  8%   { opacity: 1; }
+  35%  { width: 58%; }
+  70%  { width: 80%; }
+  100% { width: 93%; }
+}
+
+.barra-carregando,
+.barra-carregando-fim {
+  height: 100%;
+  width: 0;
+  background-color: var(--color-ouro);
+  opacity: 0;
+}
+
+/* O atraso de 140 ms é o que impede a barra de piscar em página já
+   guardada em cache, que abre praticamente na hora. */
+.barra-carregando {
+  animation: avanca 9s var(--ease-marca) 140ms forwards;
+}
+
+.barra-carregando-fim {
+  width: 100%;
+  opacity: 0;
+  transition:
+    width 0.18s ease-out,
+    opacity 0.28s ease-in 0.12s;
+}
+
+/* Quem pediu menos movimento continua vendo o progresso — só sem a corrida. */
+@media (prefers-reduced-motion: reduce) {
+  .barra-carregando {
+    animation: none;
+    width: 60%;
+    opacity: 1;
+  }
+  .barra-carregando-fim {
+    transition: opacity 0.2s linear;
+    width: 100%;
+  }
+}

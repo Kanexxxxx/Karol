@@ -30,6 +30,14 @@ const VARIANTES: Record<NonNullable<BotaoProps["variante"]>, string> = {
   "vazado-claro": "border border-white/70 text-white hover:bg-white/10",
 };
 
+/**
+ * ⚠️ As classes base fixam `inline-flex`. Passar `hidden` pelo `className`
+ * NÃO esconde o botão: as duas são utilitárias de `display`, com a mesma
+ * especificidade, e quem ganha é a que o Tailwind emite por último — não a
+ * que vem por último no atributo. Foi assim que a home ficou com os botões
+ * duplicados no celular. Pra variar por tamanho de tela, mude a COR com
+ * prefixo `lg:`, não o display.
+ */
 export function Botao({ href, children, variante = "cheio", className = "" }: BotaoProps) {
   return (
     <Link
