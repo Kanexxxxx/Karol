@@ -141,12 +141,9 @@ function Dia({ dia, base }: { dia: DiaDoMes; base: string }) {
     <Link
       href={`/agendar?${base}&dia=${dia.chave}`}
       aria-label={`Dia ${dia.numero}, ${dia.vagas} ${dia.vagas === 1 ? "horário livre" : "horários livres"}`}
-      className="flex aspect-square flex-col items-center justify-center gap-0.5 border border-linha/60 text-[16px] font-medium text-tinta transition-colors hover:bg-ouro hover:text-white focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ouro"
+      className="grid aspect-square place-items-center border border-linha/60 text-[17px] font-medium text-tinta transition-colors hover:bg-ouro hover:text-white focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ouro"
     >
       {dia.numero}
-      <span aria-hidden="true" className="text-[8.5px] font-bold uppercase tracking-[0.08em] text-ouro">
-        {dia.vagas}
-      </span>
     </Link>
   );
 }
@@ -156,7 +153,7 @@ function Legenda() {
     <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-linha px-3 py-3 text-[11px] text-tinta-3">
       <li className="flex items-center gap-1.5">
         <span aria-hidden="true" className="size-2.5 border border-ouro bg-papel" />
-        livre (o número é quantos horários)
+        livre
       </li>
       <li className="flex items-center gap-1.5">
         <span aria-hidden="true" className="size-2.5 border border-linha bg-creme/50" />

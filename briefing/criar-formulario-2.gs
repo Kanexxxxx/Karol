@@ -133,10 +133,51 @@ function criarFormulario2() {
     .setRequired(false);
 
   // ------------------------------------------------------------------
+  // 4. AS MENSAGENS NO WHATSAPP
+  // ------------------------------------------------------------------
+  form.addPageBreakItem()
+    .setTitle('4. As mensagens no WhatsApp')
+    .setHelpText(
+      'No primeiro briefing voce pediu quatro mensagens: confirmacao na hora ' +
+      'que a cliente marca, lembrete um dia antes, agradecimento depois do ' +
+      'atendimento, e um aviso pra VOCE quando entra agendamento novo.\n\n' +
+      'Os textos ja estao escritos. O que falta decidir e COMO eles saem.'
+    );
+
+  form.addMultipleChoiceItem()
+    .setTitle('Como voce quer que essas mensagens sejam enviadas?')
+    .setHelpText(
+      'AUTOMATICO: saem sozinhas, voce nao faz nada. Custa uns R$ 20 por mes ' +
+      'e o ideal e um chip so pro trabalho — numero pessoal com envio ' +
+      'automatico corre risco de ser bloqueado pelo WhatsApp.\n\n' +
+      'NA MAO: o site deixa a mensagem pronta e voce so aperta enviar. Nao ' +
+      'custa nada e nao tem risco nenhum, mas depende de voce apertar.\n\n' +
+      'POR ENQUANTO NAO: a cliente ve a confirmacao na tela do site e pronto. ' +
+      'Da pra ligar depois, quando o movimento justificar.'
+    )
+    .setChoiceValues([
+      'Automatico (uns R$ 20 por mes)',
+      'Na mao (de graca, eu aperto enviar)',
+      'Por enquanto nao quero mensagem automatica',
+      'Nao sei, me explica melhor'
+    ])
+    .setRequired(true);
+
+  form.addMultipleChoiceItem()
+    .setTitle('O WhatsApp (18) 99752-5291 e so do trabalho?')
+    .setHelpText('Se for o seu pessoal tambem, o envio automatico fica mais arriscado.')
+    .setChoiceValues([
+      'E so do trabalho',
+      'E o meu pessoal tambem',
+      'Tenho outro numero so pro trabalho'
+    ])
+    .setRequired(true);
+
+  // ------------------------------------------------------------------
   // 4. QUANDO DA ERRADO
   // ------------------------------------------------------------------
   form.addPageBreakItem()
-    .setTitle('4. Quando a cliente desmarca')
+    .setTitle('5. Quando a cliente desmarca')
     .setHelpText('Isso vai ficar escrito no site, entao precisa ser a sua regra de verdade.');
 
   form.addMultipleChoiceItem()
@@ -163,7 +204,7 @@ function criarFormulario2() {
   // 5. VOCE APROVANDO CADA HORARIO
   // ------------------------------------------------------------------
   form.addPageBreakItem()
-    .setTitle('5. Voce quer aprovar cada agendamento?')
+    .setTitle('6. Voce quer aprovar cada agendamento?')
     .setHelpText(
       'Voce pediu isso no primeiro briefing. Vale pensar junto com o sinal: ' +
       'se a cliente PAGA e depois voce recusa, alguem tem que devolver o ' +
@@ -194,7 +235,7 @@ function criarFormulario2() {
   // 6. ONDE VOCE ATENDE
   // ------------------------------------------------------------------
   form.addPageBreakItem()
-    .setTitle('6. Os enderecos')
+    .setTitle('7. Os enderecos')
     .setHelpText(
       'A cliente receberia o endereco no WhatsApp junto da confirmacao. ' +
       'Ele NAO fica publico no site: so vai pra quem ja marcou.'
@@ -214,7 +255,7 @@ function criarFormulario2() {
   // 7. SEUS HORARIOS
   // ------------------------------------------------------------------
   form.addPageBreakItem()
-    .setTitle('7. Conferindo seus horarios')
+    .setTitle('8. Conferindo seus horarios')
     .setHelpText('E isto que o site esta oferecendo hoje. Se estiver errado, a cliente marca na hora errada.');
 
   form.addCheckboxItem()
@@ -236,7 +277,7 @@ function criarFormulario2() {
   // 8. OS TEXTOS DOS SERVICOS
   // ------------------------------------------------------------------
   form.addPageBreakItem()
-    .setTitle('8. Os textos que estao no site')
+    .setTitle('9. Os textos que estao no site')
     .setHelpText(
       'Estas descricoes fui EU que escrevi, chutando. Sao afirmacoes sobre o ' +
       'seu trabalho, entao preciso do seu aval antes de ficarem no ar.'
@@ -266,21 +307,16 @@ function criarFormulario2() {
   // 9. AS FOTOS
   // ------------------------------------------------------------------
   form.addPageBreakItem()
-    .setTitle('9. As fotos das clientes')
+    .setTitle('10. As fotos das clientes')
     .setHelpText('O site usa fotos do seu Instagram. Sao rostos de pessoas reais, e algumas alunas aparecem com o certificado na mao, com o nome delas.');
 
-  form.addMultipleChoiceItem()
-    .setTitle('Pode usar as fotos das clientes e alunas no site?')
-    .setChoiceValues([
-      'Sim, todas podem',
-      'Quase todas, tem umas que prefiro tirar',
-      'Prefiro conferir uma por uma antes'
-    ])
-    .setRequired(true);
-
   form.addParagraphTextItem()
-    .setTitle('Tem alguma que voce quer tirar?')
-    .setHelpText('Pode descrever do seu jeito ("a da menina de blusa amarela").')
+    .setTitle('Tem alguma foto que voce quer tirar do site?')
+    .setHelpText(
+      'Voce ja me liberou todas, entao e so se tiver alguma especifica que ' +
+      'voce prefere que saia. Pode descrever do seu jeito ("a da menina de ' +
+      'blusa amarela"). Se estiver tudo bem, deixa em branco.'
+    )
     .setRequired(false);
 
   form.addMultipleChoiceItem()
@@ -292,31 +328,24 @@ function criarFormulario2() {
   // 10. A PARTE BUROCRATICA
   // ------------------------------------------------------------------
   form.addPageBreakItem()
-    .setTitle('10. A parte chata')
+    .setTitle('11. A parte chata')
     .setHelpText('Rapidinho. Isso decide o que da pra usar de sistema de pagamento.');
 
   form.addMultipleChoiceItem()
-    .setTitle('Voce tem CNPJ ou MEI?')
-    .setChoiceValues(['Nao tenho', 'Tenho MEI', 'Tenho CNPJ', 'Estou tirando'])
-    .setRequired(true);
-
-  form.addMultipleChoiceItem()
-    .setTitle('O WhatsApp (18) 99752-5291 e so do trabalho?')
-    .setHelpText(
-      'Importa porque as mensagens automaticas sairiam por ele, e numero ' +
-      'pessoal com envio automatico corre risco de bloqueio pelo WhatsApp.'
-    )
+    .setTitle('Continua sem CNPJ/MEI?')
+    .setHelpText('Voce me disse que nao tinha. So confirmando, porque isso decide o que da pra usar de pagamento.')
     .setChoiceValues([
-      'E so do trabalho',
-      'E o meu pessoal tambem',
-      'Tenho outro numero so pro trabalho'
+      'Continuo sem',
+      'Tirei MEI depois disso',
+      'Estou tirando agora',
+      'Tenho CNPJ'
     ])
     .setRequired(true);
 
   // ------------------------------------------------------------------
   // 11. SOLTO
   // ------------------------------------------------------------------
-  form.addPageBreakItem().setTitle('11. Por ultimo');
+  form.addPageBreakItem().setTitle('12. Por ultimo');
 
   form.addParagraphTextItem()
     .setTitle('Tem alguma coisa no site que voce nao gostou?')
