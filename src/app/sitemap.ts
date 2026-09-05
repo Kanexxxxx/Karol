@@ -1,12 +1,11 @@
 import type { MetadataRoute } from "next";
-
-const BASE = "https://karolcarvalho.vercel.app";
+import { SITE_URL } from "@/data/negocio";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const agora = new Date();
   return [
-    { url: BASE, lastModified: agora, changeFrequency: "monthly", priority: 1 },
-    { url: `${BASE}/agendar`, lastModified: agora, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${BASE}/privacidade`, lastModified: agora, changeFrequency: "yearly", priority: 0.2 },
+    { url: SITE_URL, lastModified: agora, changeFrequency: "monthly", priority: 1 },
+    { url: `${SITE_URL}/agendar`, lastModified: agora, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE_URL}/privacidade`, lastModified: agora, changeFrequency: "yearly", priority: 0.2 },
   ];
 }

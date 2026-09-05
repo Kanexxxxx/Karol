@@ -50,7 +50,7 @@ export function Cabecalho({ sobreHero = false }: { sobreHero?: boolean }) {
 
         <Link
           href="/agendar"
-          className={`inline-flex min-h-[42px] items-center px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.2em] transition-opacity hover:opacity-90 lg:min-h-[44px] lg:bg-ouro lg:px-6 lg:text-[11px] lg:text-white ${
+          className={`inline-flex min-h-[44px] items-center px-5 py-3 text-[10.5px] font-bold uppercase tracking-[0.2em] transition-opacity hover:opacity-90 lg:bg-ouro lg:px-6 lg:text-[11px] lg:text-white ${
             sobreHero
               ? "border border-white/60 bg-white/15 text-white backdrop-blur-sm lg:border-0 lg:backdrop-blur-none"
               : "bg-ouro text-white"

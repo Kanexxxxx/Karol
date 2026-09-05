@@ -19,9 +19,19 @@ export function MenuMobile({
 
   useEffect(() => {
     if (!aberto) return;
+
     const aoTeclar = (e: KeyboardEvent) => e.key === "Escape" && setAberto(false);
     document.addEventListener("keydown", aoTeclar);
-    return () => document.removeEventListener("keydown", aoTeclar);
+
+    // Sem isto, rolar com o menu aberto move a página atrás dele — no
+    // celular dá a impressão de que o toque "vazou" pro conteúdo.
+    const rolagem = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = rolagem;
+    };
   }, [aberto]);
 
   return (
@@ -31,7 +41,7 @@ export function MenuMobile({
         aria-label={aberto ? "Fechar menu" : "Abrir menu"}
         aria-expanded={aberto}
         onClick={() => setAberto((v) => !v)}
-        className={`-ml-2 grid size-10 place-items-center ${
+        className={`-ml-2 grid size-11 place-items-center ${
           claro ? "text-white [filter:drop-shadow(0_1px_8px_rgba(0,0,0,0.5))]" : "text-tinta"
         }`}
       >

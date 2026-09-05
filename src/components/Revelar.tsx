@@ -25,7 +25,7 @@ export function Revelar() {
       return;
     }
 
-    alvos.forEach((el) => el.setAttribute("data-surge", ""));
+    alvos.forEach((el) => el.setAttribute("data-revelando", ""));
 
     const olho = new IntersectionObserver(
       (entradas) => {

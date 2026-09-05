@@ -1,4 +1,4 @@
-import { Cabecalho } from "@/components/Cabecalho";
+import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
 import { Env } from "@/components/ui";
 
 /** Esqueleto enquanto a disponibilidade é consultada no banco. */
@@ -17,6 +17,7 @@ export default function Carregando() {
           </div>
         </Env>
       </main>
+      <BarraMobile />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
-import { NEGOCIO } from "@/data/negocio";
+import { NEGOCIO, SITE_URL } from "@/data/negocio";
 import { Revelar } from "@/components/Revelar";
 
 const cormorant = Cormorant_Garamond({
@@ -19,7 +19,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://karolcarvalho.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: `${NEGOCIO.nome} — Sobrancelhas e Maquiagem em Pereira Barreto`,
     template: `%s · ${NEGOCIO.nome}`,

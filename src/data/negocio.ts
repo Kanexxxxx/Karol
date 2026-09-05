@@ -36,6 +36,16 @@ export const NEGOCIO = {
   temCnpj: false,
 } as const;
 
+/**
+ * Endereço público do site — sitemap, robots e prévia de link.
+ *
+ * Estava chumbado em três arquivos. Quando o domínio definitivo existir,
+ * basta definir NEXT_PUBLIC_SITE_URL na Vercel; até lá vale o provisório.
+ */
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://karolcarvalho.vercel.app"
+).replace(/\/$/, "");
+
 export type CidadeId = "pereira-barreto" | "bandeirantes";
 
 /**

@@ -43,14 +43,14 @@ body {
 
 /* revelação ao rolar. começa escondido só quando o JS assume o controle,
    pra página nunca ficar em branco se o script falhar. */
-[data-surge] {
+[data-revelando] {
   opacity: 0;
   transform: translateY(16px);
   transition:
     opacity 0.62s var(--ease-marca),
     transform 0.62s var(--ease-marca);
 }
-[data-surge].dentro {
+[data-revelando].dentro {
   opacity: 1;
   transform: none;
 }
@@ -67,7 +67,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  [data-surge] {
+  [data-revelando] {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;

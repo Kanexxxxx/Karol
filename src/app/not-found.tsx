@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Cabecalho } from "@/components/Cabecalho";
+import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env } from "@/components/ui";
 
@@ -7,7 +7,7 @@ export default function NaoEncontrado() {
   return (
     <>
       <Cabecalho />
-      <main className="flex flex-1 items-center bg-osso py-24">
+      <main className="flex flex-1 items-center bg-osso py-24 pb-40 lg:pb-24">
         <Env className="text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.34em] text-ouro">Erro 404</p>
           <h1 className="mx-auto mt-3 mb-4 max-w-[16ch] font-titulo text-[clamp(34px,7vw,56px)] leading-[1.05] font-light">
@@ -25,6 +25,7 @@ export default function NaoEncontrado() {
         </Env>
       </main>
       <Rodape />
+      <BarraMobile />
     </>
   );
 }
