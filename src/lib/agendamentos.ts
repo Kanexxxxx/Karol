@@ -14,7 +14,7 @@ import {
 import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
 import { buscarServico, type Servico } from "@/data/servicos";
-import { CIDADES } from "@/data/negocio";
+import { CIDADES, type CidadeId } from "@/data/negocio";
 
 export type Agendamento = {
   id: string;
@@ -93,25 +93,29 @@ async function ocupadosNoPeriodo(
   return porDia;
 }
 
-/** Dias com vaga para um serviço, já consultando o que está ocupado. */
+/**
+ * Dias com vaga para um serviço, já consultando o que está ocupado.
+ *
+ * Devolve a CIDADE junto: ela muda com o dia da semana (Pereira Barreto de
+ * segunda a sexta, Bandeirantes no sábado) e sem isso a cliente escolhia o
+ * dia sem saber pra onde ia — descobria só no passo seguinte.
+ */
 export async function diasComVaga(servico: Servico, quantidade = 21) {
   const de = primeiroDiaDisponivel();
   const ate = new Date(de);
   ate.setDate(ate.getDate() + 60);
 
   const ocupados = await ocupadosNoPeriodo(de, ate);
-  const dias: { chave: string; data: Date; vagas: number }[] = [];
+  const dias: { chave: string; data: Date; vagas: number; cidade: CidadeId }[] = [];
 
   for (let i = 0; i < 60 && dias.length < quantidade; i++) {
     const data = new Date(de);
     data.setDate(de.getDate() + i);
     const chave = paraChave(data);
-    const vagas = horariosLivres({
-      data,
-      servico,
-      ocupados: ocupados[chave] ?? [],
-    }).length;
-    if (vagas > 0) dias.push({ chave, data, vagas });
+    const livres = horariosLivres({ data, servico, ocupados: ocupados[chave] ?? [] });
+    if (livres.length > 0) {
+      dias.push({ chave, data, vagas: livres.length, cidade: livres[0].cidade });
+    }
   }
 
   return dias;

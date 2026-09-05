@@ -129,8 +129,11 @@ async function EscolherDia({ servico }: { servico: NonNullable<ReturnType<typeof
       <h1 className="mt-2.5 font-titulo text-[clamp(30px,6vw,48px)] leading-[1.05] font-light">
         Que dia fica bom?
       </h1>
-      <p className="mt-3 mb-8 text-tinta-2">
+      <p className="mt-3 text-tinta-2">
         {servico.nome} · {formatarDuracao(servico)} · {formatarPreco(servico.preco)}
+      </p>
+      <p className="mt-1.5 mb-8 text-[14px] text-tinta-3">
+        A cidade muda conforme o dia — confira antes de escolher.
       </p>
 
       {dias.length === 0 ? (
@@ -144,13 +147,24 @@ async function EscolherDia({ servico }: { servico: NonNullable<ReturnType<typeof
             <li key={d.chave}>
               <Link
                 href={`/agendar?servico=${servico.id}&dia=${d.chave}`}
-                className="block border border-linha bg-papel px-4 py-4 transition-colors hover:border-ouro-claro focus-visible:outline-2 focus-visible:outline-ouro"
+                className="flex h-full flex-col border border-linha bg-papel px-4 py-4 transition-colors hover:border-ouro-claro focus-visible:outline-2 focus-visible:outline-ouro"
               >
-                <span className="block font-titulo text-[19px] capitalize">
+                <span className="block font-titulo text-[20px] capitalize">
                   {DIA_CURTO.format(d.data).replace(".", "")}
                 </span>
-                <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-ouro">
-                  {d.vagas} {d.vagas === 1 ? "horário" : "horários"}
+                {/*
+                  A cidade muda com o dia da semana. Sem ela aqui, a cliente
+                  escolhia o dia sem saber pra onde ia — e só descobria no
+                  passo seguinte, depois de já ter decidido.
+                */}
+                <span className="mt-1.5 flex items-center gap-1.5 text-[12px] text-tinta-2">
+                  <span aria-hidden="true" className="text-ouro-claro">
+                    ⌖
+                  </span>
+                  {CIDADES[d.cidade].nome}
+                </span>
+                <span className="mt-2.5 block text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ouro">
+                  {d.vagas} {d.vagas === 1 ? "horário livre" : "horários livres"}
                 </span>
               </Link>
             </li>
