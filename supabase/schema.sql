@@ -75,25 +75,14 @@ alter table bloqueios enable row level security;
 -- (nome e WhatsApp) nunca saem do servidor. A disponibilidade é calculada
 -- no servidor e só os horários livres chegam ao navegador.
 --
--- Por isso não existe policy de select para anon. Todo acesso passa pela
--- chave de serviço, usada apenas em Server Actions e Route Handlers.
-
-create policy "karol le tudo"
-  on agendamentos for select
-  to authenticated
-  using (true);
-
-create policy "karol escreve tudo"
-  on agendamentos for all
-  to authenticated
-  using (true)
-  with check (true);
-
-create policy "karol gerencia bloqueios"
-  on bloqueios for all
-  to authenticated
-  using (true)
-  with check (true);
+-- Por isso não existe policy nenhuma aqui. Todo acesso passa pela chave de
+-- serviço, usada apenas em Server Actions e Route Handlers — e ela passa
+-- por cima do RLS por definição.
+--
+-- RLS ligado + zero policies = ninguém mais entra. É o que queremos: o
+-- projeto não usa Supabase Auth, então uma policy `to authenticated` não
+-- serviria a ninguém hoje e abriria a agenda inteira (nome e WhatsApp de
+-- cliente) pra qualquer conta que viesse a existir no projeto amanhã.
 
 -- ---------------------------------------------------------------------
 -- atualizado_em automático
@@ -102,6 +91,8 @@ create policy "karol gerencia bloqueios"
 create or replace function toca_atualizado_em()
 returns trigger
 language plpgsql
+security invoker
+set search_path = ''
 as $$
 begin
   new.atualizado_em = now();
