@@ -385,6 +385,15 @@ configurável (`NOTIFICADOR_WEBHOOK_URL`). Quem estiver do outro lado (n8n, Make
 Zapier, função própria) manda a mensagem de verdade. Sem o webhook, as
 mensagens são montadas e não saem. Formato do corpo em `src/lib/notificacoes.ts`.
 
+### 6.5 Agendamento com sinal — planejado, não construído
+
+O fluxo pedido (paga → agenda → Karol aprova → confirma, com endereço) está
+analisado em [`PLANO-PAGAMENTO.md`](./PLANO-PAGAMENTO.md): o que muda nos
+estados, por que a trava anti-conflito precisa expirar, qual provedor dá pra
+usar sem CNPJ e o que depende de decisão dela.
+
+**Nada disso existe no código.** `REGRAS.sinal.ativo` segue `false`.
+
 ---
 
 ## 7. Histórico das etapas
