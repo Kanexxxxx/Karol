@@ -25,9 +25,16 @@ export function Abertura() {
             sizes="(min-width: 1024px) 48vw, 100vw"
             className="aspect-3/4 w-full object-cover object-[center_12%] motion-safe:animate-[respiro_26s_var(--ease-marca)_infinite_alternate] lg:aspect-auto lg:h-full lg:object-[center_14%]"
           />
-          {/* véus só no celular, onde o texto fica sobre a foto */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[24%] bg-linear-to-b from-black/50 to-transparent lg:hidden" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[64%] bg-linear-to-t from-black/85 via-black/20 to-transparent lg:hidden" />
+          {/*
+            Véus só no celular, onde o texto fica sobre a foto.
+
+            O de baixo sobe até 74% e mantém força no meio (via-black/45)
+            porque é ali que o título cai. Com o via fraco de antes, o
+            título disputava com a foto — some numa capa de fundo claro e
+            fica no limite mesmo numa de fundo escuro.
+          */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[24%] bg-linear-to-b from-black/55 to-transparent lg:hidden" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[74%] bg-linear-to-t from-black/88 via-black/45 to-transparent lg:hidden" />
         </div>
 
         <div className="absolute inset-x-0 bottom-0 z-20 pb-[34px] text-white lg:static lg:flex lg:flex-col lg:justify-center lg:py-15 lg:text-tinta">

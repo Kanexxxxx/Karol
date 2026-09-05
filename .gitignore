@@ -44,3 +44,4 @@ next-env.d.ts
 # cache do Python (scripts de ferramentas/)
 __pycache__/
 *.pyc
+capas/

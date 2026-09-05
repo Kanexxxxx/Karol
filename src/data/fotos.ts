@@ -26,13 +26,32 @@ export type Foto = {
 const P = "/fotos";
 const RETRATO = { largura: 780, altura: 1040 };
 
-export const FOTOS = {
-  capa: {
+/**
+ * Qual foto abre o site.
+ *
+ * São duas versões esperando a escolha da Karol — é a pergunta 1 do
+ * `briefing/criar-formulario-2.gs`. Trocar aqui muda a abertura inteira,
+ * no celular e no computador; nada mais depende disto.
+ */
+const CAPA: "branca" | "laranja" = "branca";
+
+const CAPAS = {
+  branca: {
     arquivo: `${P}/karol-capa.jpg`,
     alt: "Karol Carvalho, maquiadora e designer de sobrancelhas",
     largura: 1200,
     altura: 1464,
   },
+  laranja: {
+    arquivo: `${P}/karol-capa-laranja.jpg`,
+    alt: "Karol Carvalho, maquiadora e designer de sobrancelhas",
+    largura: 1200,
+    altura: 1500,
+  },
+} as const;
+
+export const FOTOS = {
+  capa: CAPAS[CAPA],
   retrato: {
     arquivo: `${P}/karol-retrato.jpg`,
     alt: "Sobrancelha desenhada pela Karol",
