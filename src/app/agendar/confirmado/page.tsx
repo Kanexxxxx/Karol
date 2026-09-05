@@ -7,16 +7,10 @@ import { ANTES_DE_VIR, NEGOCIO } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
 import { buscarAgendamento } from "@/lib/agendamentos";
 import { linkWhatsapp } from "@/lib/whatsapp";
+import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
 
 export const metadata: Metadata = { title: "Horário confirmado", robots: { index: false } };
 export const dynamic = "force-dynamic";
-
-const FORMATA_DIA = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "long",
-  day: "2-digit",
-  month: "long",
-});
-const FORMATA_HORA = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 export default async function Confirmado({
   searchParams,
@@ -50,8 +44,8 @@ function Sucesso({
   agendamento: NonNullable<Awaited<ReturnType<typeof buscarAgendamento>>>;
 }) {
   const pendente = agendamento.situacao === "pendente";
-  const dia = FORMATA_DIA.format(agendamento.inicio);
-  const hora = FORMATA_HORA.format(agendamento.inicio);
+  const dia = DIA_POR_EXTENSO.format(agendamento.inicio);
+  const hora = HORA.format(agendamento.inicio);
 
   const recado = linkWhatsapp(
     `Oi Karol! Acabei de agendar pelo site: ${agendamento.servicoNome}, ${dia}, ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}.`,

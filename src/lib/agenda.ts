@@ -193,3 +193,33 @@ export function fatiarPorDia(
 
   return fatias;
 }
+
+const NOMES_DIA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+const maiuscula = (t: string) => t.replace(/^./, (c) => c.toUpperCase());
+
+/**
+ * "Segunda a sexta", "Sábado" — os dias em que ela atende numa cidade.
+ *
+ * A home e a seção de local mostravam a mesma frase, cada uma com a sua
+ * cópia da lógica e a sua lista de nomes de dia. Agora sai daqui, junto do
+ * EXPEDIENTE que é a fonte da verdade.
+ */
+export function faixaDeDias(cidade: CidadeId): string {
+  const dias = EXPEDIENTE.filter((e) => e.cidade === cidade)
+    .map((e) => e.dia)
+    .sort((a, b) => a - b);
+
+  if (dias.length === 0) return "";
+  if (dias.length === 1) return maiuscula(NOMES_DIA[dias[0]]);
+  return `${maiuscula(NOMES_DIA[dias[0]])} a ${NOMES_DIA[dias[dias.length - 1]]}`;
+}
+
+/** "das 07h às 11h" — a janela de atendimento daquela cidade. */
+export function janelaDaCidade(cidade: CidadeId): string {
+  const janela = EXPEDIENTE.find((e) => e.cidade === cidade);
+  if (!janela) return "";
+  const hh = (m: number) =>
+    `${String(Math.floor(m / 60)).padStart(2, "0")}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}`;
+  return `das ${hh(janela.inicio)} às ${hh(janela.fim)}`;
+}

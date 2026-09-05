@@ -1,9 +1,18 @@
 "use client";
 
 import { useActionState } from "react";
+import type { SituacaoAgendamento } from "@/lib/agendamentos";
 import { alterarSituacao, type EstadoPainel } from "./acoes";
 
-export type Situacao = "pendente" | "confirmado" | "cancelado" | "concluido" | "faltou";
+/**
+ * O tipo vem de `agendamentos.ts`, que é quem fala com o banco. Aqui havia
+ * uma segunda lista escrita à mão: bastava alguém acrescentar uma situação
+ * de um lado pra as duas divergirem em silêncio.
+ *
+ * Import só de tipo — apagado na compilação, então o `server-only` do
+ * módulo de origem não vem junto pro cliente.
+ */
+export type Situacao = SituacaoAgendamento;
 
 const INICIAL: EstadoPainel = {};
 

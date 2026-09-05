@@ -1,7 +1,7 @@
 import Image from "next/image";
-import { NEGOCIO } from "@/data/negocio";
+import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
 import { FOTOS } from "@/data/fotos";
-import { EXPEDIENTE, CIDADES } from "@/data/negocio";
+import { faixaDeDias } from "@/lib/agenda";
 import { Botao, Env } from "../ui";
 
 /**
@@ -66,19 +66,9 @@ export function Abertura() {
 
 /** Faixa dourada logo abaixo: cidade, dia e regra de atendimento. */
 export function Faixa() {
-  const porCidade = Object.entries(CIDADES).map(([id, cidade]) => {
-    const dias = EXPEDIENTE.filter((e) => e.cidade === id).map((e) => e.dia);
-    return { nome: cidade.nome, dias };
-  });
-
-  const rotuloDias = (dias: number[]) => {
-    if (dias.length === 0) return "";
-    if (dias.length === 1) {
-      return ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][dias[0]];
-    }
-    const nomes = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
-    return `${nomes[dias[0]].replace(/^./, (c) => c.toUpperCase())} a ${nomes[dias[dias.length - 1]]}`;
-  };
+  const porCidade = (Object.entries(CIDADES) as [CidadeId, (typeof CIDADES)[CidadeId]][]).map(
+    ([id, cidade]) => ({ nome: cidade.nome, dias: faixaDeDias(id) }),
+  );
 
   return (
     <div className="bg-ouro text-white">
@@ -91,7 +81,7 @@ export function Faixa() {
             }`}
           >
             <b className="text-[10.5px] font-bold uppercase tracking-[0.2em]">{c.nome}</b>
-            <span className="text-[12.5px] text-[#F6E9CE]">{rotuloDias(c.dias)}</span>
+            <span className="text-[12.5px] text-[#F6E9CE]">{c.dias}</span>
           </div>
         ))}
         <div className="flex items-baseline justify-center gap-2.5 border-t border-white/20 px-5 py-4 text-center md:flex-col md:items-center md:gap-1.5 md:border-t-0 md:border-l md:px-4 md:py-5">

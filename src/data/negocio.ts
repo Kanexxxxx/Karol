@@ -2,8 +2,7 @@
  * Dados do negócio da Karol.
  *
  * Fonte: respostas dela no briefing (29/08/2026) + confirmações por WhatsApp.
- * Os itens marcados com A_CONFIRMAR ainda não foram validados COM ELA —
- * não subir pro ar antes de fechar.
+ * O que ainda não foi validado com ela está marcado A_CONFIRMAR.
  */
 
 export const NEGOCIO = {
@@ -52,7 +51,8 @@ export const CIDADES: Record<
   },
   bandeirantes: {
     nome: "Bandeirantes D'Oeste",
-    // A_CONFIRMAR: onde ela atende em Bandeirantes?
+    // Ela ainda não passou o local; combinado é publicar só a cidade e
+    // acrescentar depois. `local: null` some do site sem deixar buraco.
     local: null,
   },
 };
@@ -78,7 +78,7 @@ const h = (hora: number, min = 0) => hora * 60 + min;
  * simples (50 min cada) por dia de semana. O sábado em Bandeirantes é que
  * carrega o volume.
  *
- * DOMINGO ficou de fora de propósito — ver comentário em DOMINGO_PENDENTE.
+ * DOMINGO ela não atende — confirmado por ela.
  */
 export const EXPEDIENTE: Expediente[] = [
   { dia: 1, cidade: "pereira-barreto", inicio: h(7), fim: h(11) },
@@ -88,22 +88,6 @@ export const EXPEDIENTE: Expediente[] = [
   { dia: 5, cidade: "pereira-barreto", inicio: h(7), fim: h(11) },
   { dia: 6, cidade: "bandeirantes", inicio: h(11), fim: h(22) },
 ];
-
-/**
- * A_CONFIRMAR — domingo.
- *
- * No formulário ela marcou "Pereira Barreto" no domingo mas não informou
- * horário, e marcou alguma cidade em todos os 7 dias sem nunca usar
- * "não atendo" (típico de quem preenche a grade inteira por hábito).
- *
- * Fica FORA da agenda até ela confirmar em palavras. Se entrar por suposição
- * e ela não atender no domingo, o site marca cliente num dia que ela não
- * trabalha — que é justamente o problema que esse projeto existe pra resolver.
- */
-export const DOMINGO_PENDENTE = {
-  suposicao: { cidade: "pereira-barreto" as CidadeId, inicio: h(8), fim: h(18) },
-  confirmado: false,
-};
 
 export const REGRAS = {
   /** Intervalo entre uma cliente e outra, em minutos. */

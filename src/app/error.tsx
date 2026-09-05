@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { NEGOCIO } from "@/data/negocio";
+import { linkWhatsapp } from "@/lib/whatsapp";
 
 /**
  * Fronteira de erro global. Client Component por exigência do Next.
@@ -38,7 +38,7 @@ export default function Erro({
             Tentar de novo
           </button>
           <a
-            href={`https://wa.me/${NEGOCIO.whatsapp.numero}`}
+            href={linkWhatsapp()}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-[48px] items-center justify-center border border-ouro-claro px-7 py-3.5 text-[11.5px] font-bold uppercase tracking-[0.2em] text-ouro transition-colors hover:bg-ouro-fundo"

@@ -6,18 +6,12 @@ import { bancoConfigurado } from "@/lib/banco";
 import { agendaDaKarol, type Agendamento } from "@/lib/agendamentos";
 import { formatarPreco } from "@/data/servicos";
 import { paraChave } from "@/lib/agenda";
+import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
 import { AcoesAgendamento } from "./AcoesAgendamento";
 import { sair } from "./acoes";
 
 export const metadata: Metadata = { title: "Painel", robots: { index: false } };
 export const dynamic = "force-dynamic";
-
-const FORMATA_DIA = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "long",
-  day: "2-digit",
-  month: "long",
-});
-const FORMATA_HORA = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 const SITUACAO_ROTULO: Record<Agendamento["situacao"], { texto: string; classe: string }> = {
   pendente: { texto: "Aguardando", classe: "bg-[#f3e7cd] text-[#8a6a1f]" },
@@ -82,7 +76,7 @@ export default async function Painel() {
             {porDia.map(({ chave, data, itens }) => (
               <section key={chave}>
                 <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-ouro first-letter:uppercase">
-                  {FORMATA_DIA.format(data)}
+                  {DIA_POR_EXTENSO.format(data)}
                 </h2>
                 <ul className="flex flex-col gap-2.5">
                   {itens.map((ag) => (
@@ -91,7 +85,7 @@ export default async function Painel() {
                         <div className="min-w-0">
                           <p className="font-titulo text-[20px] leading-tight">
                             <span className="tabular-nums text-ouro">
-                              {FORMATA_HORA.format(ag.inicio)}
+                              {HORA.format(ag.inicio)}
                             </span>{" "}
                             {ag.servicoNome}
                           </p>

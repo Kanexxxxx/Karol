@@ -1,22 +1,6 @@
-import { CIDADES, EXPEDIENTE, type CidadeId } from "@/data/negocio";
+import { CIDADES, type CidadeId } from "@/data/negocio";
+import { faixaDeDias, janelaDaCidade } from "@/lib/agenda";
 import { Botao, Cabeca, Env, Revela } from "../ui";
-
-const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
-
-function faixaDeDias(cidade: CidadeId) {
-  const dias = EXPEDIENTE.filter((e) => e.cidade === cidade).map((e) => e.dia);
-  if (dias.length === 0) return "";
-  const nome = (i: number) => DIAS[i].replace(/^./, (c) => c.toUpperCase());
-  if (dias.length === 1) return nome(dias[0]);
-  return `${nome(dias[0])} a ${DIAS[dias[dias.length - 1]]}`;
-}
-
-function horarioDe(cidade: CidadeId) {
-  const janela = EXPEDIENTE.find((e) => e.cidade === cidade);
-  if (!janela) return "";
-  const hh = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}`;
-  return `das ${hh(janela.inicio)} às ${hh(janela.fim)}`;
-}
 
 export function Local() {
   const cidades = Object.entries(CIDADES) as [CidadeId, (typeof CIDADES)[CidadeId]][];
@@ -38,7 +22,7 @@ export function Local() {
               <div key={id} className="bg-osso px-7 py-9 text-center">
                 <h3 className="mb-2 font-titulo text-[32px] font-light">{cidade.nome}</h3>
                 <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">
-                  {faixaDeDias(id)} · {horarioDe(id)}
+                  {faixaDeDias(id)} · {janelaDaCidade(id)}
                 </p>
                 {cidade.local && <p className="mt-3.5 text-[14.5px] text-tinta-2">{cidade.local}</p>}
               </div>

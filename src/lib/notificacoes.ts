@@ -2,6 +2,7 @@ import "server-only";
 
 import { NEGOCIO, NOTIFICACOES } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
+import { DIA_HORA_POR_EXTENSO } from "./datas";
 
 /**
  * Notificações.
@@ -36,16 +37,8 @@ export type DadosAgendamento = {
 
 export type Evento = "novo-agendamento" | "confirmacao" | "lembrete" | "agradecimento";
 
-const QUANDO = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "long",
-  day: "2-digit",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 function quando(iso: string): string {
-  return QUANDO.format(new Date(iso));
+  return DIA_HORA_POR_EXTENSO.format(new Date(iso));
 }
 
 /** Número da Karol pras notificações: env tem prioridade sobre o do site. */

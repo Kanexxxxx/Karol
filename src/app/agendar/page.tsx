@@ -5,11 +5,12 @@ import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env, Rotulo } from "@/components/ui";
 import { FOTO_DO_SERVICO } from "@/data/fotos";
-import { ANTES_DE_VIR } from "@/data/negocio";
+import { ANTES_DE_VIR, CIDADES } from "@/data/negocio";
 import { SERVICOS, buscarServico, formatarDuracao, formatarPreco } from "@/data/servicos";
 import { bancoConfigurado } from "@/lib/banco";
 import { diasComVaga, horariosDoDia } from "@/lib/agendamentos";
 import { deChave } from "@/lib/agenda";
+import { DIA_CURTO, DIA_POR_EXTENSO } from "@/lib/datas";
 import { FormularioDados } from "./FormularioDados";
 import { Passos } from "./Passos";
 
@@ -17,18 +18,6 @@ export const metadata: Metadata = { title: "Agendar" };
 
 /** Sem cache: a disponibilidade muda a cada agendamento. */
 export const dynamic = "force-dynamic";
-
-const FORMATA_DIA = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "long",
-  day: "2-digit",
-  month: "long",
-});
-
-const FORMATA_CURTO = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "short",
-  day: "2-digit",
-  month: "2-digit",
-});
 
 export default async function Agendar({
   searchParams,
@@ -158,7 +147,7 @@ async function EscolherDia({ servico }: { servico: NonNullable<ReturnType<typeof
                 className="block border border-linha bg-papel px-4 py-4 transition-colors hover:border-ouro-claro focus-visible:outline-2 focus-visible:outline-ouro"
               >
                 <span className="block font-titulo text-[19px] capitalize">
-                  {FORMATA_CURTO.format(d.data).replace(".", "")}
+                  {DIA_CURTO.format(d.data).replace(".", "")}
                 </span>
                 <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-ouro">
                   {d.vagas} {d.vagas === 1 ? "horário" : "horários"}
@@ -189,8 +178,8 @@ async function EscolherHora({
         Que horas?
       </h1>
       <p className="mt-3 mb-8 text-tinta-2 first-letter:uppercase">
-        {FORMATA_DIA.format(data)}
-        {horarios[0] && ` · ${horarios[0].cidade === "pereira-barreto" ? "Pereira Barreto" : "Bandeirantes D'Oeste"}`}
+        {DIA_POR_EXTENSO.format(data)}
+        {horarios[0] && ` · ${CIDADES[horarios[0].cidade].nome}`}
       </p>
 
       {horarios.length === 0 ? (
@@ -276,11 +265,11 @@ async function Confirmar({
           </h2>
           <dl className="flex flex-col gap-3 text-[15px]">
             <Linha rotulo="Serviço" valor={servico.nome} />
-            <Linha rotulo="Dia" valor={FORMATA_DIA.format(data)} capitalizar />
+            <Linha rotulo="Dia" valor={DIA_POR_EXTENSO.format(data)} capitalizar />
             <Linha rotulo="Hora" valor={escolhido.rotulo} />
             <Linha
               rotulo="Onde"
-              valor={escolhido.cidade === "pereira-barreto" ? "Pereira Barreto" : "Bandeirantes D'Oeste"}
+              valor={CIDADES[escolhido.cidade].nome}
             />
             <Linha rotulo="Duração" valor={formatarDuracao(servico)} />
             <Linha rotulo="Valor" valor={formatarPreco(servico.preco)} destaque />

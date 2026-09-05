@@ -10,11 +10,3 @@ export function linkWhatsapp(mensagem?: string): string {
   const base = `https://wa.me/${NEGOCIO.whatsapp.numero}`;
   return mensagem ? `${base}?text=${encodeURIComponent(mensagem)}` : base;
 }
-
-export function linkAgendar(servico?: string): string {
-  return linkWhatsapp(
-    servico
-      ? `Oi Karol! Vim pelo site e queria agendar: ${servico}.`
-      : "Oi Karol! Vim pelo site e queria agendar um horário.",
-  );
-}

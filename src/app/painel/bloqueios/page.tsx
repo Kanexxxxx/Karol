@@ -4,19 +4,12 @@ import { redirect } from "next/navigation";
 import { sessaoAtiva } from "@/lib/sessao";
 import { bancoConfigurado } from "@/lib/banco";
 import { listarBloqueios, type Bloqueio } from "@/lib/bloqueios";
+import { DIA_COM_ANO, DIA_E_HORA } from "@/lib/datas";
 import { Formulario } from "./Formulario";
 import { apagarBloqueio } from "./acoes";
 
 export const metadata: Metadata = { title: "Bloqueios", robots: { index: false } };
 export const dynamic = "force-dynamic";
-
-const DIA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-const DIA_HORA = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 export default async function Bloqueios() {
   if (!(await sessaoAtiva())) redirect("/painel/login");
@@ -90,10 +83,10 @@ function descrever(b: Bloqueio): string {
     ultimoDia.setDate(ultimoDia.getDate() - 1);
     const mesmoDia = b.inicio.toDateString() === ultimoDia.toDateString();
     return mesmoDia
-      ? `Dia ${DIA.format(b.inicio)}`
-      : `De ${DIA.format(b.inicio)} a ${DIA.format(ultimoDia)}`;
+      ? `Dia ${DIA_COM_ANO.format(b.inicio)}`
+      : `De ${DIA_COM_ANO.format(b.inicio)} a ${DIA_COM_ANO.format(ultimoDia)}`;
   }
-  return `${DIA_HORA.format(b.inicio)} até ${DIA_HORA.format(b.fim)}`;
+  return `${DIA_E_HORA.format(b.inicio)} até ${DIA_E_HORA.format(b.fim)}`;
 }
 
 function Aviso({ children }: { children: React.ReactNode }) {
