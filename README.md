@@ -48,6 +48,7 @@ Todas em [`.env.example`](./.env.example). Em resumo:
 | `NOTIFICADOR_WEBHOOK_URL` | Webhook que dispara os WhatsApp de verdade | não (sem ele, mensagens não saem) |
 | `CRON_SECRET` | Protege `/api/lembretes` (a Vercel injeta o header) | só o cron |
 | `TZ` | **`America/Sao_Paulo`** em produção | sim, na Vercel |
+| `NEXT_PUBLIC_SITE_URL` | Domínio público (sitemap, robots, prévia de link) | não (usa o da Vercel) |
 
 ### Banco de dados
 
@@ -85,6 +86,7 @@ src/
   data/                   negocio.ts, servicos.ts, fotos.ts (fonte da verdade do conteúdo)
   lib/
     agenda.ts              motor de horários — função pura, sem Date por dentro
+    datas.ts               formatadores de data/hora (pt-BR), num lugar só
     agendamentos.ts        leitura/escrita da agenda (server-only)
     bloqueios.ts           CRUD de bloqueios
     sessao.ts              sessão do painel (cookie assinado, sem lib)
@@ -92,8 +94,7 @@ src/
     banco.ts               cliente Supabase (server-only)
   proxy.ts               protege /painel/*
 supabase/schema.sql      esquema do banco
-ferramentas/             scripts Python de processamento das fotos (uso único)
-briefing/                scripts do Google Forms usados no briefing (uso único)
+ferramentas/             scripts Python de processamento das fotos
 ```
 
 O conteúdo do site (preços, textos, horários, fotos) vem de `src/data/`. Regras

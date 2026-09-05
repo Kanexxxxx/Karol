@@ -10,7 +10,7 @@
 > Setup técnico e comandos: [`README.md`](./README.md).
 > Armadilhas do Next 16: [`AGENTS.md`](./AGENTS.md).
 
-Última atualização: **2026-09-04**
+Última atualização: **2026-09-05**
 
 ---
 
@@ -378,14 +378,15 @@ um commit.
 | — | Scaffold, home completa, acervo de fotos | ✅ |
 | 1 | Destravar build + agendamento grava no banco | ✅ |
 | 2 | Painel da Karol + login por senha | ✅ |
-| 3 | Tela de bloqueios (férias/feriado) | ✅ |
+| 3 | Tela de bloqueios (férias/feriado) | ⚠️ só funcionou na 11 |
 | 4 | Notificações + lembrete agendado | ✅ (envio depende de webhook) |
 | 5 | Polish: README, testes, sitemap/robots, ícone | ✅ |
 | 6 | Robustez: 404, erro, loading, menu no celular | ✅ |
 | 7 | LGPD: política de privacidade + consentimento | ✅ |
 | 8 | Anti-spam (honeypot, carimbo, freio por IP) | ✅ |
-| 9 | Suíte de testes — 64 casos, 8 arquivos | ✅ |
+| 9 | Suíte de testes — 64 casos, 8 arquivos (hoje 75) | ✅ |
 | 10 | Anonimização dos certificados + originais fora do Git | ✅ |
+| 11 | Bloqueios corrigidos, duplicações, mobile, freio por IP | ✅ |
 
 ### Detalhes que valem saber
 
@@ -410,6 +411,44 @@ contra script ingênuo, não proteção séria.
 Supabase; `test/stubs/server-only.ts` substitui o pacote real, que lança fora do
 runtime do Next. `vitest.config.ts` fixa `TZ=America/Sao_Paulo`.
 
+### Etapa 11 — o que foi corrigido
+
+**O bloqueio de dia inteiro não bloqueava nada.** `ocupadosNoPeriodo` achatava
+o período com `getHours()` nas duas pontas. Um dia fechado é gravado como
+`[dia 00:00, dia seguinte 00:00)` — as duas pontas caem à meia-noite e viravam
+`{inicio: 0, fim: 0}`, um intervalo vazio, que não colide com nada. Feriado e
+férias iam pro banco e a agenda os ignorava. Junto disso, a chave do dia saía só
+do início do período: férias de uma semana marcavam apenas o primeiro dia.
+`fatiarPorDia()` recorta o período em fatias de um dia e trata a meia-noite que
+*fecha* o dia como 1440.
+
+Os testes não pegaram porque `bloqueios.test.ts` cobria só a escrita e
+`agenda.test.ts` só o cálculo — **ninguém testava a costura**, que era onde
+estava o furo. É o padrão a vigiar aqui: as unidades estavam certas, a junção não.
+
+**Freio por IP** — ver 8.4.
+
+**Duplicações:** `Intl.DateTimeFormat` aparecia 9x em 5 arquivos (`FORMATA_DIA`
+e `FORMATA_HORA` idênticos em três) → `lib/datas.ts`. A frase "Segunda a sexta"
+era calculada duas vezes com duas listas de nomes de dia → `faixaDeDias`/
+`janelaDaCidade` no motor. `AcoesAgendamento` redeclarava o tipo de situação à
+mão. `Abertura.tsx` importava `@/data/negocio` em duas linhas. Nomes de cidade
+chumbados em `agendar/page.tsx`. `error.tsx` montava o `wa.me` à mão.
+`linkAgendar()` nunca foi chamado.
+
+**Mobile** — o site é feito pra celular e tinha buracos justamente lá:
+`/painel/notificacoes` era **inalcançável no telefone** (o único link pra ela
+era `hidden sm:inline`, e é do celular que a Karol usa o painel); o esqueleto de
+`/agendar` reservava espaço pra barra fixa sem desenhá-la, então ela pulava pra
+tela; o 404 era a única página sem a barra; o botão do menu tinha 40px e o de
+agendar 42px; e rolar com o menu aberto movia a página atrás dele.
+
+**Rastros:** os 5 SVGs do `create-next-app` (não referenciados), `briefing/`
+(script de uso único, já cumprido — fica no histórico). `ferramentas/` **fica**:
+é ferramenta viva, documentada aqui. O domínio estava chumbado em três arquivos
+→ `SITE_URL`, com `NEXT_PUBLIC_SITE_URL`. `data-surge` era o único
+identificador em inglês do projeto → `data-revelando`.
+
 ---
 
 ## 8. O que falta
@@ -433,8 +472,8 @@ Marcadas `A_CONFIRMAR` no código.
 
 | Pendência | Onde | Impacto |
 |---|---|---|
-| **Domingo**: ela marcou a cidade mas não deu horário | `EXPEDIENTE` em `negocio.ts` | está fora da agenda; se ela atende, está perdendo dia |
-| **Endereço em Bandeirantes** | `CIDADES.bandeirantes.local = null` | a cidade aparece sem local |
+| ~~Domingo~~ | — | **fechada:** ela não atende. `DOMINGO_PENDENTE` era código morto e saiu |
+| ~~Endereço em Bandeirantes~~ | `CIDADES.bandeirantes.local = null` | **fechada:** publicar só a cidade; o local entra quando ela passar |
 | **O que ela quis dizer com "sinal"** | `REGRAS.sinal` | ver seção 3 — divergência aberta |
 | **Aprovação manual** | `REGRAS.aprovacaoManual = false` | ela pediu, mas está desligado. Colide com o sinal: se a cliente paga e a Karol recusa, alguém estorna. Recomendação registrada: deixar o sinal fazer o filtro e oferecer o botão de aprovação manual no painel |
 | **Descrições dos serviços** | `servicos.ts` | são rascunho; precisam do aval dela |
@@ -465,9 +504,9 @@ Dois pontos levantados e **não avaliados até o fim**:
 1. **`/agendar/confirmado?ag=<id>`** mostra nome e detalhes sem sessão,
    protegido só pelo UUID aleatório. É o padrão de página de confirmação, mas o
    link vaza por histórico e prévia de link. Não expõe o WhatsApp da cliente.
-2. **Freio por IP** lê o *primeiro* valor de `x-forwarded-for`, que é
-   justamente o que o atacante controla. Na Vercel o correto seria o último
-   valor ou `x-real-ip`. Contorna-se trocando o cabeçalho.
+2. ~~**Freio por IP** lê o *primeiro* valor de `x-forwarded-for`~~ —
+   **corrigido na Etapa 11.** `ipDoPedido()` usa `x-real-ip` e, na falta
+   dele, o último item da cadeia. Coberto por teste.
 
 ---
 
