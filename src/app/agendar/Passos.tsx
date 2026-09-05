@@ -1,23 +1,26 @@
 /**
- * Trilha dos 4 passos do agendamento.
+ * Trilha dos 5 passos do agendamento.
  *
- * A página `/agendar` avança por query string (`?servico=…&dia=…&hora=…`),
- * então o passo atual é o primeiro que ainda não foi preenchido. Puramente
- * visual — quem controla o fluxo é a página.
+ * A página `/agendar` avança por query string
+ * (`?servico=…&cidade=…&dia=…&hora=…`), então o passo atual é o primeiro
+ * que ainda não foi preenchido. Puramente visual — quem controla o fluxo
+ * é a página.
  */
 
-const PASSOS = ["Serviço", "Dia", "Hora", "Seus dados"] as const;
+const PASSOS = ["Serviço", "Cidade", "Dia", "Hora", "Seus dados"] as const;
 
 export function Passos({
   temServico,
+  temCidade,
   temDia,
   temHora,
 }: {
   temServico: boolean;
+  temCidade: boolean;
   temDia: boolean;
   temHora: boolean;
 }) {
-  const preenchidos = [temServico, temDia, temHora, false];
+  const preenchidos = [temServico, temCidade, temDia, temHora, false];
   const atual = preenchidos.findIndex((p) => !p);
 
   return (

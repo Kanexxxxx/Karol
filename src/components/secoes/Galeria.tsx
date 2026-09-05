@@ -3,12 +3,7 @@ import type { Foto } from "@/data/fotos";
 import { ALUNAS, GALERIA } from "@/data/fotos";
 import { Cabeca, Env, Revela } from "../ui";
 
-/**
- * `formato` existe porque as fotos de aluna são quadradas — elas foram
- * cortadas acima do certificado pra tirar o nome da aluna da tela. Forçar
- * 3/4 nelas cortaria rosto.
- */
-function Peca({ foto, formato = "aspect-3/4" }: { foto: Foto; formato?: string }) {
+function Peca({ foto }: { foto: Foto }) {
   return (
     <figure className="group relative m-0 overflow-hidden bg-creme">
       <Image
@@ -18,7 +13,7 @@ function Peca({ foto, formato = "aspect-3/4" }: { foto: Foto; formato?: string }
         height={foto.altura}
         sizes="(min-width: 768px) 25vw, 50vw"
         loading="lazy"
-        className={`${formato} w-full object-cover transition-transform duration-[620ms] ease-marca group-hover:scale-105`}
+        className="aspect-3/4 w-full object-cover transition-transform duration-[620ms] ease-marca group-hover:scale-105"
       />
       {foto.etiqueta && (
         <span className="absolute top-[9px] left-[9px] bg-osso px-2 py-1 text-[8.5px] font-bold uppercase tracking-[0.16em] text-tinta">
@@ -71,7 +66,7 @@ export function Alunas() {
         <Revela>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3.5">
             {ALUNAS.map((foto) => (
-              <Peca key={foto.arquivo} foto={foto} formato="aspect-square" />
+              <Peca key={foto.arquivo} foto={foto} />
             ))}
           </div>
         </Revela>

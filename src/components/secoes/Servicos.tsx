@@ -34,7 +34,7 @@ export function Servicos() {
                       width={foto.largura}
                       height={foto.altura}
                       sizes="(min-width: 1024px) 33vw, 50vw"
-                      className="aspect-3/4 w-full object-cover object-top transition-transform duration-[620ms] ease-marca group-hover:scale-105"
+                      className="aspect-3/4 w-full object-cover transition-transform duration-[620ms] ease-marca group-hover:scale-105"
                     />
 
                     {/* moldura fina, marca da casa */}

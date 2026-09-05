@@ -5,12 +5,19 @@ import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env, Rotulo } from "@/components/ui";
 import { FOTO_DO_SERVICO } from "@/data/fotos";
-import { ANTES_DE_VIR, CIDADES } from "@/data/negocio";
-import { SERVICOS, buscarServico, formatarDuracao, formatarPreco } from "@/data/servicos";
+import { ANTES_DE_VIR, CIDADES, type CidadeId } from "@/data/negocio";
+import {
+  SERVICOS,
+  buscarServico,
+  formatarDuracao,
+  formatarPreco,
+  type Servico,
+} from "@/data/servicos";
 import { bancoConfigurado } from "@/lib/banco";
-import { diasComVaga, horariosDoDia } from "@/lib/agendamentos";
-import { deChave } from "@/lib/agenda";
-import { DIA_CURTO, DIA_POR_EXTENSO } from "@/lib/datas";
+import { gradeDoDiaNaAgenda, horariosDoDia, mesDeVagas } from "@/lib/agendamentos";
+import { deChave, faixaDeDias, janelaDaCidade, primeiroDiaDisponivel } from "@/lib/agenda";
+import { DIA_POR_EXTENSO } from "@/lib/datas";
+import { Calendario } from "./Calendario";
 import { FormularioDados } from "./FormularioDados";
 import { Passos } from "./Passos";
 
@@ -22,29 +29,44 @@ export const dynamic = "force-dynamic";
 export default async function Agendar({
   searchParams,
 }: {
-  searchParams: Promise<{ servico?: string; dia?: string; hora?: string }>;
+  searchParams: Promise<{
+    servico?: string;
+    cidade?: string;
+    mes?: string;
+    dia?: string;
+    hora?: string;
+  }>;
 }) {
-  const { servico: servicoId, dia, hora } = await searchParams;
+  const { servico: servicoId, cidade: cidadeId, mes, dia, hora } = await searchParams;
   const servico = servicoId ? buscarServico(servicoId) : undefined;
+  // só aceita cidade que existe: a querystring é do visitante
+  const cidade = cidadeId && cidadeId in CIDADES ? (cidadeId as CidadeId) : undefined;
 
   return (
     <>
       <Cabecalho />
       <main className="flex-1 bg-osso pb-24 lg:pb-0">
         <Env className="pt-10 lg:pt-16">
-          <Passos temServico={!!servico} temDia={!!dia} temHora={!!hora} />
+          <Passos
+            temServico={!!servico}
+            temCidade={!!cidade}
+            temDia={!!dia}
+            temHora={!!hora}
+          />
         </Env>
 
         {!bancoConfigurado() ? (
           <AvisoSemBanco />
         ) : !servico ? (
           <EscolherServico />
+        ) : !cidade ? (
+          <EscolherCidade servico={servico} />
         ) : !dia ? (
-          <EscolherDia servico={servico} />
+          <EscolherDia servico={servico} cidade={cidade} mes={mes} />
         ) : !hora ? (
-          <EscolherHora servico={servico} dia={dia} />
+          <EscolherHora servico={servico} cidade={cidade} dia={dia} />
         ) : (
-          <Confirmar servico={servico} dia={dia} hora={hora} />
+          <Confirmar servico={servico} cidade={cidade} dia={dia} hora={hora} />
         )}
       </main>
       <Rodape />
@@ -120,101 +142,157 @@ function EscolherServico() {
   );
 }
 
-async function EscolherDia({ servico }: { servico: NonNullable<ReturnType<typeof buscarServico>> }) {
-  const dias = await diasComVaga(servico);
+/**
+ * Passo 2 — a cidade.
+ *
+ * Ela atende em cidades diferentes em dias diferentes. Perguntar a cidade
+ * ANTES do dia faz o calendário seguinte mostrar só os dias daquela cidade,
+ * em vez de misturar os dois lugares numa lista só.
+ */
+function EscolherCidade({ servico }: { servico: Servico }) {
+  const cidades = Object.entries(CIDADES) as [CidadeId, (typeof CIDADES)[CidadeId]][];
 
   return (
     <Env className="py-10 lg:py-14">
       <Rotulo>Passo 2</Rotulo>
       <h1 className="mt-2.5 font-titulo text-[clamp(30px,6vw,48px)] leading-[1.05] font-light">
-        Que dia fica bom?
+        Onde fica melhor pra você?
       </h1>
-      <p className="mt-3 text-tinta-2">
+      <p className="mt-3 mb-8 text-tinta-2">
         {servico.nome} · {formatarDuracao(servico)} · {formatarPreco(servico.preco)}
       </p>
-      <p className="mt-1.5 mb-8 text-[14px] text-tinta-3">
-        A cidade muda conforme o dia — confira antes de escolher.
-      </p>
 
-      {dias.length === 0 ? (
-        <p className="border border-linha bg-papel p-6 text-tinta-2">
-          Não encontrei horário livre nos próximos dias. Me chame no WhatsApp que
-          a gente acha um jeito.
-        </p>
-      ) : (
-        <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-          {dias.map((d) => (
-            <li key={d.chave}>
-              <Link
-                href={`/agendar?servico=${servico.id}&dia=${d.chave}`}
-                className="flex h-full flex-col border border-linha bg-papel px-4 py-4 transition-colors hover:border-ouro-claro focus-visible:outline-2 focus-visible:outline-ouro"
-              >
-                <span className="block font-titulo text-[20px] capitalize">
-                  {DIA_CURTO.format(d.data).replace(".", "")}
-                </span>
-                {/*
-                  A cidade muda com o dia da semana. Sem ela aqui, a cliente
-                  escolhia o dia sem saber pra onde ia — e só descobria no
-                  passo seguinte, depois de já ter decidido.
-                */}
-                <span className="mt-1.5 flex items-center gap-1.5 text-[12px] text-tinta-2">
-                  <span aria-hidden="true" className="text-ouro-claro">
-                    ⌖
-                  </span>
-                  {CIDADES[d.cidade].nome}
-                </span>
-                <span className="mt-2.5 block text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ouro">
-                  {d.vagas} {d.vagas === 1 ? "horário livre" : "horários livres"}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="grid gap-3 sm:grid-cols-2 lg:max-w-[720px]">
+        {cidades.map(([id, cidade]) => (
+          <li key={id}>
+            <Link
+              href={`/agendar?servico=${servico.id}&cidade=${id}`}
+              className="flex h-full flex-col border border-linha bg-papel px-6 py-6 transition-colors hover:border-ouro-claro focus-visible:outline-2 focus-visible:outline-ouro"
+            >
+              <span className="font-titulo text-[26px] leading-tight">{cidade.nome}</span>
+              <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ouro">
+                {faixaDeDias(id)} · {janelaDaCidade(id)}
+              </span>
+              {cidade.local && (
+                <span className="mt-2.5 text-[14px] text-tinta-2">{cidade.local}</span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Env>
   );
 }
 
-async function EscolherHora({
+/** Passo 3 — o dia, num calendário do mês. */
+async function EscolherDia({
   servico,
-  dia,
+  cidade,
+  mes,
 }: {
-  servico: NonNullable<ReturnType<typeof buscarServico>>;
-  dia: string;
+  servico: Servico;
+  cidade: CidadeId;
+  mes?: string;
 }) {
-  const horarios = await horariosDoDia(servico, dia);
-  const data = deChave(dia);
+  // O mês mais cedo que faz sentido é o do primeiro dia agendável; três
+  // meses à frente é limite de sanidade, não regra de negócio.
+  const inicio = primeiroDiaDisponivel();
+  const minimo = new Date(inicio.getFullYear(), inicio.getMonth(), 1);
+  const maximo = new Date(minimo.getFullYear(), minimo.getMonth() + 3, 1);
+
+  const pedido = /^\d{4}-\d{2}$/.test(mes ?? "")
+    ? new Date(Number(mes!.slice(0, 4)), Number(mes!.slice(5, 7)) - 1, 1)
+    : minimo;
+  const atual = pedido < minimo ? minimo : pedido > maximo ? maximo : pedido;
+
+  const dias = await mesDeVagas(servico, cidade, atual.getFullYear(), atual.getMonth());
+  const base = `servico=${servico.id}&cidade=${cidade}`;
 
   return (
     <Env className="py-10 lg:py-14">
       <Rotulo>Passo 3</Rotulo>
       <h1 className="mt-2.5 font-titulo text-[clamp(30px,6vw,48px)] leading-[1.05] font-light">
+        Que dia fica bom?
+      </h1>
+      <p className="mt-3 mb-8 text-tinta-2">
+        {servico.nome} · {CIDADES[cidade].nome} ·{" "}
+        <Link
+          href={`/agendar?servico=${servico.id}`}
+          className="underline decoration-linha underline-offset-2 hover:text-ouro"
+        >
+          trocar cidade
+        </Link>
+      </p>
+
+      <Calendario
+        dias={dias}
+        ano={atual.getFullYear()}
+        mes={atual.getMonth()}
+        base={base}
+        temAnterior={atual > minimo}
+        temSeguinte={atual < maximo}
+      />
+    </Env>
+  );
+}
+
+/** Passo 4 — a hora. Mostra também o que já foi tomado. */
+async function EscolherHora({
+  servico,
+  cidade,
+  dia,
+}: {
+  servico: Servico;
+  cidade: CidadeId;
+  dia: string;
+}) {
+  const grade = await gradeDoDiaNaAgenda(servico, dia);
+  const data = deChave(dia);
+  const livres = grade.filter((v) => v.livre).length;
+  const base = `servico=${servico.id}&cidade=${cidade}`;
+
+  return (
+    <Env className="py-10 lg:py-14">
+      <Rotulo>Passo 4</Rotulo>
+      <h1 className="mt-2.5 font-titulo text-[clamp(30px,6vw,48px)] leading-[1.05] font-light">
         Que horas?
       </h1>
       <p className="mt-3 mb-8 text-tinta-2 first-letter:uppercase">
-        {DIA_POR_EXTENSO.format(data)}
-        {horarios[0] && ` · ${CIDADES[horarios[0].cidade].nome}`}
+        {DIA_POR_EXTENSO.format(data)} · {CIDADES[cidade].nome}
       </p>
 
-      {horarios.length === 0 ? (
+      {livres === 0 ? (
         <p className="border border-linha bg-papel p-6 text-tinta-2">
-          Esse dia acabou de encher.{" "}
-          <Link href={`/agendar?servico=${servico.id}`} className="text-ouro underline">
+          Esse dia encheu.{" "}
+          <Link href={`/agendar?${base}`} className="text-ouro underline">
             Escolher outro dia
           </Link>
         </p>
       ) : (
         <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
-          {horarios.map((h) => (
-            <li key={h.inicio}>
-              <Link
-                href={`/agendar?servico=${servico.id}&dia=${dia}&hora=${h.inicio}`}
-                className="block border border-linha bg-papel py-4 text-center font-titulo text-[21px] tabular-nums transition-colors hover:border-ouro-claro hover:text-ouro focus-visible:outline-2 focus-visible:outline-ouro"
-              >
-                {h.rotulo}
-              </Link>
-            </li>
-          ))}
+          {grade.map((v) =>
+            v.livre ? (
+              <li key={v.inicio}>
+                <Link
+                  href={`/agendar?${base}&dia=${dia}&hora=${v.inicio}`}
+                  className="block border border-linha bg-papel py-4 text-center font-titulo text-[21px] tabular-nums transition-colors hover:border-ouro-claro hover:text-ouro focus-visible:outline-2 focus-visible:outline-ouro"
+                >
+                  {v.rotulo}
+                </Link>
+              </li>
+            ) : (
+              // Ocupado aparece, não some: esconder faz a agenda parecer
+              // vazia justamente quando está cheia.
+              <li key={v.inicio}>
+                <span
+                  aria-label={`${v.rotulo}, já reservado`}
+                  className="block border border-linha/60 bg-creme/40 py-4 text-center font-titulo text-[21px] tabular-nums text-tinta-3/70 line-through decoration-tinta-3/50"
+                >
+                  {v.rotulo}
+                </span>
+              </li>
+            ),
+          )}
         </ul>
       )}
     </Env>
@@ -223,10 +301,12 @@ async function EscolherHora({
 
 async function Confirmar({
   servico,
+  cidade,
   dia,
   hora,
 }: {
-  servico: NonNullable<ReturnType<typeof buscarServico>>;
+  servico: Servico;
+  cidade: CidadeId;
   dia: string;
   hora: string;
 }) {
@@ -244,7 +324,7 @@ async function Confirmar({
           </h1>
           <p className="mb-5 text-tinta-2">Escolha outro que eu reservo pra você.</p>
           <Link
-            href={`/agendar?servico=${servico.id}&dia=${dia}`}
+            href={`/agendar?servico=${servico.id}&cidade=${cidade}&dia=${dia}`}
             className="text-sm font-semibold text-ouro underline decoration-ouro-claro underline-offset-4"
           >
             Ver os horários livres desse dia
@@ -258,7 +338,7 @@ async function Confirmar({
     <Env className="py-10 lg:py-14">
       <div className="grid gap-10 lg:grid-cols-[1fr_0.85fr] lg:gap-16">
         <div>
-          <Rotulo>Passo 4</Rotulo>
+          <Rotulo>Passo 5</Rotulo>
           <h1 className="mt-2.5 mb-8 font-titulo text-[clamp(30px,6vw,48px)] leading-[1.05] font-light">
             Só falta o seu nome
           </h1>

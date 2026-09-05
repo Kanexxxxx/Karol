@@ -4,12 +4,15 @@ import { banco } from "./banco";
 import {
   blocoDoAgendamento,
   deChave,
+  expedienteDoDia,
   fatiarPorDia,
+  gradeDoDia,
   horariosLivres,
   paraChave,
   primeiroDiaDisponivel,
   type Horario,
   type Intervalo,
+  type VagaNaGrade,
 } from "./agenda";
 import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
@@ -119,6 +122,80 @@ export async function diasComVaga(servico: Servico, quantidade = 21) {
   }
 
   return dias;
+}
+
+/**
+ * Um mês inteiro, dia a dia, para uma cidade.
+ *
+ * A tela de escolher o dia é um calendário: precisa saber o que existe em
+ * TODOS os dias do mês, inclusive nos que ela não atende e nos que já
+ * lotaram — e não só a lista dos que sobraram.
+ *
+ * Uma consulta só cobre o mês inteiro. Fazer uma por dia seriam trinta
+ * idas ao banco pra desenhar uma tela.
+ */
+export type DiaDoMes = {
+  chave: string;
+  data: Date;
+  /** dia do mês, 1 a 31 */
+  numero: number;
+  /** ela atende nesse dia da semana, nessa cidade */
+  atende: boolean;
+  /** cedo demais: hoje ou antes da antecedência mínima */
+  cedoDemais: boolean;
+  vagas: number;
+  total: number;
+};
+
+export async function mesDeVagas(
+  servico: Servico,
+  cidade: CidadeId,
+  ano: number,
+  mes: number,
+): Promise<DiaDoMes[]> {
+  const primeiro = new Date(ano, mes, 1);
+  const depoisDoUltimo = new Date(ano, mes + 1, 1);
+
+  const ocupados = await ocupadosNoPeriodo(primeiro, depoisDoUltimo);
+  const limite = primeiroDiaDisponivel();
+
+  const dias: DiaDoMes[] = [];
+  for (let d = new Date(primeiro); d < depoisDoUltimo; d.setDate(d.getDate() + 1)) {
+    const data = new Date(d);
+    const chave = paraChave(data);
+    const expediente = expedienteDoDia(data);
+    const atende = expediente?.cidade === cidade;
+    const cedoDemais = data < limite;
+
+    const grade =
+      atende && !cedoDemais
+        ? gradeDoDia({ data, servico, ocupados: ocupados[chave] ?? [] })
+        : [];
+
+    dias.push({
+      chave,
+      data,
+      numero: data.getDate(),
+      atende,
+      cedoDemais,
+      vagas: grade.filter((v) => v.livre).length,
+      total: grade.length,
+    });
+  }
+
+  return dias;
+}
+
+/** A grade de um dia, com o que está livre e o que já foi tomado. */
+export async function gradeDoDiaNaAgenda(
+  servico: Servico,
+  chave: string,
+): Promise<VagaNaGrade[]> {
+  const data = deChave(chave);
+  const fim = new Date(data);
+  fim.setDate(fim.getDate() + 1);
+  const ocupados = await ocupadosNoPeriodo(data, fim);
+  return gradeDoDia({ data, servico, ocupados: ocupados[chave] ?? [] });
 }
 
 /** Horários livres de um dia específico. */

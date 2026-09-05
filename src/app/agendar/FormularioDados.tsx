@@ -93,20 +93,14 @@ export function FormularioDados({
         {enviando ? "Reservando…" : "Confirmar meu horário"}
       </button>
 
-      <p className="text-[13px] text-tinta-3">
-        O horário fica reservado assim que você confirmar. A Karol não desmarca
-        pelo site — qualquer mudança é direto com ela.
-      </p>
-      <p className="text-[13px] text-tinta-3">
-        Ao confirmar, você concorda que a Karol guarde seu nome e WhatsApp para
-        este atendimento.{" "}
+      <p className="text-[12.5px] text-tinta-3">
+        Guardamos só seu nome e WhatsApp, para este atendimento.{" "}
         <Link
           href="/privacidade"
           className="underline decoration-linha underline-offset-2 hover:text-ouro"
         >
-          Como seus dados são tratados
+          Saiba mais
         </Link>
-        .
       </p>
     </form>
   );

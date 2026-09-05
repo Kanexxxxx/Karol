@@ -24,9 +24,9 @@ export function Atendimento() {
             Uma cliente por vez, do começo ao fim
           </h2>
           <p className="text-tinta-2">
-            Sem fila e sem pressa. O horário que você marcar é seu inteiro, e eu
-            deixo um intervalo entre uma cliente e outra pra tudo ficar pronto
-            pra você.
+            Você chega, senta e o tempo é seu. Dá pra conversar, ver o desenho
+            no espelho e ajustar antes de fechar — ninguém está esperando na
+            porta pra entrar depois de você.
           </p>
 
           <dl className="mt-7 grid grid-cols-3 border-t border-linha">

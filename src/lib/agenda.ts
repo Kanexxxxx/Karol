@@ -69,13 +69,19 @@ function seSobrepoe(a: Intervalo, b: Intervalo): boolean {
   return a.inicio < b.fim && b.inicio < a.fim;
 }
 
+/** Um horário da grade, sabendo se ainda dá pra pegar. */
+export type VagaNaGrade = Horario & { livre: boolean };
+
 /**
- * Horários livres para um serviço num dia.
+ * A grade inteira do dia, marcando o que está livre e o que já foi tomado.
  *
- * `ocupados` são os blocos já reservados naquele dia, já incluindo o
- * intervalo entre clientes.
+ * Mostrar o que está ocupado é escolha, não descuido: uma agenda que só
+ * exibe o que sobrou parece vazia justamente quando está cheia, e não dá
+ * à cliente noção nenhuma do movimento. `horariosLivres` é esta grade
+ * filtrada — as duas telas partem do mesmo cálculo, então não há como
+ * uma discordar da outra.
  */
-export function horariosLivres({
+export function gradeDoDia({
   data,
   servico,
   ocupados = [],
@@ -85,7 +91,7 @@ export function horariosLivres({
   servico: Servico;
   ocupados?: Intervalo[];
   agora?: Date;
-}): Horario[] {
+}): VagaNaGrade[] {
   const expediente = expedienteDoDia(data);
   if (!expediente) return [];
 
@@ -94,19 +100,29 @@ export function horariosLivres({
   if (data < limite) return [];
 
   const bloco = blocoNaAgenda(servico);
-  const livres: Horario[] = [];
+  const grade: VagaNaGrade[] = [];
 
   for (let inicio = expediente.inicio; inicio + bloco <= expediente.fim; inicio += PASSO_MIN) {
     const candidato = { inicio, fim: inicio + bloco };
-    if (ocupados.some((o) => seSobrepoe(candidato, o))) continue;
-    livres.push({
+    grade.push({
       inicio,
       rotulo: paraRotulo(inicio),
       cidade: expediente.cidade,
+      livre: !ocupados.some((o) => seSobrepoe(candidato, o)),
     });
   }
 
-  return livres;
+  return grade;
+}
+
+/**
+ * Horários livres para um serviço num dia.
+ *
+ * `ocupados` são os blocos já reservados naquele dia, já incluindo o
+ * intervalo entre clientes.
+ */
+export function horariosLivres(argumentos: Parameters<typeof gradeDoDia>[0]): Horario[] {
+  return gradeDoDia(argumentos).filter((v) => v.livre);
 }
 
 /** Os próximos N dias que têm pelo menos um horário livre. */
