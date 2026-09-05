@@ -133,10 +133,10 @@ function criarFormulario2() {
     .setRequired(false);
 
   // ------------------------------------------------------------------
-  // 4. AS MENSAGENS NO WHATSAPP
+  // 4. OS AVISOS AUTOMATICOS
   // ------------------------------------------------------------------
   form.addPageBreakItem()
-    .setTitle('4. As mensagens no WhatsApp')
+    .setTitle('4. Os avisos automaticos')
     .setHelpText(
       'No primeiro briefing voce pediu quatro mensagens: confirmacao na hora ' +
       'que a cliente marca, lembrete um dia antes, agradecimento depois do ' +
@@ -144,24 +144,48 @@ function criarFormulario2() {
       'Os textos ja estao escritos. O que falta decidir e COMO eles saem.'
     );
 
+  form.addSectionHeaderItem()
+    .setTitle('Antes de escolher, o que vale saber')
+    .setHelpText(
+      'Tem um detalhe do WhatsApp que muda tudo: quando a CLIENTE manda ' +
+      'mensagem primeiro, abre uma janela em que voce responde a vontade, de ' +
+      'graca. O que custa e a empresa puxar conversa do nada. Por isso a ' +
+      'opcao 1 sai de graca: a cliente aperta enviar UMA vez e dali em ' +
+      'diante tudo e automatico. ' +
+      'Existem programas gratuitos que prometem enviar sozinho sem isso, mas ' +
+      'eles fingem ser o WhatsApp Web e a Meta bane o numero quando percebe. ' +
+      'Seria o SEU numero, o mesmo do Instagram. Por isso nao esta na lista.'
+    );
+
   form.addMultipleChoiceItem()
     .setTitle('Como voce quer que essas mensagens sejam enviadas?')
-    .setHelpText(
-      'AUTOMATICO: saem sozinhas, voce nao faz nada. Custa uns R$ 20 por mes ' +
-      'e o ideal e um chip so pro trabalho — numero pessoal com envio ' +
-      'automatico corre risco de ser bloqueado pelo WhatsApp.\n\n' +
-      'NA MAO: o site deixa a mensagem pronta e voce so aperta enviar. Nao ' +
-      'custa nada e nao tem risco nenhum, mas depende de voce apertar.\n\n' +
-      'POR ENQUANTO NAO: a cliente ve a confirmacao na tela do site e pronto. ' +
-      'Da pra ligar depois, quando o movimento justificar.'
-    )
+    .setHelpText('Se ficar em duvida entre duas, marca a que parecer mais a sua cara e a gente conversa.')
     .setChoiceValues([
-      'Automatico (uns R$ 20 por mes)',
-      'Na mao (de graca, eu aperto enviar)',
-      'Por enquanto nao quero mensagem automatica',
-      'Nao sei, me explica melhor'
+      '1) WhatsApp: a cliente aperta enviar uma vez, o resto sai sozinho (de graca, sem risco)',
+      '2) WhatsApp automatico de verdade, pelo canal oficial da Meta (ninguem aperta nada, mas da trabalho pra montar e pede um chip so do trabalho)',
+      '3) Por e-mail (sai 100% sozinho, de graca e sem risco nenhum — mas a cliente precisa deixar o e-mail dela, e tem gente que nao le)',
+      '4) WhatsApp e e-mail juntos',
+      '5) Eu mesma envio, com a mensagem ja pronta pra copiar (de graca, mas depende de mim)',
+      '6) Por enquanto nada automatico, a cliente ve a confirmacao na tela do site',
+      '7) Nao sei, me explica melhor'
     ])
     .setRequired(true);
+
+  form.addMultipleChoiceItem()
+    .setTitle('E como VOCE prefere ser avisada de um agendamento novo?')
+    .setHelpText('Pode ser diferente do que a cliente recebe.')
+    .setChoiceValues([
+      'WhatsApp',
+      'E-mail',
+      'Os dois',
+      'So olhar o painel quando eu quiser, sem aviso'
+    ])
+    .setRequired(true);
+
+  form.addTextItem()
+    .setTitle('Se for por e-mail, qual e o seu?')
+    .setHelpText('So preenche se voce escolheu e-mail em alguma das duas perguntas acima.')
+    .setRequired(false);
 
   form.addMultipleChoiceItem()
     .setTitle('O WhatsApp (18) 99752-5291 e so do trabalho?')
