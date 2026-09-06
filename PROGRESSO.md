@@ -380,6 +380,10 @@ Opções levantadas, dado que **ela não tem CNPJ**:
 | Bibliotecas não oficiais (Baileys etc.) | grátis | **risco de banir o número** — não recomendado nem no chip novo |
 | **Sem API, custo zero** | grátis | arquivo de calendário (`.ics`) que a cliente salva e o próprio celular lembra; link `wa.me` pré-preenchido; notificação push pro painel instalado como app |
 
+Os caminhos, o custo de cada um e o passo a passo pra ligar estão em
+[`WHATSAPP.md`](./WHATSAPP.md) — incluindo por que os provedores não
+oficiais (Z-API, Evolution) não entram na lista.
+
 **O que o código faz hoje:** monta as mensagens e faz `POST` num webhook
 configurável (`NOTIFICADOR_WEBHOOK_URL`). Quem estiver do outro lado (n8n, Make,
 Zapier, função própria) manda a mensagem de verdade. Sem o webhook, as
