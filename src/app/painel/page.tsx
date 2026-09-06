@@ -50,6 +50,12 @@ export default async function Painel() {
               + Marcar
             </Link>
             <Link
+              href="/painel/relatorio"
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+            >
+              Relatório
+            </Link>
+            <Link
               href="/painel/bloqueios"
               className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
             >

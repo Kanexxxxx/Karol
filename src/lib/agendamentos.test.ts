@@ -14,6 +14,7 @@ import {
   criarAgendamentoNoPainel,
   horaEmMinutos,
   mudarSituacao,
+  relatorioDoMes,
   remarcarAgendamento,
 } from "./agendamentos";
 
@@ -269,5 +270,99 @@ describe("remarcarAgendamento", () => {
     usarBanco({ select: () => ({ data: null }) });
     expect((await remarcarAgendamento("nao-e-uuid", "2099-06-01", "09:00")).ok).toBe(false);
     expect((await remarcarAgendamento("0".repeat(36), "2099-06-01", "9h")).ok).toBe(false);
+  });
+});
+
+describe("relatorioDoMes", () => {
+  const linha = (situacao: string, preco: number, servico: string, cidade: string) => ({
+    id: "0".repeat(36),
+    cliente_nome: "Fulana",
+    cliente_whatsapp: "5518999998888",
+    servico_id: "design-simples",
+    servico_nome: servico,
+    servico_preco: preco,
+    cidade,
+    periodo: '["2026-09-08 10:00:00+00","2026-09-08 10:50:00+00")',
+    situacao,
+    observacao: null,
+  });
+
+  /**
+   * O ponto que decide o relatório: faturamento conta só o que ela marcou
+   * como Atendida. Confirmado que ainda não aconteceu não é dinheiro.
+   */
+  it("só soma o que foi concluído", async () => {
+    usarBanco({
+      select: () => ({
+        data: [
+          linha("concluido", 2500, "Design de sobrancelha", "Pereira Barreto"),
+          linha("concluido", 10000, "Maquiagem social", "Pereira Barreto"),
+          linha("confirmado", 8000, "Brow lamination", "Pereira Barreto"), // não conta
+          linha("faltou", 2500, "Design de sobrancelha", "Pereira Barreto"), // não conta
+          linha("cancelado", 2500, "Design de sobrancelha", "Pereira Barreto"), // não conta
+        ],
+      }),
+    });
+
+    const r = await relatorioDoMes(2026, 8);
+    expect(r.faturamento).toBe(12500);
+    expect(r.atendidas).toBe(2);
+    expect(r.faltaram).toBe(1);
+    expect(r.canceladas).toBe(1);
+    expect(r.pendentes).toBe(1);
+  });
+
+  it("ticket médio é sobre as atendidas, não sobre tudo", async () => {
+    usarBanco({
+      select: () => ({
+        data: [
+          linha("concluido", 2500, "Design de sobrancelha", "Pereira Barreto"),
+          linha("concluido", 10000, "Maquiagem social", "Pereira Barreto"),
+          linha("confirmado", 99999, "Brow lamination", "Pereira Barreto"),
+        ],
+      }),
+    });
+    const r = await relatorioDoMes(2026, 8);
+    expect(r.ticketMedio).toBe(6250); // (2500 + 10000) / 2
+  });
+
+  it("taxa de falta é sobre o que já passou, não sobre o mês todo", async () => {
+    usarBanco({
+      select: () => ({
+        data: [
+          linha("concluido", 2500, "Design de sobrancelha", "Pereira Barreto"),
+          linha("faltou", 2500, "Design de sobrancelha", "Pereira Barreto"),
+          // dez confirmados que ainda vão acontecer não podem diluir a taxa
+          ...Array.from({ length: 10 }, () =>
+            linha("confirmado", 2500, "Design de sobrancelha", "Pereira Barreto"),
+          ),
+        ],
+      }),
+    });
+    const r = await relatorioDoMes(2026, 8);
+    expect(r.taxaFalta).toBe(50); // 1 falta de 2 que passaram
+  });
+
+  it("agrupa por serviço e por cidade, do que mais rende pro que menos", async () => {
+    usarBanco({
+      select: () => ({
+        data: [
+          linha("concluido", 2500, "Design de sobrancelha", "Pereira Barreto"),
+          linha("concluido", 2500, "Design de sobrancelha", "Pereira Barreto"),
+          linha("concluido", 10000, "Maquiagem social", "Bandeirantes D'Oeste"),
+        ],
+      }),
+    });
+    const r = await relatorioDoMes(2026, 8);
+    expect(r.porServico[0]).toEqual({ nome: "Maquiagem social", quantidade: 1, total: 10000 });
+    expect(r.porServico[1]).toEqual({ nome: "Design de sobrancelha", quantidade: 2, total: 5000 });
+    expect(r.porCidade.map((c) => c.nome)).toEqual(["Bandeirantes D'Oeste", "Pereira Barreto"]);
+  });
+
+  it("mês sem nada devolve zeros, não quebra", async () => {
+    usarBanco({ select: () => ({ data: [] }) });
+    const r = await relatorioDoMes(2026, 8);
+    expect(r).toMatchObject({ atendidas: 0, faturamento: 0, ticketMedio: 0, taxaFalta: 0 });
+    expect(r.porServico).toEqual([]);
   });
 });

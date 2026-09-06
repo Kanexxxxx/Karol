@@ -529,3 +529,93 @@ export async function remarcarAgendamento(
 
   return { ok: true };
 }
+
+/* ------------------------------------------------------------------ */
+/* Relatório do mês                                                    */
+/* ------------------------------------------------------------------ */
+
+export type LinhaRelatorio = { nome: string; quantidade: number; total: number };
+
+export type Relatorio = {
+  atendidas: number;
+  faltaram: number;
+  canceladas: number;
+  /** confirmados que ainda vão acontecer (ou não foram marcados ainda) */
+  pendentes: number;
+  /** em centavos, só do que ela marcou como Atendida */
+  faturamento: number;
+  /** em centavos */
+  ticketMedio: number;
+  /** % de faltas sobre o que já passou (atendidas + faltas) */
+  taxaFalta: number;
+  porServico: LinhaRelatorio[];
+  porCidade: LinhaRelatorio[];
+};
+
+/**
+ * Números do mês, para o painel.
+ *
+ * **O faturamento conta só o que ela marcou como Atendida.** Agendamento
+ * confirmado que ainda não aconteceu não vira dinheiro no relatório — senão
+ * o número sobe no começo do mês e cai quando alguém falta, o que confunde
+ * mais do que informa.
+ *
+ * ⚠️ O valor vem do preço da tabela **no momento do agendamento**, que fica
+ * congelado na linha. Se ela cobrar diferente na hora (desconto pra amiga,
+ * combinado à parte), o relatório não sabe.
+ */
+export async function relatorioDoMes(ano: number, mes: number): Promise<Relatorio> {
+  const vazio: Relatorio = {
+    atendidas: 0, faltaram: 0, canceladas: 0, pendentes: 0,
+    faturamento: 0, ticketMedio: 0, taxaFalta: 0,
+    porServico: [], porCidade: [],
+  };
+
+  const bd = banco();
+  if (!bd) return vazio;
+
+  const primeiro = new Date(ano, mes, 1);
+  const depoisDoUltimo = new Date(ano, mes + 1, 1);
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("*")
+    .overlaps("periodo", montarPeriodo(primeiro, depoisDoUltimo))
+    .order("periodo", { ascending: true });
+
+  const linhas = (data ?? []).map(linhaParaAgendamento);
+  if (linhas.length === 0) return vazio;
+
+  const r = { ...vazio, porServico: [], porCidade: [] } as Relatorio;
+  const servicos = new Map<string, LinhaRelatorio>();
+  const cidades = new Map<string, LinhaRelatorio>();
+
+  for (const a of linhas) {
+    if (a.situacao === "cancelado") { r.canceladas++; continue; }
+    if (a.situacao === "faltou") { r.faltaram++; continue; }
+    if (a.situacao !== "concluido") { r.pendentes++; continue; }
+
+    r.atendidas++;
+    r.faturamento += a.servicoPreco;
+
+    for (const [mapa, chave] of [
+      [servicos, a.servicoNome],
+      [cidades, a.cidade],
+    ] as const) {
+      const atual = mapa.get(chave) ?? { nome: chave, quantidade: 0, total: 0 };
+      atual.quantidade++;
+      atual.total += a.servicoPreco;
+      mapa.set(chave, atual);
+    }
+  }
+
+  const passadas = r.atendidas + r.faltaram;
+  r.ticketMedio = r.atendidas > 0 ? Math.round(r.faturamento / r.atendidas) : 0;
+  r.taxaFalta = passadas > 0 ? Math.round((r.faltaram / passadas) * 100) : 0;
+
+  const porTotal = (a: LinhaRelatorio, b: LinhaRelatorio) => b.total - a.total;
+  r.porServico = [...servicos.values()].sort(porTotal);
+  r.porCidade = [...cidades.values()].sort(porTotal);
+
+  return r;
+}
