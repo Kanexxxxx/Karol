@@ -8,6 +8,7 @@ import { Atendimento, ComoFunciona } from "@/components/secoes/Atendimento";
 import { Curso } from "@/components/secoes/Curso";
 import { Alunas, Trabalhos } from "@/components/secoes/Galeria";
 import { ChamadaFinal, Local } from "@/components/secoes/Local";
+import { Instagram } from "@/components/secoes/Instagram";
 
 export default function Home() {
   return (
@@ -26,6 +27,7 @@ export default function Home() {
         <Alunas />
         <Faixa />
         <Local />
+        <Instagram />
         <ChamadaFinal />
       </main>
       <Rodape />

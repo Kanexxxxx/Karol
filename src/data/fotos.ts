@@ -101,9 +101,10 @@ export const FOTO_DO_SERVICO: Record<string, Foto> = {
     etiqueta: "Festa e formatura",
   },
   "curso-automaquiagem": {
-    arquivo: `${P}/serv-curso.jpg`,
-    alt: "Karol com uma aluna segurando o certificado do curso",
-    ...RETRATO,
+    arquivo: `${P}/karol-paleta.jpg`,
+    alt: "Karol demonstrando uma técnica de maquiagem com a paleta na mão",
+    largura: 1200,
+    altura: 800,
     etiqueta: "Com certificado",
   },
 };
@@ -145,6 +146,10 @@ export const GALERIA: Foto[] = [
   trabalho(18, "Maquiagem social"),
   trabalho(19, "Maquiagem social"),
   trabalho(20, "Maquiagem social"),
+  trabalho(21, "Design de sobrancelha", "Antes e depois"),
+  trabalho(22, "Maquiagem social"),
+  trabalho(23, "Maquiagem social"),
+  trabalho(24, "Maquiagem social"),
   {
     arquivo: `${P}/processo.jpg`,
     alt: "Karol modelando a sobrancelha de uma cliente",
@@ -188,6 +193,14 @@ const naGaleria = (arquivo: string): Foto => {
   const foto = GALERIA.find((f) => f.arquivo.endsWith(`/${arquivo}`));
   if (!foto) throw new Error(`Foto da esteira não está na galeria: ${arquivo}`);
   return foto;
+};
+
+/** Foto do convite pro Instagram — o texto já vem escrito nela. */
+export const INSTAGRAM = {
+  arquivo: `${P}/instagram.jpg`,
+  alt: "Karol olhando o próprio perfil do Instagram no celular",
+  largura: 900,
+  altura: 1201,
 };
 
 export const ESTEIRA: Foto[] = [
