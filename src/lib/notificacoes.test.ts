@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   enviarEvento,
   notificadorConfigurado,
@@ -107,5 +107,88 @@ describe("enviarEvento", () => {
     }));
     vi.spyOn(console, "error").mockImplementation(() => {});
     await expect(enviarEvento("lembrete", AG)).resolves.toBeUndefined();
+  });
+});
+
+describe("envio pela Cloud API da Meta", () => {
+  const dados = {
+    id: "ag-1",
+    cliente: "Maria da Silva",
+    whatsappCliente: "5516991557552",
+    servico: "Design de sobrancelha",
+    cidade: "Pereira Barreto",
+    inicioISO: "2026-09-08T10:00:00.000Z",
+    valorCentavos: 2500,
+  };
+
+  beforeEach(() => {
+    process.env.META_TOKEN = "token-de-teste";
+    process.env.META_PHONE_NUMBER_ID = "1232997019905897";
+    delete process.env.NOTIFICADOR_WEBHOOK_URL;
+  });
+
+  afterEach(() => {
+    delete process.env.META_TOKEN;
+    delete process.env.META_PHONE_NUMBER_ID;
+  });
+
+  it("chama a Meta com o Phone Number ID na URL, não o telefone", async () => {
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("{}", { status: 200 }),
+    );
+    await enviarEvento("confirmacao", dados);
+
+    const [url, opcoes] = buscar.mock.calls[0];
+    expect(String(url)).toContain("/1232997019905897/messages");
+    const corpo = JSON.parse(String((opcoes as RequestInit).body));
+    expect(corpo).toMatchObject({
+      messaging_product: "whatsapp",
+      to: "5516991557552",
+      type: "text",
+    });
+    expect(corpo.text.body).toContain("Maria");
+    buscar.mockRestore();
+  });
+
+  it("o aviso de novo agendamento vai pra Karol, não pra cliente", async () => {
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("{}", { status: 200 }),
+    );
+    await enviarEvento("novo-agendamento", dados);
+
+    const corpo = JSON.parse(String((buscar.mock.calls[0][1] as RequestInit).body));
+    expect(corpo.to).not.toBe(dados.whatsappCliente);
+    buscar.mockRestore();
+  });
+
+  /**
+   * 131047 é janela de 24h fechada — acontece de verdade com o lembrete da
+   * véspera. Não pode derrubar o cron nem o agendamento.
+   */
+  it("engole o erro de janela fechada sem lançar", async () => {
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 131047 } }), { status: 400 }),
+    );
+    await expect(enviarEvento("lembrete", dados)).resolves.toBeUndefined();
+    buscar.mockRestore();
+  });
+
+  it("prefere a Meta quando as duas configurações existem", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://webhook.exemplo/nao-deve-ser-usado";
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("{}", { status: 200 }),
+    );
+    await enviarEvento("confirmacao", dados);
+    expect(String(buscar.mock.calls[0][0])).toContain("graph.facebook.com");
+    buscar.mockRestore();
+  });
+
+  it("sem Meta e sem webhook, não chama ninguém", async () => {
+    delete process.env.META_TOKEN;
+    delete process.env.META_PHONE_NUMBER_ID;
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
+    await enviarEvento("confirmacao", dados);
+    expect(buscar).not.toHaveBeenCalled();
+    buscar.mockRestore();
   });
 });

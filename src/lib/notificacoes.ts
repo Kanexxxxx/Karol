@@ -104,31 +104,89 @@ const TEXTO: Record<Evento, (a: DadosAgendamento) => string> = {
  * Empurra o evento pro webhook externo, se houver. Nunca lança — notificação
  * não pode derrubar o fluxo que a disparou.
  */
+/** true quando a Cloud API da Meta está configurada. */
+export function metaConfigurada(): boolean {
+  return Boolean(process.env.META_TOKEN && process.env.META_PHONE_NUMBER_ID);
+}
+
+/**
+ * Manda pela Cloud API da Meta.
+ *
+ * Texto livre, sem template. Isso só funciona dentro da **janela de 24 h**,
+ * que abre quando a cliente manda mensagem primeiro — e é de graça. Fora da
+ * janela a Meta recusa com `131047`, e é esperado: quem cai aí é o lembrete
+ * da véspera, que precisaria de template aprovado e é pago.
+ *
+ * Ver WHATSAPP.md.
+ */
+async function enviarPelaMeta(para: string, texto: string): Promise<Response> {
+  return fetch(
+    `https://graph.facebook.com/v23.0/${process.env.META_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${process.env.META_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: para,
+        type: "text",
+        text: { body: texto },
+      }),
+      signal: AbortSignal.timeout(5000),
+    },
+  );
+}
+
+/** Manda pro webhook configurável, que repassa. Caminho antigo, ainda vale. */
+async function enviarPeloWebhook(
+  url: string,
+  evento: Evento,
+  a: DadosAgendamento,
+  para: string,
+  texto: string,
+): Promise<Response> {
+  return fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      evento,
+      agendamento: a,
+      mensagem: {
+        para,
+        destinatario: evento === "novo-agendamento" ? "karol" : "cliente",
+        texto,
+      },
+    }),
+    signal: AbortSignal.timeout(5000),
+  });
+}
+
 export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise<void> {
   if (!ligado(evento)) return;
 
-  const url = process.env.NOTIFICADOR_WEBHOOK_URL;
-  if (!url) return;
+  const para = evento === "novo-agendamento" ? whatsappDaKarol() : a.whatsappCliente;
+  const texto = TEXTO[evento](a);
+  const webhook = process.env.NOTIFICADOR_WEBHOOK_URL;
 
-  const paraCliente = evento !== "novo-agendamento";
-  const corpo = {
-    evento,
-    agendamento: a,
-    mensagem: {
-      para: paraCliente ? a.whatsappCliente : whatsappDaKarol(),
-      destinatario: paraCliente ? "cliente" : "karol",
-      texto: TEXTO[evento](a),
-    },
-  };
+  // A Meta primeiro: é o caminho direto. O webhook fica pra quem preferir
+  // resolver o envio por fora (n8n, Make). Sem nenhum dos dois, a mensagem
+  // é montada e simplesmente não sai — e nada quebra.
+  if (!metaConfigurada() && !webhook) return;
 
   try {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(corpo),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!resp.ok) console.error(`notificação ${evento}: webhook respondeu ${resp.status}`);
+    const resp = metaConfigurada()
+      ? await enviarPelaMeta(para, texto)
+      : await enviarPeloWebhook(webhook!, evento, a, para, texto);
+
+    if (!resp.ok) {
+      // O corpo da Meta diz o motivo: 131047 é janela fechada, 130497 é
+      // restrição de país. Sem isso o log só diz "deu erro".
+      const detalhe = await resp.text().catch(() => "");
+      console.error(`notificação ${evento}: ${resp.status} ${detalhe.slice(0, 300)}`);
+    }
   } catch (e) {
     console.error(`notificação ${evento} falhou:`, e);
   }

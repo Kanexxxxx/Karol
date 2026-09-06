@@ -29,12 +29,20 @@ id `1205594729313572`). Ele **não serve**: erro `130497 — Business account is
 restricted from messaging users in this country`, porque números de teste não
 alcançam o Brasil. Use sempre os IDs de produção acima.
 
+### Testado e funcionando
+
+Em 06/09/2026 o número da Karol enviou mensagem de verdade para um celular
+brasileiro, pela API oficial, **sem custo** — dentro da janela de 24 h.
+
+O caminho está provado. O que sobra é ligar no código.
+
 ### Falta
 
 - **Webhook** — só para *receber* mensagem e status. Enviar não depende dele.
-- **Forma de pagamento** — exigida para mensagem iniciada pela empresa.
-- **Verificação da empresa** (Etapa 3) — pede documento. A Karol não tem CNPJ;
-  é aqui que o caminho oficial pode travar.
+- **Forma de pagamento** — só para mensagem iniciada pela empresa (o lembrete
+  da véspera). Dentro da janela funciona sem cartão, como o teste mostrou.
+- **Verificação da empresa** (Etapa 3) — pede documento. A Karol não tem CNPJ.
+  Não bloqueou o envio no teste.
 
 ---
 
