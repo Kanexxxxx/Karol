@@ -281,3 +281,42 @@ describe("serviços de durações diferentes não colidem", () => {
     expect(segundo.inicio).toBeGreaterThanOrEqual(primeiro.fim);
   });
 });
+
+describe("marcar às 08:30 bloqueia horários ANTES também", () => {
+  /**
+   * Isso parece bug e não é. O site mostra a hora de COMEÇAR, mas quem
+   * decide a colisão é a hora de TERMINAR.
+   *
+   * Um design às 07:45 vai até 08:35 — cinco minutos dentro do atendimento
+   * das 08:30. Duas clientes na cadeira ao mesmo tempo. Por isso some.
+   *
+   * O limite exato é 07:30: termina 08:20, dez minutos antes, que é o
+   * intervalo de arrumação que ela pediu.
+   */
+  const segunda = segundaDistante();
+  const ocupado = [blocoDoAgendamento(8 * 60 + 30, design)]; // 08:30 → 09:20
+  const livres = horariosLivres({ data: segunda, servico: design, ocupados: ocupado })
+    .map((h) => h.inicio);
+
+  it("07:30 continua livre: termina 08:20, antes do agendado", () => {
+    expect(livres).toContain(7 * 60 + 30);
+  });
+
+  it("07:45, 08:00 e 08:15 somem: todos terminariam depois das 08:30", () => {
+    for (const inicio of [7 * 60 + 45, 8 * 60, 8 * 60 + 15]) {
+      expect(livres).not.toContain(inicio);
+      // e o motivo: o bloco invadiria o atendimento
+      expect(blocoDoAgendamento(inicio, design).fim).toBeGreaterThan(8 * 60 + 30);
+    }
+  });
+
+  it("09:30 volta a ficar livre: o atendimento acabou 09:20", () => {
+    expect(livres).toContain(9 * 60 + 30);
+    expect(livres).not.toContain(9 * 60 + 15);
+  });
+
+  it("são exatamente 7 horários que somem, 3 antes e 3 depois", () => {
+    const todos = horariosLivres({ data: segunda, servico: design }).length;
+    expect(todos - livres.length).toBe(7);
+  });
+});
