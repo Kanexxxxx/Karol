@@ -18,8 +18,6 @@ export type EstadoAgendar = {
   valores?: { nome: string; whatsapp: string; observacao: string };
 };
 
-export const ESTADO_INICIAL: EstadoAgendar = {};
-
 /** Mensagem genérica pra tentativa que cheira a robô — sem entregar o motivo. */
 const RECUSA_SILENCIOSA =
   "Não consegui validar o envio. Recarregue a página e tente de novo.";

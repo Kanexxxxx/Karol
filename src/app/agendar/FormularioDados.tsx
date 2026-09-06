@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { agendar, ESTADO_INICIAL } from "./acoes";
+import { agendar, type EstadoAgendar } from "./acoes";
+
+/**
+ * Mora aqui, e não em `acoes.ts`, porque aquele arquivo é `"use server"` e
+ * só pode exportar função assíncrona. Exportar um objeto de lá derrubava o
+ * módulo em produção e jogava o /agendar na tela de erro.
+ */
+const ESTADO_INICIAL: EstadoAgendar = {};
 
 /**
  * Último passo: nome, WhatsApp e um recado opcional.
