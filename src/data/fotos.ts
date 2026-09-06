@@ -129,23 +129,22 @@ export const GALERIA: Foto[] = [
   trabalho(1, "Design com henna"),
   trabalho(2, "Design de sobrancelha"),
   trabalho(3, "Maquiagem social"),
-  trabalho(4, "Design com henna"),
+  trabalho(4, "Brow lamination"),
   trabalho(5, "Maquiagem social"),
   trabalho(6, "Design de sobrancelha"),
-  trabalho(7, "Design com henna"),
+  trabalho(7, "Brow lamination"),
   trabalho(8, "Design de sobrancelha"),
   trabalho(9, "Maquiagem social"),
   trabalho(10, "Design de sobrancelha"),
   trabalho(11, "Brow lamination", "Durante"),
-  trabalho(12, "Design de sobrancelha"),
-  trabalho(13, "Maquiagem social"),
-  trabalho(14, "Maquiagem social"),
+  trabalho(12, "Maquiagem social"),
+  trabalho(13, "Design com henna"),
   trabalho(15, "Design de sobrancelha"),
   trabalho(16, "Design de sobrancelha"),
   trabalho(17, "Maquiagem social"),
   trabalho(18, "Maquiagem social"),
   trabalho(19, "Maquiagem social"),
-  trabalho(20, "Design de sobrancelha"),
+  trabalho(20, "Maquiagem social"),
   {
     arquivo: `${P}/processo.jpg`,
     alt: "Karol modelando a sobrancelha de uma cliente",
@@ -155,9 +154,9 @@ export const GALERIA: Foto[] = [
   },
   {
     arquivo: `${P}/processo-3.jpg`,
-    alt: "Aplicação de henna na sobrancelha",
+    alt: "Brow lamination sendo aplicada na sobrancelha",
     ...RETRATO,
-    legenda: "Aplicação da henna",
+    legenda: "Brow lamination",
     etiqueta: "Durante",
   },
 ];
@@ -178,8 +177,21 @@ export const ALUNAS: Foto[] = [
 ];
 
 /** Sequência da esteira do topo — mistura resultado, maquiagem e processo. */
+/**
+ * Escolhe por nome de arquivo, não por índice.
+ *
+ * Antes era `GALERIA[1], GALERIA[3]…`: tirar uma foto do meio da galeria
+ * deslocava todas as seguintes e a esteira passava a mostrar outras, sem
+ * ninguém perceber. Aconteceu quando a Karol pediu pra tirar a trab-14.
+ */
+const naGaleria = (arquivo: string): Foto => {
+  const foto = GALERIA.find((f) => f.arquivo.endsWith(`/${arquivo}`));
+  if (!foto) throw new Error(`Foto da esteira não está na galeria: ${arquivo}`);
+  return foto;
+};
+
 export const ESTEIRA: Foto[] = [
-  GALERIA[1], GALERIA[3], GALERIA[6], GALERIA[11],
-  GALERIA[9], GALERIA[13], GALERIA[16], GALERIA[21],
-  GALERIA[2], GALERIA[5],
-];
+  "trab-01.jpg", "trab-03.jpg", "trab-06.jpg", "trab-11.jpg",
+  "trab-09.jpg", "trab-13.jpg", "trab-16.jpg", "trab-20.jpg",
+  "trab-02.jpg", "trab-05.jpg",
+].map(naGaleria);
