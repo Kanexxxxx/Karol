@@ -16,6 +16,7 @@ import {
 } from "./agenda";
 import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
+import { faixaDoCodigo, normalizarCodigo } from "./codigo";
 import { buscarServico, type Servico } from "@/data/servicos";
 import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
 
@@ -343,6 +344,91 @@ export async function buscarAgendamento(id: string): Promise<Agendamento | null>
     .maybeSingle();
 
   return data ? linhaParaAgendamento(data) : null;
+}
+
+/**
+ * Procura agendamento pelo que a Karol tem na mão.
+ *
+ * Ela chega aqui vindo do WhatsApp, com uma dessas três coisas: o código que
+ * a cliente mandou, o nome que aparece na conversa, ou o número. Um campo só
+ * atende os três — obrigar a escolher "buscar por…" antes de digitar é
+ * fricção que não paga o que resolve.
+ *
+ * Busca no histórico inteiro, não só nos próximos 30 dias: quem pergunta
+ * "quando foi meu último atendimento?" precisa do passado.
+ */
+export async function procurarAgendamentos(termo: string): Promise<Agendamento[]> {
+  const bd = banco();
+  if (!bd) return [];
+
+  const limpo = termo.trim();
+  if (limpo.length < 3) return [];
+
+  const codigo = normalizarCodigo(limpo);
+  if (codigo) {
+    // Comparação de intervalo no uuid: usa o índice da chave primária.
+    const { de, ate } = faixaDoCodigo(codigo);
+    const { data } = await bd
+      .from("agendamentos")
+      .select("*")
+      .gte("id", de)
+      .lte("id", ate)
+      .order("periodo", { ascending: false })
+      .limit(LIMITE_BUSCA);
+    return (data ?? []).map(linhaParaAgendamento);
+  }
+
+  const digitos = limpo.replace(/\D/g, "");
+  // Quatro dígitos é o mínimo que distingue alguém — menos que isso casa com
+  // meia agenda e a Karol acha mais rápido rolando a tela.
+  const coluna = digitos.length >= 4 ? "cliente_whatsapp" : "cliente_nome";
+  const alvo = digitos.length >= 4 ? digitos : limpo;
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("*")
+    // `%` e `_` são curingas do LIKE: sem escapar, um nome com underline
+    // vira busca genérica. `\` escapa os dois no Postgres.
+    .ilike(coluna, `%${alvo.replace(/[\\%_]/g, (c) => `\\${c}`)}%`)
+    .order("periodo", { ascending: false })
+    .limit(LIMITE_BUSCA);
+
+  return (data ?? []).map(linhaParaAgendamento);
+}
+
+/** Teto de resultados da busca. Ela procura UMA cliente, não relatório. */
+const LIMITE_BUSCA = 25;
+
+/**
+ * O próximo atendimento marcado deste número.
+ *
+ * Serve o webhook do WhatsApp: a cliente escreve, e o que ela quase sempre
+ * quer saber é do horário que ainda vai acontecer. Cancelado e concluído
+ * ficam de fora — quem pergunta "que horas é o meu?" não está falando do
+ * que já passou.
+ */
+export async function proximoAgendamentoDe(whatsapp: string): Promise<Agendamento | null> {
+  const bd = banco();
+  if (!bd) return null;
+  if (!/^[0-9]{10,15}$/.test(whatsapp)) return null;
+
+  // `overlaps` e não `gte`: `periodo` é um tstzrange, e comparar range com
+  // timestamp não é a mesma operação. O overlaps ainda usa o índice gist.
+  const agora = new Date();
+  const limite = new Date(agora);
+  limite.setFullYear(limite.getFullYear() + 1);
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("*")
+    .eq("cliente_whatsapp", whatsapp)
+    .in("situacao", ["pendente", "confirmado"])
+    .overlaps("periodo", montarPeriodo(agora, limite))
+    .order("periodo", { ascending: true })
+    .limit(1);
+
+  const linha = (data ?? [])[0];
+  return linha ? linhaParaAgendamento(linha) : null;
 }
 
 export type SituacaoAgendamento = Agendamento["situacao"];

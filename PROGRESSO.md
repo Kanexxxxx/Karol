@@ -26,14 +26,16 @@ SP). Feito pelo **Kainã** (`Kanexxxxx`), que ofereceu o serviço a ela.
 | **Stack** | Next.js 16 · React 19 · Tailwind 4 · Supabase · Vercel |
 | **Site institucional** | ✅ pronto, no ar, com página própria da Karol (`/sobre`) |
 | **Agenda online** | ✅ ligada no Supabase e testada contra o banco de verdade |
-| **Painel da Karol** | ✅ agenda, bloqueios, agendar na mão, remarcar e relatório do mês |
-| **Notificações** | ✅ código fala direto com a Cloud API da Meta · ⛔ falta `META_TOKEN` na Vercel |
+| **Painel da Karol** | ✅ agenda, busca por código/nome/telefone, bloqueios, marcar, remarcar, relatório |
+| **WhatsApp** | ✅ envia pela Cloud API e **recebe** em `/api/whatsapp` · ⛔ faltam as 4 variáveis na Vercel |
 | **Deploy** | ✅ Vercel, `karol-zeta.vercel.app` (provisório, 1 mês de teste) |
-| **Build / testes** | ✅ `npm run build` limpo · ✅ **113 testes** passando |
+| **Build / testes** | ✅ `npm run build` limpo · ✅ **178 testes** passando |
 
 **O caminho crítico já foi andado:** Supabase criado, variáveis preenchidas,
-deploy feito. O que sobra para a automação de WhatsApp ficar de pé é
-`META_TOKEN` e `META_PHONE_NUMBER_ID` nas variáveis da Vercel. Ver seção 8.
+deploy feito. Pro WhatsApp automático ficar de pé falta só configurar na
+Vercel: `META_TOKEN` e `META_PHONE_NUMBER_ID` (enviar) e `META_VERIFY_TOKEN`
+e `META_APP_SECRET` (receber). Passo a passo em [`WHATSAPP.md`](./WHATSAPP.md),
+seções 5 e 6.
 
 ---
 
@@ -423,6 +425,7 @@ um commit.
 | 13 | Calendário do mês, cidade no agendamento, painel completo | ✅ |
 | 14 | Relatório do mês, com quem faltou e o contato | ✅ |
 | 15 | Página da Karol (`/sobre`) e acerto das fotos | ✅ |
+| 16 | Código do agendamento, busca no painel e webhook do WhatsApp | ✅ |
 
 ### Detalhes que valem saber
 
@@ -446,6 +449,77 @@ contra script ingênuo, não proteção séria.
 **Testes:** `npm test` (vitest). `test/mock-banco.ts` é um fake do cliente
 Supabase; `test/stubs/server-only.ts` substitui o pacote real, que lança fora do
 runtime do Next. `vitest.config.ts` fixa `TZ=America/Sao_Paulo`.
+
+### Etapa 16 — o fluxo do WhatsApp
+
+**O código do agendamento (`8C6377`) não é coluna no banco.** São os seis
+primeiros dígitos do próprio `id`, derivados em `src/lib/codigo.ts`. Uma
+coluna seria segunda fonte da verdade capaz de divergir, com geração,
+unicidade e migração pra manter — tudo isso pra guardar algo que já está lá.
+A busca no painel usa comparação de INTERVALO no uuid (`gte`/`lte`), que
+aproveita o índice da chave primária; `like` no texto do id obrigaria o
+Postgres a converter linha por linha.
+
+Seis dígitos hexadecimais dão 16,7 milhões de combinações, e a busca devolve
+LISTA — se um dia colidir, a Karol vê os dois e escolhe. Hexadecimal também
+resolve a ambiguidade de graça: `0-9a-f` não tem O nem I pra confundir com 0
+e 1 ao ditar por telefone.
+
+**A busca do painel aceita as três coisas que ela tem na mão** — código, nome
+ou telefone — num campo só, com `method="get"`: a busca vira `?q=` na URL,
+funciona sem JavaScript e o botão voltar faz o que se espera.
+
+#### O webhook (`/api/whatsapp`)
+
+| Cliente manda | O que acontece |
+|---|---|
+| o código | recebe serviço, dia, hora e cidade |
+| "confirmo", "ok" | mesma resposta |
+| "quero cancelar" | recibo pra ela + **aviso pra Karol**, com nome, número e código |
+| "dá pra remarcar?" | idem |
+| qualquer outra coisa | **nada.** Quem responde é a Karol |
+
+⚠️ **NADA neste caminho muda a agenda.** A Karol respondeu no briefing que a
+cliente não desmarca sozinha (`REGRAS.clientePodeCancelar` está `false`). Um
+"responda 2 para cancelar" seria a agenda dela mudando por mensagem, sem ela
+ver. Pedido vira aviso; quem decide é ela.
+
+Isso está travado no nível do ARQUIVO, não só do comportamento: se alguém
+importar `mudarSituacao` em `lib/atendente.ts`, a suíte quebra. Testes que só
+olham o retorno não pegariam — provado por mutação: com o `mudarSituacao`
+introduzido de propósito, 6 testes ficaram vermelhos.
+
+#### A decisão mora fora da rota
+
+`lib/atendente.ts` tem a lógica; a rota só cuida de assinatura, parse e
+repetição. Rota não é importável, e por isso não é testável — e foi um bug de
+costura entre duas partes certas que derrubou os bloqueios na etapa 11.
+
+#### `META_APP_SECRET` não é opcional
+
+A URL do webhook é pública por definição — a Meta precisa alcançá-la. Cada
+POST vem assinado em `X-Hub-Signature-256`, e o HMAC é sobre os **bytes
+crus**: a rota lê `req.text()` antes de qualquer `JSON.parse`, porque
+reserializar reordena chave e a assinatura nunca mais bate. Sem o segredo no
+ambiente, o webhook **recusa tudo**, de propósito.
+
+#### A tabela `conversas`
+
+Guarda até quando a janela de 24 h de cada número está aberta. A janela é da
+PESSOA, não do agendamento — a mesma cliente pode ter três agendamentos e uma
+conversa só, então a chave é o número. Migração:
+`supabase/migracao-02-conversas.sql`, já aplicada no banco de produção.
+
+#### Verificado contra o banco de verdade
+
+Agendamento de teste inserido, cliente pediu cancelamento duas vezes pelo
+webhook, e depois: `situacao` seguia `confirmado` e `atualizado_em =
+criado_em` — a linha nunca foi tocada. A janela abriu com 24 h e a última
+mensagem ficou gravada. Teste apagado no fim; as três tabelas voltaram a zero.
+
+**De brinde:** o cabeçalho do painel estourava a largura no celular — cinco
+itens numa linha sem `flex-wrap`, e o "Sair" ficava pendurado fora da faixa
+branca. As seis telas do painel agora fecham em 390 px sem rolagem lateral.
 
 ### Etapa 15 — a página da Karol e as fotos
 

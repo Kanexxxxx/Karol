@@ -38,7 +38,9 @@ O caminho está provado. O que sobra é ligar no código.
 
 ### Falta
 
-- **Webhook** — só para *receber* mensagem e status. Enviar não depende dele.
+- **Ligar as variáveis na Vercel.** `META_TOKEN` e `META_PHONE_NUMBER_ID` pra
+  enviar; `META_VERIFY_TOKEN` e `META_APP_SECRET` pra receber. O código dos
+  dois lados está pronto e testado — ver seções 5 e 6.
 - **Forma de pagamento** — só para mensagem iniciada pela empresa (o lembrete
   da véspera). Dentro da janela funciona sem cartão, como o teste mostrou.
 - **Verificação da empresa** (Etapa 3) — pede documento. A Karol não tem CNPJ.
@@ -48,21 +50,47 @@ O caminho está provado. O que sobra é ligar no código.
 
 ## 1. O que o código já faz
 
-Pronto e no ar desde a Etapa 4. As mensagens são **montadas** e **empurradas**
-para um webhook. Quem envia de verdade é quem estiver do outro lado.
+O site **fala direto com a Meta** quando `META_TOKEN` e `META_PHONE_NUMBER_ID`
+existem no ambiente. Sem eles, cai no webhook antigo; sem nenhum dos dois, as
+mensagens são montadas e simplesmente não saem — e nada quebra.
+
+### Sai do site
 
 | Onde | O quê |
 |---|---|
-| `src/lib/notificacoes.ts` | os textos das quatro mensagens |
+| `src/lib/notificacoes.ts` | os textos das quatro mensagens e o envio |
 | `criarAgendamento` (`agendamentos.ts`) | dispara na hora do agendamento |
 | `/api/lembretes` | lembrete e agradecimento, 1×/dia pelo cron |
 | `NOTIFICACOES` (`data/negocio.ts`) | liga e desliga cada uma |
 
-Sem `NOTIFICADOR_WEBHOOK_URL` no ambiente, nada quebra: as mensagens são
-montadas e simplesmente não saem. **Trocar de provedor é mudar uma variável
-de ambiente.**
+### Chega no site
 
-### O que chega no webhook
+| Onde | O quê |
+|---|---|
+| `/api/whatsapp` | webhook: confere assinatura, lê o payload, não repete |
+| `src/lib/atendente.ts` | **decide o que responder** — é aqui que se mexe |
+| `src/lib/conversas.ts` | registra a janela de 24 h de cada número |
+
+### O código do agendamento
+
+Todo agendamento tem um código de seis caracteres — `8C6377`. Ele **não é
+coluna no banco**: são os seis primeiros dígitos do próprio `id`, derivados
+em `src/lib/codigo.ts`. Uma coluna seria uma segunda fonte da verdade capaz
+de divergir, pra guardar algo que já está lá.
+
+Ele aparece em quatro lugares e é o mesmo nos quatro: na tela de confirmação,
+na mensagem que a cliente manda, no aviso que chega pra Karol, e no cartão do
+painel. **A Karol digita ele na busca do painel e abre a cliente certa** —
+sem ele, achar quem mandou mensagem é rolar a agenda no olho.
+
+A busca do painel aceita as três coisas que ela tem na mão: o código, o nome
+ou o telefone. Um campo só.
+
+### O caminho antigo, do `NOTIFICADOR_WEBHOOK_URL`
+
+⚠️ Não confunda com o webhook da seção 5. Este é de **saída**, e só entra em
+ação quando `META_TOKEN` **não** está configurado: o site empurra o evento
+pra uma URL sua (n8n, Make, função própria) e quem envia é ela.
 
 `POST` com `content-type: application/json`, timeout de 5 s, e **nunca
 derruba o agendamento se falhar**:
@@ -233,65 +261,88 @@ janela. Crie um da categoria **utility** com o texto de `textoLembrete()`.
 
 ---
 
-## 5. O receptor
+## 5. Receber mensagem — o webhook
 
-É a peça que falta: algo que receba o `POST` do site e chame a Meta. Pode ser
-n8n, Make, ou uma função. Em Vercel, um arquivo assim resolve:
+Enviar já funciona sem isto. O webhook serve pra **receber** o que a cliente
+responde, e é o que faz duas coisas acontecerem:
 
-```js
-// api/whatsapp.js — receptor do NOTIFICADOR_WEBHOOK_URL
-export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+1. **Registra a janela de 24 h.** É o que torna todo o resto grátis (seção 2).
+   Sem registro, o site tenta mandar fora da janela, a Meta recusa com
+   `131047`, e ninguém sabe se aquilo era esperado ou defeito.
+2. **Responde sozinho** o que dá pra responder com certeza.
 
-  // Só nós devemos poder disparar isto.
-  if (req.headers.authorization !== `Bearer ${process.env.SEGREDO_WEBHOOK}`) {
-    return res.status(401).json({ erro: "não autorizado" });
-  }
+### O que ele responde
 
-  const { mensagem } = req.body;
-  if (!mensagem?.para || !mensagem?.texto) {
-    return res.status(400).json({ erro: "faltou para/texto" });
-  }
+| A cliente manda | O que acontece |
+|---|---|
+| o código (`8C6377`) | recebe serviço, dia, hora e cidade do próprio horário |
+| "confirmo", "ok" | mesma resposta |
+| "quero cancelar" | recibo pra ela + **aviso pra Karol**, com nome, número e código |
+| "dá pra remarcar?" | idem |
+| qualquer outra coisa | **nada.** Quem responde é a Karol |
 
-  const r = await fetch(
-    `https://graph.facebook.com/v23.0/${process.env.PHONE_NUMBER_ID}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.META_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: mensagem.para,
-        type: "text",
-        text: { body: mensagem.texto },
-      }),
-    },
-  );
+### ⚠️ O que ele NÃO faz: mexer na agenda
 
-  const corpo = await r.json();
-  if (!r.ok) console.error("Meta recusou:", corpo);
-  return res.status(r.ok ? 200 : 502).json(corpo);
-}
+Não existe "responda 2 para cancelar". A Karol respondeu no briefing que a
+cliente **não** desmarca sozinha — `REGRAS.clientePodeCancelar` está `false`
+em `data/negocio.ts`. Um botão de cancelar no WhatsApp seria a agenda dela
+mudando por mensagem, sem ela ver.
+
+Então pedido de cancelar vira **aviso pra ela**, e quem decide continua sendo
+ela. Se ela usar e pedir pra mudar, é decisão dela — e aí muda em
+`lib/atendente.ts`. Tem teste travando isso no nível do arquivo: se alguém
+importar `mudarSituacao` ali, a suíte quebra.
+
+### Ligar
+
+1. **Painel da Meta → seu app → WhatsApp → Configuration → Webhooks → Edit**
+2. **Callback URL:** `https://<seu-site>/api/whatsapp`
+3. **Verify token:** um texto comprido que você inventa. O MESMO valor vai na
+   variável `META_VERIFY_TOKEN` da Vercel — a Meta faz um GET uma única vez
+   pra conferir que os dois batem.
+4. **Verify and save.** Se der erro aqui, a variável não está no ambiente do
+   deploy atual: variável nova só vale no build seguinte.
+5. **Manage → marque o campo `messages`.** Sem isso a Meta valida a URL e
+   nunca manda nada.
+6. **Configurações → Básico → App secret** → copie pra `META_APP_SECRET` na
+   Vercel.
+7. **Redeploy.**
+
+### ⚠️ `META_APP_SECRET` não é opcional
+
+A URL do webhook é pública por definição — a Meta precisa alcançá-la. Cada
+POST vem assinado no cabeçalho `X-Hub-Signature-256`, e é esse segredo que
+confere a assinatura.
+
+**Sem ele o webhook recusa tudo, de propósito.** É melhor não receber nada do
+que aceitar mensagem de quem descobriu a URL e resolveu escrever fingindo ser
+a cliente.
+
+### Conferir que está de pé
+
+```bash
+# O aperto de mão. Tem que devolver "abc123" em texto puro.
+curl "https://<seu-site>/api/whatsapp?hub.mode=subscribe&hub.verify_token=<META_VERIFY_TOKEN>&hub.challenge=abc123"
+
+# Token errado tem que dar 403.
+curl -i "https://<seu-site>/api/whatsapp?hub.mode=subscribe&hub.verify_token=chute&hub.challenge=abc123"
+
+# POST sem assinatura tem que dar 401.
+curl -i -X POST "https://<seu-site>/api/whatsapp" -H 'content-type: application/json' -d '{}'
 ```
 
-⚠️ **A checagem de `authorization` não é opcional.** Sem ela, qualquer pessoa
-que descobrir a URL manda WhatsApp em nome da Karol — e o número que leva o
-bloqueio é o dela.
-
-O site ainda não envia esse cabeçalho: `enviarEvento` em `notificacoes.ts`
-manda só `content-type`. Quando o receptor existir, é uma linha lá.
+Depois disso, mande uma mensagem de um celular pro número da Karol e veja se
+a linha aparece na tabela `conversas` do Supabase.
 
 ---
 
-## 6. Ligar e testar
+## 6. Ligar e testar o envio
 
-1. `NOTIFICADOR_WEBHOOK_URL` nas variáveis da Vercel → URL do receptor
-2. `SEGREDO_WEBHOOK`, `META_TOKEN` e `PHONE_NUMBER_ID` no receptor
-3. **Redeploy** — variável nova só vale no build seguinte
-4. Faça um agendamento de teste no site e veja se a mensagem chega
+1. `META_TOKEN` e `META_PHONE_NUMBER_ID` nas variáveis da Vercel
+2. **Redeploy** — variável nova só vale no build seguinte
+3. Faça um agendamento de teste no site
+4. Na tela de confirmação, toque em **"Avisar a Karol no WhatsApp"**. Esse
+   toque abre a janela de 24 h e é o que faz o resto sair de graça.
 5. `/painel/notificacoes` tem um botão que dispara os lembretes na hora, sem
    esperar o cron do dia seguinte
 

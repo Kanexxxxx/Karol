@@ -4,23 +4,35 @@ import { vi } from "vitest";
  * Fake mínimo do cliente Supabase pros testes.
  *
  * Cobre só o que as libs usam: `from().select()/insert()/update()/delete()`
- * encadeado com `eq/in/overlaps/order` e terminando em `single/maybeSingle`
- * ou no próprio `await` (o builder do PostgREST é "thenable").
+ * encadeado com `eq/in/overlaps/order/gte/lte/ilike/limit` e terminando em
+ * `single/maybeSingle` ou no próprio `await` (o builder do PostgREST é
+ * "thenable").
+ *
+ * Os filtros ficam gravados em `Chamada.filtros`. Isso importa em consulta
+ * cujo VALOR está certo mas o FILTRO pode estar errado — a busca por código,
+ * por exemplo, tem que virar intervalo em `id`, e a busca por nome tem que
+ * escapar os curingas do LIKE. Sem gravar, o teste só veria a lista vazia
+ * dos dois jeitos e passaria com a consulta errada.
  */
 
 type Resposta = { data?: unknown; error?: unknown };
+
+/** Um `.eq("id", x)` vira `{ metodo: "eq", coluna: "id", valor: x }`. */
+export type Filtro = { metodo: string; coluna?: string; valor?: unknown };
 
 type Handlers = {
   select?: (tabela: string) => Resposta;
   insert?: (tabela: string, valores: Record<string, unknown>) => Resposta;
   update?: (tabela: string, valores: Record<string, unknown>) => Resposta;
+  upsert?: (tabela: string, valores: Record<string, unknown>) => Resposta;
   delete?: (tabela: string) => Resposta;
 };
 
 export type Chamada = {
   tabela: string;
-  op: "select" | "insert" | "update" | "delete";
+  op: "select" | "insert" | "update" | "upsert" | "delete";
   valores?: Record<string, unknown>;
+  filtros: Filtro[];
 };
 
 export function mockBanco(handlers: Handlers = {}) {
@@ -29,17 +41,24 @@ export function mockBanco(handlers: Handlers = {}) {
   function from(tabela: string) {
     let op: Chamada["op"] = "select";
     let valores: Record<string, unknown> | undefined;
+    const filtros: Filtro[] = [];
+
+    const anota =
+      (metodo: string) =>
+      (coluna?: string, valor?: unknown) => (filtros.push({ metodo, coluna, valor }), builder);
 
     const resolver = (): Promise<Resposta> => {
-      chamadas.push({ tabela, op, valores });
+      chamadas.push({ tabela, op, valores, filtros });
       const r =
         op === "insert"
           ? handlers.insert?.(tabela, valores ?? {})
           : op === "update"
             ? handlers.update?.(tabela, valores ?? {})
-            : op === "delete"
-              ? handlers.delete?.(tabela)
-              : handlers.select?.(tabela);
+            : op === "upsert"
+              ? handlers.upsert?.(tabela, valores ?? {})
+              : op === "delete"
+                ? handlers.delete?.(tabela)
+                : handlers.select?.(tabela);
       return Promise.resolve(r ?? { data: op === "select" ? [] : null, error: null });
     };
 
@@ -47,11 +66,16 @@ export function mockBanco(handlers: Handlers = {}) {
       select: () => builder,
       insert: (v: Record<string, unknown>) => ((op = "insert"), (valores = v), builder),
       update: (v: Record<string, unknown>) => ((op = "update"), (valores = v), builder),
+      upsert: (v: Record<string, unknown>) => ((op = "upsert"), (valores = v), builder),
       delete: () => ((op = "delete"), builder),
-      eq: () => builder,
-      in: () => builder,
-      overlaps: () => builder,
-      order: () => builder,
+      eq: anota("eq"),
+      in: anota("in"),
+      overlaps: anota("overlaps"),
+      order: anota("order"),
+      gte: anota("gte"),
+      lte: anota("lte"),
+      ilike: anota("ilike"),
+      limit: (n: number) => (filtros.push({ metodo: "limit", valor: n }), builder),
       single: () => resolver(),
       maybeSingle: () => resolver(),
       then: (ok: (v: Resposta) => unknown, err?: (e: unknown) => unknown) =>

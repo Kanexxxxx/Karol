@@ -14,6 +14,7 @@ import {
   criarAgendamentoNoPainel,
   horaEmMinutos,
   mudarSituacao,
+  procurarAgendamentos,
   relatorioDoMes,
   remarcarAgendamento,
 } from "./agendamentos";
@@ -366,3 +367,90 @@ describe("relatorioDoMes", () => {
     expect(r.porServico).toEqual([]);
   });
 });
+
+describe("procurarAgendamentos", () => {
+  /** Os filtros da última consulta, achatados pra facilitar a asserção. */
+  function filtrosDa(m: ReturnType<typeof usarBanco>) {
+    return m.chamadas.at(-1)!.filtros.map((f) => `${f.metodo}:${f.coluna ?? ""}=${f.valor}`);
+  }
+
+  it("procura por código como intervalo de uuid, não como texto", async () => {
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    await procurarAgendamentos("8C6377");
+
+    const filtros = filtrosDa(m);
+    expect(filtros).toContain("gte:id=8c637700-0000-0000-0000-000000000000");
+    expect(filtros).toContain("lte:id=8c6377ff-ffff-ffff-ffff-ffffffffffff");
+    // se cair no ilike, a consulta varre a tabela convertendo uuid em texto
+    expect(filtros.some((f) => f.startsWith("ilike:"))).toBe(false);
+  });
+
+  it("aceita o código sujo, do jeito que vem colado do WhatsApp", async () => {
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    await procurarAgendamentos("  #8c6377 ");
+    expect(filtrosDa(m)).toContain("gte:id=8c637700-0000-0000-0000-000000000000");
+  });
+
+  it("procura por telefone quando vêm 4 dígitos ou mais", async () => {
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    await procurarAgendamentos("(18) 99752-5291");
+    expect(filtrosDa(m)).toContain("ilike:cliente_whatsapp=%18997525291%");
+  });
+
+  it("procura por nome quando não é código nem telefone", async () => {
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    await procurarAgendamentos("Maria");
+    expect(filtrosDa(m)).toContain("ilike:cliente_nome=%Maria%");
+  });
+
+  it("escapa os curingas do LIKE no nome", async () => {
+    // sem escapar, "%" casaria com a agenda inteira
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    await procurarAgendamentos("100%");
+    expect(filtrosDa(m)).toContain("ilike:cliente_nome=%100\\%%");
+  });
+
+  it("nem toca no banco com termo curto demais", async () => {
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    expect(await procurarAgendamentos("ab")).toEqual([]);
+    expect(await procurarAgendamentos("   ")).toEqual([]);
+    expect(m.chamadas).toHaveLength(0);
+  });
+
+  it("devolve LISTA: se dois códigos colidirem, a Karol escolhe", async () => {
+    const m = usarBanco({
+      select: () => ({
+        data: [
+          linhaFalsa("8c6377a1-0000-4000-8000-000000000001", "Ana"),
+          linhaFalsa("8c6377b2-0000-4000-8000-000000000002", "Bia"),
+        ],
+        error: null,
+      }),
+    });
+    const achados = await procurarAgendamentos("8C6377");
+    expect(achados.map((a) => a.clienteNome)).toEqual(["Ana", "Bia"]);
+    expect(m.chamadas).toHaveLength(1);
+  });
+
+  it("põe teto no resultado", async () => {
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    await procurarAgendamentos("Maria");
+    expect(filtrosDa(m).some((f) => f.startsWith("limit:"))).toBe(true);
+  });
+});
+
+/** Linha crua da tabela, como o PostgREST devolveria. */
+function linhaFalsa(id: string, nome: string) {
+  return {
+    id,
+    cliente_nome: nome,
+    cliente_whatsapp: "5518999998888",
+    servico_id: "design-simples",
+    servico_nome: "Design de sobrancelha",
+    servico_preco: 2500,
+    cidade: "Pereira Barreto",
+    periodo: '["2026-10-05 10:00:00+00","2026-10-05 10:50:00+00")',
+    situacao: "confirmado",
+    observacao: null,
+  };
+}

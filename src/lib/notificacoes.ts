@@ -3,6 +3,7 @@ import "server-only";
 import { NEGOCIO, NOTIFICACOES } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
 import { DIA_HORA_POR_EXTENSO } from "./datas";
+import { codigoDoAgendamento } from "./codigo";
 
 /**
  * Notificações.
@@ -60,6 +61,9 @@ export function textoParaKarol(a: DadosAgendamento): string {
     a.cidade,
     "",
     `${a.cliente} · ${a.whatsappCliente}`,
+    // O código é o que ela digita na busca do painel pra abrir este
+    // agendamento. Sem ele, achar a pessoa certa é rolar a agenda no olho.
+    `Código ${codigoDoAgendamento(a.id)}`,
   ].join("\n");
 }
 
@@ -71,6 +75,8 @@ export function textoConfirmacao(a: DadosAgendamento): string {
     `${quando(a.inicioISO)} — ${a.cidade}`,
     "",
     "Venha sem maquiagem. Qualquer coisa, é só me chamar por aqui.",
+    "",
+    `Seu código: ${codigoDoAgendamento(a.id)}`,
   ].join("\n");
 }
 
@@ -162,6 +168,32 @@ async function enviarPeloWebhook(
     }),
     signal: AbortSignal.timeout(5000),
   });
+}
+
+/**
+ * Manda um texto solto pra um número.
+ *
+ * É o que o webhook usa pra responder a cliente. Diferente de `enviarEvento`,
+ * aqui não há evento nem interruptor em `NOTIFICACOES`: é resposta a uma
+ * mensagem que a pessoa acabou de mandar, dentro da janela de 24 h que o
+ * próprio ato dela abriu — o caso em que a Meta cobra zero.
+ *
+ * Nunca lança: quem chama é o webhook, e webhook que responde erro faz a
+ * Meta reenviar o evento.
+ */
+export async function enviarTexto(para: string, texto: string): Promise<boolean> {
+  if (!metaConfigurada()) return false;
+  try {
+    const resp = await enviarPelaMeta(para, texto);
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+      console.error(`resposta pro ${para}: ${resp.status} ${detalhe.slice(0, 300)}`);
+    }
+    return resp.ok;
+  } catch (e) {
+    console.error(`resposta pro ${para} falhou:`, e);
+    return false;
+  }
 }
 
 export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise<void> {

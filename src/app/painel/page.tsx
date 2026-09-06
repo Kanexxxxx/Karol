@@ -3,32 +3,34 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { sessaoAtiva } from "@/lib/sessao";
 import { bancoConfigurado } from "@/lib/banco";
-import { agendaDaKarol, type Agendamento } from "@/lib/agendamentos";
-import { formatarPreco } from "@/data/servicos";
+import { agendaDaKarol, procurarAgendamentos, type Agendamento } from "@/lib/agendamentos";
 import { paraChave } from "@/lib/agenda";
-import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
-import { AcoesAgendamento } from "./AcoesAgendamento";
-import { Remarcar } from "./Remarcar";
+import { DIA_POR_EXTENSO } from "@/lib/datas";
+import { Cartao } from "./Cartao";
 import { sair } from "./acoes";
 
 export const metadata: Metadata = { title: "Painel", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-const SITUACAO_ROTULO: Record<Agendamento["situacao"], { texto: string; classe: string }> = {
-  pendente: { texto: "Aguardando", classe: "bg-[#f3e7cd] text-[#8a6a1f]" },
-  confirmado: { texto: "Confirmado", classe: "bg-ouro text-white" },
-  concluido: { texto: "Atendida", classe: "bg-[#e3ded3] text-tinta-2" },
-  cancelado: { texto: "Cancelado", classe: "bg-[#f0e2df] text-[#9d3b2f]" },
-  faltou: { texto: "Faltou", classe: "bg-[#f0e2df] text-[#9d3b2f]" },
-};
-
-export default async function Painel() {
+export default async function Painel({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   if (!(await sessaoAtiva())) redirect("/painel/login");
+
+  const { q } = await searchParams;
+  const busca = (q ?? "").trim().slice(0, 80);
 
   const agendamentos = bancoConfigurado() ? await agendaDaKarol(-1, 60) : [];
   const porDia = agruparPorDia(agendamentos);
 
-  const ativos = agendamentos.filter((a) => a.situacao === "confirmado" || a.situacao === "pendente");
+  const achados =
+    busca.length >= 3 && bancoConfigurado() ? await procurarAgendamentos(busca) : null;
+
+  const ativos = agendamentos.filter(
+    (a) => a.situacao === "confirmado" || a.situacao === "pendente",
+  );
   const aguardando = agendamentos.filter((a) => a.situacao === "pendente").length;
 
   return (
@@ -42,7 +44,13 @@ export default async function Painel() {
               {aguardando > 0 && ` · ${aguardando} aguardando`}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          {/*
+            `flex-wrap` aqui não é enfeite: são cinco itens numa linha, e sem
+            quebrar eles estouram a largura do celular — o "Sair" ficava
+            pendurado fora da faixa branca do cabeçalho, e a página rolava
+            de lado. A Karol usa o painel no telefone.
+          */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link
               href="/painel/novo"
               className="inline-flex min-h-[34px] items-center bg-ouro px-3.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-90"
@@ -80,8 +88,12 @@ export default async function Painel() {
       </header>
 
       <div className="mx-auto max-w-[900px] px-5 py-8">
+        <Busca valor={busca} />
+
         {!bancoConfigurado() ? (
           <Vazio texto="Banco não configurado. Preencha NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY." />
+        ) : achados ? (
+          <Resultados termo={busca} achados={achados} />
         ) : porDia.length === 0 ? (
           <Vazio texto="Nenhum agendamento nos próximos 60 dias." />
         ) : (
@@ -93,50 +105,7 @@ export default async function Painel() {
                 </h2>
                 <ul className="flex flex-col gap-2.5">
                   {itens.map((ag) => (
-                    <li key={ag.id} className="border border-linha bg-papel p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-                        <div className="min-w-0">
-                          <p className="font-titulo text-[20px] leading-tight">
-                            <span className="tabular-nums text-ouro">
-                              {HORA.format(ag.inicio)}
-                            </span>{" "}
-                            {ag.servicoNome}
-                          </p>
-                          <p className="mt-0.5 text-[14px] text-tinta-2">
-                            {ag.clienteNome} ·{" "}
-                            <a
-                              href={`https://wa.me/${ag.clienteWhatsapp}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-ouro underline decoration-ouro-claro underline-offset-2"
-                            >
-                              {formatarWhatsapp(ag.clienteWhatsapp)}
-                            </a>
-                          </p>
-                          <p className="mt-0.5 text-[12px] uppercase tracking-[0.1em] text-tinta-3">
-                            {ag.cidade} · {formatarPreco(ag.servicoPreco / 100)}
-                          </p>
-                          {ag.observacao && (
-                            <p className="mt-1.5 border-l-2 border-linha pl-2.5 text-[13px] text-tinta-2">
-                              {ag.observacao}
-                            </p>
-                          )}
-                        </div>
-                        <span
-                          className={`shrink-0 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.14em] ${SITUACAO_ROTULO[ag.situacao].classe}`}
-                        >
-                          {SITUACAO_ROTULO[ag.situacao].texto}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-start gap-2">
-                        <AcoesAgendamento id={ag.id} situacao={ag.situacao} />
-                        <Remarcar
-                          id={ag.id}
-                          diaAtual={paraChave(ag.inicio)}
-                          horaAtual={HORA.format(ag.inicio)}
-                        />
-                      </div>
-                    </li>
+                    <Cartao key={ag.id} ag={ag} />
                   ))}
                 </ul>
               </section>
@@ -148,25 +117,86 @@ export default async function Painel() {
   );
 }
 
+/**
+ * Um campo só pra código, nome e telefone.
+ *
+ * É um `form` com `method="get"`: a busca vira `?q=` na barra de endereço,
+ * funciona sem JavaScript, o botão voltar do celular faz o que se espera, e
+ * ela pode deixar salvo. Nada disso vale o custo de um componente de cliente.
+ */
+function Busca({ valor }: { valor: string }) {
+  return (
+    <form method="get" className="mb-8 flex flex-wrap gap-2">
+      <input
+        type="search"
+        name="q"
+        defaultValue={valor}
+        maxLength={80}
+        placeholder="Código, nome ou telefone"
+        aria-label="Procurar agendamento por código, nome ou telefone"
+        className="min-h-[44px] min-w-0 flex-1 border border-linha bg-papel px-3.5 text-[15px] outline-none focus:border-ouro-claro"
+      />
+      <button
+        type="submit"
+        className="min-h-[44px] shrink-0 bg-ouro px-5 text-[10.5px] font-bold uppercase tracking-[0.16em] text-white transition-opacity hover:opacity-90"
+      >
+        Procurar
+      </button>
+      {valor && (
+        <Link
+          href="/painel"
+          className="inline-flex min-h-[44px] shrink-0 items-center border border-linha px-4 text-[10.5px] font-bold uppercase tracking-[0.16em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
+        >
+          Limpar
+        </Link>
+      )}
+    </form>
+  );
+}
+
+function Resultados({ termo, achados }: { termo: string; achados: Agendamento[] }) {
+  if (achados.length === 0) {
+    return (
+      <Vazio
+        texto={`Nada encontrado para “${termo}”. O código tem 6 caracteres; pelo telefone, digite pelo menos 4 números.`}
+      />
+    );
+  }
+
+  return (
+    <section>
+      <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-ouro">
+        {achados.length === 1 ? "1 resultado" : `${achados.length} resultados`} para “{termo}”
+      </h2>
+      <ul className="flex flex-col gap-2.5">
+        {achados.map((ag) => (
+          <Cartao key={ag.id} ag={ag} comData />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function agruparPorDia(agendamentos: Agendamento[]) {
   const mapa = new Map<string, { chave: string; data: Date; itens: Agendamento[] }>();
   for (const ag of agendamentos) {
     const chave = paraChave(ag.inicio);
     if (!mapa.has(chave)) {
-      mapa.set(chave, { chave, data: new Date(ag.inicio.getFullYear(), ag.inicio.getMonth(), ag.inicio.getDate()), itens: [] });
+      mapa.set(chave, {
+        chave,
+        data: new Date(ag.inicio.getFullYear(), ag.inicio.getMonth(), ag.inicio.getDate()),
+        itens: [],
+      });
     }
     mapa.get(chave)!.itens.push(ag);
   }
   return [...mapa.values()];
 }
 
-function formatarWhatsapp(numero: string): string {
-  const m = numero.match(/^(\d{2})(\d{2})(\d{4,5})(\d{4})$/);
-  return m ? `(${m[2]}) ${m[3]}-${m[4]}` : numero;
-}
-
 function Vazio({ texto }: { texto: string }) {
   return (
-    <p className="border border-linha bg-papel p-6 text-center text-[14px] text-tinta-2">{texto}</p>
+    <p className="border border-linha bg-papel p-6 text-center text-[14px] text-tinta-2">
+      {texto}
+    </p>
   );
 }

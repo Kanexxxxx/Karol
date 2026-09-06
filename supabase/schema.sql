@@ -65,11 +65,33 @@ create table bloqueios (
 create index bloqueios_periodo_idx on bloqueios using gist (periodo);
 
 -- ---------------------------------------------------------------------
+-- conversas: a janela de 24 h do WhatsApp
+-- ---------------------------------------------------------------------
+--
+-- A Meta só deixa mandar texto livre (e de graça) nas 24 h seguintes à
+-- última mensagem DA CLIENTE. Fora disso, recusa com 131047 e só passa
+-- template pago. Esta tabela guarda até quando a janela de cada número
+-- está aberta. Ver `migracao-02-conversas.sql` e WHATSAPP.md.
+--
+-- A janela é da pessoa, não do agendamento: a mesma cliente pode ter vários
+-- agendamentos e uma conversa só.
+
+create table conversas (
+  whatsapp text primary key check (whatsapp ~ '^[0-9]{10,15}$'),
+  janela_ate timestamptz not null,
+  ultima_mensagem text,
+  atualizado_em timestamptz not null default now()
+);
+
+create index conversas_janela_idx on conversas (janela_ate);
+
+-- ---------------------------------------------------------------------
 -- segurança
 -- ---------------------------------------------------------------------
 
 alter table agendamentos enable row level security;
 alter table bloqueios enable row level security;
+alter table conversas enable row level security;
 
 -- O site público NÃO lê a tabela de agendamentos: os dados das clientes
 -- (nome e WhatsApp) nunca saem do servidor. A disponibilidade é calculada
