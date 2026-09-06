@@ -3,6 +3,7 @@ import { Botao, Env } from "./ui";
 import { MenuMobile } from "./MenuMobile";
 
 const MENU = [
+  { href: "/sobre", texto: "A Karol" },
   { href: "/#servicos", texto: "Serviços" },
   { href: "/#trabalhos", texto: "Trabalhos" },
   { href: "/#curso", texto: "Curso" },

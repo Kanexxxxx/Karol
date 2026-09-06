@@ -9,8 +9,14 @@ import { Botao, Env, Revela, Rotulo } from "../ui";
  * A foto dela já vem montada em duas metades, uma em cima da outra — é o
  * formato que ela produz no Instagram. Só as etiquetas marcam qual é qual;
  * nada de linha cortando o rosto no meio.
+ *
+ * Aqui rodava a `antes-depois`, que tinha "MADE WITH SPLIT PIC" carimbado
+ * pelo app de colagem — marca d'água de aplicativo grátis na primeira dobra
+ * do site. Trocada pela transformação, que ela mesma montou e legendou.
  */
 export function Prova() {
+  const foto = FOTOS.transformacao;
+
   return (
     <section id="trabalhos" className="bg-creme py-15 lg:py-23">
       <Env className="grid items-center gap-9 lg:grid-cols-[0.82fr_1fr] lg:gap-16">
@@ -20,10 +26,10 @@ export function Prova() {
               Antes
             </span>
             <Image
-              src={FOTOS.antesDepois.arquivo}
-              alt={FOTOS.antesDepois.alt}
-              width={FOTOS.antesDepois.largura}
-              height={FOTOS.antesDepois.altura}
+              src={foto.arquivo}
+              alt={foto.alt}
+              width={foto.largura}
+              height={foto.altura}
               sizes="(min-width: 1024px) 420px, 100vw"
               className="w-full outline outline-linha"
             />

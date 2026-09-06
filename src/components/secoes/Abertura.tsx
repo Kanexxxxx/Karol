@@ -15,7 +15,12 @@ export function Abertura() {
   return (
     <div className="relative isolate lg:bg-creme">
       <div className="lg:grid lg:min-h-[74vh] lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
-        <div className="relative lg:h-full">
+        {/*
+          `overflow-hidden` não é enfeite: a foto abaixo tem `scale(1.055)` no
+          respiro, e um transform que passa da borda faz a PÁGINA rolar de
+          lado no celular — dava pra arrastar o site uns pixels pro lado.
+        */}
+        <div className="relative overflow-hidden lg:h-full">
           <Image
             src={FOTOS.capa.arquivo}
             alt={FOTOS.capa.alt}

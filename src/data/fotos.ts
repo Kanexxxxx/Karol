@@ -52,17 +52,49 @@ const CAPAS = {
 
 export const FOTOS = {
   capa: CAPAS[CAPA],
-  retrato: {
-    arquivo: `${P}/karol-retrato.jpg`,
-    alt: "Sobrancelha desenhada pela Karol",
-    largura: 780,
-    altura: 975,
+
+  /**
+   * A capa que ela NÃO escolheu, aproveitada na página dela.
+   *
+   * São duas fotos boas do mesmo ensaio e só uma abre o site. Amarrando a
+   * segunda ao `CAPA` acima, trocar a escolha dela troca as duas de lugar
+   * sozinho — e a mesma foto nunca aparece na abertura e em `/sobre` ao
+   * mesmo tempo.
+   */
+  capaReserva: CAPA === "branca" ? CAPAS.laranja : CAPAS.branca,
+
+  /**
+   * Do mesmo ensaio de estúdio. Estava no cartão do curso, e a Karol pediu
+   * pra tirar de lá: a foto é dela, não do serviço. Agora abre a história.
+   */
+  paleta: {
+    arquivo: `${P}/karol-paleta.jpg`,
+    alt: "Karol Carvalho aplicando maquiagem em si mesma, com a paleta na mão",
+    largura: 1200,
+    altura: 800,
   },
+  /**
+   * O antes e depois que abre a seção do trabalho. É montado por ela, com a
+   * letra do feed dela — por isso não leva legenda por cima repetindo.
+   */
+  transformacao: {
+    arquivo: `${P}/trab-21.jpg`,
+    alt: "Antes e depois do design de sobrancelha de uma cliente",
+    ...RETRATO,
+  },
+
+  /**
+   * ⚠️ Recortada em 06/09/2026: o app de colagem que ela usou carimbou
+   * "MADE WITH SPLIT PIC" no canto de baixo, e a marca estava QUEIMADA no
+   * original — não havia versão limpa pra baixar. A saída foi cortar 7,7%
+   * da altura, que leva a marca embora e mantém os dois rostos inteiros.
+   * Por isso a altura aqui é 1058 e não os 1146 de antes.
+   */
   antesDepois: {
     arquivo: `${P}/antes-depois.jpg`,
     alt: "Sobrancelha de uma cliente antes e depois do design",
     largura: 860,
-    altura: 1146,
+    altura: 1058,
   },
   atendimento: {
     arquivo: `${P}/processo.jpg`,
@@ -100,11 +132,19 @@ export const FOTO_DO_SERVICO: Record<string, Foto> = {
     ...RETRATO,
     etiqueta: "Festa e formatura",
   },
+  /**
+   * A única foto em que a Karol aparece ENTREGANDO o certificado — é o que
+   * o cartão do curso promete, então é a foto certa ali.
+   *
+   * É o mesmo arquivo da primeira aluna da grade logo abaixo, de propósito.
+   * Antes eram dois arquivos com bytes idênticos (`serv-curso.jpg` era cópia
+   * de `aluna-01.jpg`), erro do script que gerou as duas a partir do mesmo
+   * original. Um arquivo só, citado duas vezes, é o que a página quer.
+   */
   "curso-automaquiagem": {
-    arquivo: `${P}/karol-paleta.jpg`,
-    alt: "Karol demonstrando uma técnica de maquiagem com a paleta na mão",
-    largura: 1200,
-    altura: 800,
+    arquivo: `${P}/aluna-01.jpg`,
+    alt: "Karol entregando o certificado do curso para uma aluna",
+    ...RETRATO,
     etiqueta: "Com certificado",
   },
 };
@@ -120,10 +160,7 @@ const trabalho = (n: number, legenda: string, etiqueta?: string): Foto => ({
 /** Galeria de trabalhos: 20 clientes, nenhuma repetida. */
 export const GALERIA: Foto[] = [
   {
-    arquivo: FOTOS.antesDepois.arquivo,
-    alt: FOTOS.antesDepois.alt,
-    largura: 860,
-    altura: 1146,
+    ...FOTOS.antesDepois,
     legenda: "Design com henna",
     etiqueta: "Antes e depois",
   },
@@ -146,7 +183,8 @@ export const GALERIA: Foto[] = [
   trabalho(18, "Maquiagem social"),
   trabalho(19, "Maquiagem social"),
   trabalho(20, "Maquiagem social"),
-  trabalho(21, "Design de sobrancelha", "Antes e depois"),
+  // trab-21 saiu daqui: virou a foto de abertura da seção do trabalho
+  // (`FOTOS.transformacao`). Cada foto aparece uma vez só no site.
   trabalho(22, "Maquiagem social"),
   trabalho(23, "Maquiagem social"),
   trabalho(24, "Maquiagem social"),

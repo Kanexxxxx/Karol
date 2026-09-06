@@ -16,6 +16,12 @@ export function Rodape() {
             <p className="text-sm text-tinta-2">
               Maquiadora e designer de sobrancelhas em {NEGOCIO.atuacaoCidades}.
             </p>
+            <Link
+              href="/sobre"
+              className="mt-3.5 inline-flex min-h-[38px] items-center text-[11px] font-bold uppercase tracking-[0.2em] text-ouro transition-opacity hover:opacity-70"
+            >
+              Conhecer a Karol →
+            </Link>
           </div>
 
           <div>

@@ -10,7 +10,7 @@
 > Setup técnico e comandos: [`README.md`](./README.md).
 > Armadilhas do Next 16: [`AGENTS.md`](./AGENTS.md).
 
-Última atualização: **2026-09-05**
+Última atualização: **2026-09-06**
 
 ---
 
@@ -24,16 +24,16 @@ SP). Feito pelo **Kainã** (`Kanexxxxx`), que ofereceu o serviço a ela.
 |---|---|
 | **Repositório** | `github.com/Kanexxxxx/Karol` — ⚠️ **público** (ver seção 5) |
 | **Stack** | Next.js 16 · React 19 · Tailwind 4 · Supabase · Vercel |
-| **Site institucional** | ✅ pronto e funcionando sem nenhuma configuração |
-| **Agenda online** | ✅ código pronto · ⛔ **nunca foi ligada** (falta Supabase) |
-| **Painel da Karol** | ✅ código pronto · ⛔ falta env var |
-| **Notificações** | ✅ código pronto · ⛔ falta webhook externo |
-| **Deploy** | ⛔ nunca foi feito |
-| **Build / testes** | ✅ `npm run build` limpo · ✅ 64 testes passando |
+| **Site institucional** | ✅ pronto, no ar, com página própria da Karol (`/sobre`) |
+| **Agenda online** | ✅ ligada no Supabase e testada contra o banco de verdade |
+| **Painel da Karol** | ✅ agenda, bloqueios, agendar na mão, remarcar e relatório do mês |
+| **Notificações** | ✅ código fala direto com a Cloud API da Meta · ⛔ falta `META_TOKEN` na Vercel |
+| **Deploy** | ✅ Vercel, `karol-zeta.vercel.app` (provisório, 1 mês de teste) |
+| **Build / testes** | ✅ `npm run build` limpo · ✅ **113 testes** passando |
 
-**O caminho crítico para o site sair do ar local e virar entrega real são três
-coisas, nenhuma delas código:** criar o projeto no Supabase, preencher as
-variáveis de ambiente, e fazer o deploy na Vercel. Ver seção 8.
+**O caminho crítico já foi andado:** Supabase criado, variáveis preenchidas,
+deploy feito. O que sobra para a automação de WhatsApp ficar de pé é
+`META_TOKEN` e `META_PHONE_NUMBER_ID` nas variáveis da Vercel. Ver seção 8.
 
 ---
 
@@ -420,6 +420,9 @@ um commit.
 | 10 | Anonimização dos certificados + originais fora do Git | ✅ |
 | 11 | Bloqueios corrigidos, duplicações, mobile, freio por IP | ✅ |
 | 12 | Fuso resolvido no código (a Vercel reserva `TZ`) | ✅ |
+| 13 | Calendário do mês, cidade no agendamento, painel completo | ✅ |
+| 14 | Relatório do mês, com quem faltou e o contato | ✅ |
+| 15 | Página da Karol (`/sobre`) e acerto das fotos | ✅ |
 
 ### Detalhes que valem saber
 
@@ -443,6 +446,44 @@ contra script ingênuo, não proteção séria.
 **Testes:** `npm test` (vitest). `test/mock-banco.ts` é um fake do cliente
 Supabase; `test/stubs/server-only.ts` substitui o pacote real, que lança fora do
 runtime do Next. `vitest.config.ts` fixa `TZ=America/Sao_Paulo`.
+
+### Etapa 15 — a página da Karol e as fotos
+
+**`/sobre` existe porque o site inteiro mostrava o trabalho dela e nunca
+mostrava ela.** É a página que a Karol vai abrir pra decidir se fecha o
+contrato, e por isso tudo que está escrito lá saiu da boca dela: a
+auto-apresentação (`NEGOCIO.frase`, que estava no `data/` desde o briefing e
+nunca tinha aparecido no site) e as duas citações dos reels. **Não invente
+biografia nessa página** — ano em que começou, quantas alunas já formou,
+cidade natal. Pergunte a ela.
+
+Chega por três caminhos: menu ("A Karol", primeiro item), a chamada na home
+entre a citação e o "Como funciona", e o rodapé.
+
+**As fotos que trocaram de lugar:**
+
+| Onde | Antes | Agora | Por quê |
+|---|---|---|---|
+| Cartão do curso | `karol-paleta` | `aluna-01` | a Karol pediu: a foto é dela, não do serviço — e a do curso tinha que mostrar o certificado |
+| Abertura do trabalho | `antes-depois` | `trab-21` | a antiga tinha **"MADE WITH SPLIT PIC"** carimbado no canto |
+| `/sobre` e chamada na home | — | `karol-paleta` | é onde a foto dela faz sentido |
+| `/sobre` (abertura) | — | `FOTOS.capaReserva` | a capa que ela **não** escolheu, amarrada ao `CAPA` de `data/fotos.ts` — trocar a escolha dela troca as duas de lugar sozinho |
+
+**A marca d'água estava queimada no original** baixado do Instagram: não havia
+versão limpa. `antes-depois.jpg` foi regerada cortando 7,7% da altura, o que
+leva a marca embora e mantém os dois rostos. Por isso a altura declarada caiu
+de 1146 para 1058 — se alguém regerar essa foto do original, o carimbo volta.
+
+**Rastros removidos:** `serv-curso.jpg` (bytes idênticos a `aluna-01.jpg` — o
+script `fotos2.py` gerou as duas do mesmo original `47.jpg`) e
+`karol-retrato.jpg` (declarado em `FOTOS`, usado em lugar nenhum, e o nome
+mentia: era sobrancelha de cliente, não retrato dela).
+
+**Rolagem lateral no celular, de brinde.** A foto de abertura tem
+`scale(1.055)` no respiro, e transform que passa da borda faz a **página**
+rolar de lado — dava pra arrastar o site uns pixels. Um `overflow-hidden` no
+contêiner da foto resolve. Vale a regra: toda animação de `scale` em imagem de
+largura total precisa de contêiner que corte.
 
 ### Etapa 11 — o que foi corrigido
 
