@@ -11,6 +11,33 @@
 
 ---
 
+## 0. O que já está configurado na Meta
+
+Feito em 06/09/2026. **Não são segredos** — são identificadores. O que é
+segredo é o token, e ele não entra neste arquivo.
+
+| | |
+|---|---|
+| Nome de exibição | Studio Karol Carvalho |
+| Número | +55 (16) 92008-8473 — **Inscrito** |
+| `WABA_ID` | `958269250650095` |
+| `PHONE_NUMBER_ID` | `1232997019905897` |
+| Site informado | instagram.com/studio_karol_carvalho_ |
+
+⚠️ O app começa com um **número de teste** da Meta (`+1 555 676-0300`, phone
+id `1205594729313572`). Ele **não serve**: erro `130497 — Business account is
+restricted from messaging users in this country`, porque números de teste não
+alcançam o Brasil. Use sempre os IDs de produção acima.
+
+### Falta
+
+- **Webhook** — só para *receber* mensagem e status. Enviar não depende dele.
+- **Forma de pagamento** — exigida para mensagem iniciada pela empresa.
+- **Verificação da empresa** (Etapa 3) — pede documento. A Karol não tem CNPJ;
+  é aqui que o caminho oficial pode travar.
+
+---
+
 ## 1. O que o código já faz
 
 Pronto e no ar desde a Etapa 4. As mensagens são **montadas** e **empurradas**
