@@ -3,9 +3,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { sessaoAtiva } from "@/lib/sessao";
 import { bancoConfigurado } from "@/lib/banco";
-import { relatorioDoMes, type LinhaRelatorio } from "@/lib/agendamentos";
+import { relatorioDoMes, type Falta, type LinhaRelatorio } from "@/lib/agendamentos";
 import { formatarPreco } from "@/data/servicos";
 import { FUSO } from "@/data/negocio";
+import { DIA_E_HORA } from "@/lib/datas";
 
 export const metadata: Metadata = { title: "Relatório", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -100,7 +101,11 @@ export default async function Relatorio({
               <Cartao
                 rotulo="Faltas"
                 valor={`${r.faltaram}`}
-                nota={r.faltaram > 0 ? `${r.taxaFalta}% de quem marcou` : undefined}
+                nota={
+                  r.faltaram > 0
+                    ? `${r.taxaFalta}% · ${formatarPreco(r.perdidoComFaltas / 100)} que não entrou`
+                    : undefined
+                }
               />
             </div>
 
@@ -112,6 +117,8 @@ export default async function Relatorio({
               {r.canceladas > 0 &&
                 ` ${r.canceladas === 1 ? "1 foi cancelado" : `${r.canceladas} foram cancelados`}.`}
             </p>
+
+            <QuemFaltou faltas={r.faltas} />
 
             <Tabela titulo="Por serviço" linhas={r.porServico} />
             <Tabela titulo="Por cidade" linhas={r.porCidade} />
@@ -151,6 +158,48 @@ function Cartao({
       </p>
       {nota && <p className="mt-1 text-[11px] text-tinta-3">{nota}</p>}
     </div>
+  );
+}
+
+/**
+ * Quem não apareceu, com o WhatsApp do lado.
+ *
+ * O número seco de faltas não serve pra nada sozinho — o que ela faz com
+ * essa informação é falar com a pessoa. Por isso o nome e o link vêm juntos.
+ */
+function QuemFaltou({ faltas }: { faltas: Falta[] }) {
+  if (faltas.length === 0) return null;
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-ouro">
+        Quem faltou
+      </h2>
+      <ul className="flex flex-col gap-2">
+        {faltas.map((f) => (
+          <li
+            key={f.id}
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border border-linha bg-papel px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="font-titulo text-[19px] leading-tight">{f.cliente}</p>
+              <p className="mt-0.5 text-[13px] text-tinta-3 first-letter:uppercase">
+                {f.servico} · {DIA_E_HORA.format(f.quando)} ·{" "}
+                {formatarPreco(f.valorPerdido / 100)}
+              </p>
+            </div>
+            <a
+              href={`https://wa.me/${f.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[38px] shrink-0 items-center border border-linha px-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
+            >
+              Chamar
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

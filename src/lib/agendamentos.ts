@@ -536,6 +536,16 @@ export async function remarcarAgendamento(
 
 export type LinhaRelatorio = { nome: string; quantidade: number; total: number };
 
+/** Quem não apareceu — com o contato, pra ela poder cobrar ou remarcar. */
+export type Falta = {
+  id: string;
+  cliente: string;
+  whatsapp: string;
+  servico: string;
+  quando: Date;
+  valorPerdido: number;
+};
+
 export type Relatorio = {
   atendidas: number;
   faltaram: number;
@@ -548,8 +558,12 @@ export type Relatorio = {
   ticketMedio: number;
   /** % de faltas sobre o que já passou (atendidas + faltas) */
   taxaFalta: number;
+  /** quanto deixou de entrar por causa das faltas, em centavos */
+  perdidoComFaltas: number;
   porServico: LinhaRelatorio[];
   porCidade: LinhaRelatorio[];
+  /** as faltas do mês, da mais recente pra mais antiga */
+  faltas: Falta[];
 };
 
 /**
@@ -567,8 +581,8 @@ export type Relatorio = {
 export async function relatorioDoMes(ano: number, mes: number): Promise<Relatorio> {
   const vazio: Relatorio = {
     atendidas: 0, faltaram: 0, canceladas: 0, pendentes: 0,
-    faturamento: 0, ticketMedio: 0, taxaFalta: 0,
-    porServico: [], porCidade: [],
+    faturamento: 0, ticketMedio: 0, taxaFalta: 0, perdidoComFaltas: 0,
+    porServico: [], porCidade: [], faltas: [],
   };
 
   const bd = banco();
@@ -586,13 +600,25 @@ export async function relatorioDoMes(ano: number, mes: number): Promise<Relatori
   const linhas = (data ?? []).map(linhaParaAgendamento);
   if (linhas.length === 0) return vazio;
 
-  const r = { ...vazio, porServico: [], porCidade: [] } as Relatorio;
+  const r = { ...vazio, porServico: [], porCidade: [], faltas: [] } as Relatorio;
   const servicos = new Map<string, LinhaRelatorio>();
   const cidades = new Map<string, LinhaRelatorio>();
 
   for (const a of linhas) {
     if (a.situacao === "cancelado") { r.canceladas++; continue; }
-    if (a.situacao === "faltou") { r.faltaram++; continue; }
+    if (a.situacao === "faltou") {
+      r.faltaram++;
+      r.perdidoComFaltas += a.servicoPreco;
+      r.faltas.push({
+        id: a.id,
+        cliente: a.clienteNome,
+        whatsapp: a.clienteWhatsapp,
+        servico: a.servicoNome,
+        quando: a.inicio,
+        valorPerdido: a.servicoPreco,
+      });
+      continue;
+    }
     if (a.situacao !== "concluido") { r.pendentes++; continue; }
 
     r.atendidas++;
@@ -612,6 +638,9 @@ export async function relatorioDoMes(ano: number, mes: number): Promise<Relatori
   const passadas = r.atendidas + r.faltaram;
   r.ticketMedio = r.atendidas > 0 ? Math.round(r.faturamento / r.atendidas) : 0;
   r.taxaFalta = passadas > 0 ? Math.round((r.faltaram / passadas) * 100) : 0;
+
+  // da falta mais recente pra mais antiga: a de ontem importa mais
+  r.faltas.sort((a, b) => b.quando.getTime() - a.quando.getTime());
 
   const porTotal = (a: LinhaRelatorio, b: LinhaRelatorio) => b.total - a.total;
   r.porServico = [...servicos.values()].sort(porTotal);
