@@ -156,7 +156,7 @@ function EscolherCidade({ servico }: { servico: Servico }) {
     <Env className="py-10 lg:py-14">
       <Rotulo>Passo 2</Rotulo>
       <h1 className="mt-2.5 font-titulo text-[clamp(30px,6vw,48px)] leading-[1.05] font-light">
-        Onde fica melhor pra você?
+        Em qual cidade?
       </h1>
       <p className="mt-3 mb-8 text-tinta-2">
         {servico.nome} · {formatarDuracao(servico)} · {formatarPreco(servico.preco)}
