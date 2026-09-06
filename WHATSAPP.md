@@ -106,8 +106,16 @@ Meta com menos trabalho seu.**
 
 1. **Decidir o caminho** — depende da resposta dela no formulário.
 2. **Conta na Meta ou no BSP**, com o chip **(16) 92008-8473**.
-   ⚠️ **Não instale o WhatsApp comum nesse chip.** Um número usado no app
-   fica inutilizável para a API depois, e não tem volta.
+
+   ⚠️ Um número **não pode estar registrado no aplicativo** do WhatsApp ao
+   mesmo tempo em que serve à API. O chip já teve o WhatsApp instalado
+   (06/09/2026), então antes de registrar na API: abrir o app →
+   **Configurações → Conta → Apagar minha conta**.
+
+   Isso resolve — não é definitivo, como cheguei a escrever aqui antes.
+   Dois detalhes: apague **antes** de tentar registrar (com a conta ativa o
+   registro falha), e número recém-liberado às vezes é recusado por algumas
+   horas. Se der erro logo depois, é espera, não é o chip perdido.
 3. **Montar o receptor** — qualquer coisa que aceite o `POST` de cima e
    chame o provedor. Um n8n, um Make, uma função na Vercel. São ~20 linhas.
 4. **`NOTIFICADOR_WEBHOOK_URL`** apontando pra ele, nas variáveis da Vercel.
@@ -117,7 +125,7 @@ Meta com menos trabalho seu.**
 
 ## O que não fazer
 
-- **Não** instalar o WhatsApp comum no chip da API (ponto 2).
+- **Não** deixar o WhatsApp do aplicativo ativo no chip da API (ponto 2).
 - **Não** usar o número pessoal dela para envio automático.
 - **Não** mandar mensagem para quem não pediu. Além do risco de bloqueio, é a
   diferença entre um lembrete útil e spam — e quem paga a conta é a reputação
