@@ -3,7 +3,13 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { sessaoAtiva } from "@/lib/sessao";
 import { NOTIFICACOES } from "@/data/negocio";
-import { notificadorConfigurado, whatsappDaKarol } from "@/lib/notificacoes";
+import {
+  avisosDesviadosPara,
+  metaConfigurada,
+  notificadorConfigurado,
+  recebimentoConfigurado,
+  whatsappDaKarol,
+} from "@/lib/notificacoes";
 import { Disparar } from "./Disparar";
 
 export const metadata: Metadata = { title: "Notificações", robots: { index: false } };
@@ -19,8 +25,15 @@ const AVISOS: { chave: keyof typeof NOTIFICACOES; texto: string }[] = [
 export default async function Notificacoes() {
   if (!(await sessaoAtiva())) redirect("/painel/login");
 
+  // ⚠️ Esta tela dizia "as mensagens são montadas mas não saem" enquanto as
+  // mensagens saíam — ela olhava só o NOTIFICADOR_WEBHOOK_URL, que é o
+  // caminho antigo, e nunca o META_TOKEN, que é o que está em uso. Painel
+  // que mente sobre o próprio estado é pior que painel sem estado nenhum.
+  const temMeta = metaConfigurada();
   const temWebhook = notificadorConfigurado();
+  const temRecebimento = recebimentoConfigurado();
   const temCron = Boolean(process.env.CRON_SECRET);
+  const desviado = avisosDesviadosPara();
 
   return (
     <main className="min-h-dvh bg-osso">
@@ -42,10 +55,17 @@ export default async function Notificacoes() {
             Ligação com o WhatsApp
           </h2>
           <ul className="flex flex-col gap-2 text-[14px]">
-            <Estado ok={temWebhook}>
-              {temWebhook
-                ? "Webhook de envio configurado"
-                : "Sem webhook de envio (NOTIFICADOR_WEBHOOK_URL) — as mensagens são montadas mas não saem"}
+            <Estado ok={temMeta || temWebhook}>
+              {temMeta
+                ? "Enviando pela Cloud API da Meta"
+                : temWebhook
+                  ? "Enviando pelo webhook externo (NOTIFICADOR_WEBHOOK_URL)"
+                  : "Sem canal de envio — as mensagens são montadas e não saem"}
+            </Estado>
+            <Estado ok={temRecebimento}>
+              {temRecebimento
+                ? "Recebendo resposta da cliente pelo webhook"
+                : "Sem META_VERIFY_TOKEN / META_APP_SECRET — o que a cliente responde não chega"}
             </Estado>
             <Estado ok={temCron}>
               {temCron
@@ -53,10 +73,21 @@ export default async function Notificacoes() {
                 : "Sem CRON_SECRET — o disparo automático de lembretes fica fechado"}
             </Estado>
           </ul>
-          <p className="mt-3 text-[13px] text-tinta-3">
-            Os avisos vão pro número {formatar(whatsappDaKarol())}. Detalhes de
-            configuração no <code>PROGRESSO.md</code> e no <code>.env.example</code>.
-          </p>
+
+          {desviado ? (
+            <p className="mt-4 border-l-2 border-[#c0632f] bg-[#fbf1ea] px-3.5 py-3 text-[13.5px] text-tinta">
+              <b>⚠️ Os avisos NÃO estão indo pra Karol.</b> Estão indo pro{" "}
+              {formatar(desviado)}, por causa da variável <code>KAROL_WHATSAPP</code>
+              , usada pra testar sem incomodar ela. Enquanto isso estiver aqui,{" "}
+              <b>ela não recebe agendamento nenhum</b>. Apague a variável na Vercel
+              quando for pra valer.
+            </p>
+          ) : (
+            <p className="mt-3 text-[13px] text-tinta-3">
+              Os avisos vão pro número {formatar(whatsappDaKarol())}. Detalhes de
+              configuração no <code>PROGRESSO.md</code> e no <code>.env.example</code>.
+            </p>
+          )}
         </section>
 
         <section>

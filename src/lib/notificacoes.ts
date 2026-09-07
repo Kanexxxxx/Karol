@@ -52,6 +52,27 @@ export function notificadorConfigurado(): boolean {
   return Boolean(process.env.NOTIFICADOR_WEBHOOK_URL);
 }
 
+/** true quando o webhook de RECEBIMENTO está de pé. Ver app/api/whatsapp. */
+export function recebimentoConfigurado(): boolean {
+  return Boolean(process.env.META_VERIFY_TOKEN && process.env.META_APP_SECRET);
+}
+
+/**
+ * O número pra onde os avisos da Karol estão indo, quando NÃO é o dela.
+ *
+ * `KAROL_WHATSAPP` existe pra testar sem incomodar a Karol — foi assim que
+ * o fluxo inteiro foi testado em 06/09/2026. O problema é que é exatamente
+ * o tipo de coisa que fica esquecida: com ela preenchida, a Karol nunca
+ * recebe aviso de agendamento nenhum e ninguém descobre por semanas.
+ *
+ * Por isso o painel mostra isso na cara quando está desviado.
+ */
+export function avisosDesviadosPara(): string | null {
+  const configurado = whatsappDaKarol();
+  const dela = NEGOCIO.whatsapp.numero.replace(/\D/g, "");
+  return configurado === dela ? null : configurado;
+}
+
 export function textoParaKarol(a: DadosAgendamento): string {
   return [
     "📅 Novo agendamento pelo site",
