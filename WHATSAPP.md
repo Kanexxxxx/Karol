@@ -250,7 +250,15 @@ O temporário expira. Para produção:
 
 📋 **Guarde o token.** Ele não aparece de novo.
 
-### 4.7 Templates — provavelmente você não precisa
+### 4.7 Templates — os textos prontos estão em outro arquivo
+
+Template é a única forma de falar com quem **não escreveu primeiro**. Os três
+que este projeto usa (confirmação, lembrete da véspera e aviso pra Karol)
+estão escritos campo a campo, prontos pra colar no painel da Meta, em
+[`TEMPLATES-WHATSAPP.md`](./TEMPLATES-WHATSAPP.md) — junto com as regras que
+fazem a Meta recusar e o passo pra pôr foto e nome do estúdio na conversa.
+
+### 4.8 O que valia antes (mantido pelo histórico)
 
 Template só é obrigatório para **puxar conversa**. No desenho recomendado a
 cliente manda a primeira mensagem, então dentro das 24 h dá para mandar texto
