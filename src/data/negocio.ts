@@ -46,14 +46,37 @@ export const NEGOCIO = {
 export const FUSO = "America/Sao_Paulo";
 
 /**
- * Endereço público do site — sitemap, robots e prévia de link.
+ * Endereço público do site — sitemap, robots, prévia de link, e o link do
+ * painel que vai no WhatsApp da Karol.
  *
- * Estava chumbado em três arquivos. Quando o domínio definitivo existir,
- * basta definir NEXT_PUBLIC_SITE_URL na Vercel; até lá vale o provisório.
+ * ⚠️ ESTA CONSTANTE JÁ ESTEVE ERRADA EM PRODUÇÃO. O padrão era
+ * `karolcarvalho.vercel.app`, um domínio que **nunca existiu** — a Vercel
+ * criou o projeto como `karol-zeta`. Resultado: o sitemap mandava o Google
+ * pra um 404, e o link "abrir no painel" que chegava no WhatsApp dela não
+ * abria nada. Passou despercebido porque nada quebra: 404 não é exceção.
+ *
+ * Por isso a ordem abaixo tem `VERCEL_PROJECT_PRODUCTION_URL` no meio: a
+ * Vercel injeta essa variável sozinha, com o domínio de produção de
+ * verdade, sem ninguém configurar nada. É a rede de segurança pra quando
+ * alguém esquecer de preencher a de cima.
+ *
+ * `NEXT_PUBLIC_SITE_URL` continua vencendo, porque é ela que vai apontar
+ * pro domínio próprio (karolcarvalho.com.br) quando ele existir.
  */
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL || "https://karolcarvalho.vercel.app"
-).replace(/\/$/, "");
+function enderecoDoSite(): string {
+  const escolhido = process.env.NEXT_PUBLIC_SITE_URL;
+  if (escolhido) return escolhido;
+
+  // A Vercel manda só o host, sem `https://`.
+  const daVercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (daVercel) return `https://${daVercel}`;
+
+  // Último recurso: o domínio real de hoje. Se um dia mudar e ninguém
+  // atualizar, as duas variáveis acima já terão resolvido antes.
+  return "https://karol-zeta.vercel.app";
+}
+
+export const SITE_URL = enderecoDoSite().replace(/\/$/, "");
 
 export type CidadeId = "pereira-barreto" | "bandeirantes";
 

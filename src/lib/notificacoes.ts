@@ -83,11 +83,12 @@ export function textoParaKarol(a: DadosAgendamento): string {
   return [
     "📅 Novo agendamento pelo site",
     "",
-    `${a.servico} — ${formatarPreco(a.valorCentavos / 100)}`,
-    quando(a.inicioISO),
-    a.cidade,
+    `👤 *${a.cliente}*`,
+    `💄 ${a.servico} — ${formatarPreco(a.valorCentavos / 100)}`,
+    `🗓️ ${quando(a.inicioISO)}`,
+    `📍 ${a.cidade}`,
     "",
-    `${a.cliente} · ${a.whatsappCliente}`,
+    `Chamar no WhatsApp: https://wa.me/${a.whatsappCliente}`,
     "",
     // Link, e não código pra digitar. Ela toca e cai no painel com este
     // agendamento já aberto. O código continua existindo como chave do
@@ -104,12 +105,14 @@ export function linkDoPainel(id: string): string {
 
 export function textoConfirmacao(a: DadosAgendamento): string {
   return [
-    `Oi, ${primeiroNome(a.cliente)}! Seu horário no ${NEGOCIO.nome} está confirmado. ✨`,
+    `Oi, ${primeiroNome(a.cliente)}! Seu horário está confirmado no ${NEGOCIO.nome}. ✨`,
     "",
-    `${a.servico}`,
-    `${quando(a.inicioISO)} — ${a.cidade}`,
+    `💄 ${a.servico}`,
+    `🗓️ ${quando(a.inicioISO)}`,
+    `📍 ${a.cidade}`,
+    `💵 ${formatarPreco(a.valorCentavos / 100)}`,
     "",
-    "Venha sem maquiagem. Qualquer coisa, é só me chamar por aqui.",
+    "Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa. 🤍",
   ].join("\n");
 }
 
@@ -117,18 +120,23 @@ export function textoLembrete(a: DadosAgendamento): string {
   return [
     `Oi, ${primeiroNome(a.cliente)}! Passando pra lembrar do seu horário amanhã. 💛`,
     "",
-    `${a.servico}`,
-    `${quando(a.inicioISO)} — ${a.cidade}`,
+    `💄 ${a.servico}`,
+    `🗓️ ${quando(a.inicioISO)}`,
+    `📍 ${a.cidade}`,
     "",
-    "Se precisar remarcar, me avise hoje.",
+    "Não esquece de vir sem maquiagem. 🤍",
+    "",
+    "Se surgiu alguma coisa e você não vai conseguir, me avisa hoje — assim dá tempo de encaixar outra pessoa nesse horário. 🙏",
   ].join("\n");
 }
 
 export function textoAgradecimento(a: DadosAgendamento): string {
   return [
-    `Foi ótimo te atender hoje, ${primeiroNome(a.cliente)}! 🥰`,
-    "Qualquer dúvida sobre os cuidados, estou por aqui.",
-    "Se puder, me conta o que achou — e marque o Studio nas fotos!",
+    `Foi ótimo te atender, ${primeiroNome(a.cliente)}! 🥰`,
+    "",
+    "Qualquer dúvida sobre os cuidados, é só me chamar por aqui.",
+    "",
+    `Se você gostou, me marca nas fotos: @${NEGOCIO.instagram.studio} 📸`,
   ].join("\n");
 }
 
@@ -142,21 +150,24 @@ export function textoRemarcado(a: DadosAgendamento): string {
   return [
     `Oi, ${primeiroNome(a.cliente)}! Precisei mudar o seu horário. 💛`,
     "",
-    `${a.servico}`,
-    `Ficou para ${quando(a.inicioISO)} — ${a.cidade}`,
+    "Ficou assim:",
+    `💄 ${a.servico}`,
+    `🗓️ ${quando(a.inicioISO)}`,
+    `📍 ${a.cidade}`,
     "",
-    "Se esse novo horário não der, me avisa por aqui que a gente acha outro.",
+    "Se esse novo horário não der, me avisa por aqui que a gente acha outro. 🤍",
   ].join("\n");
 }
 
 /** A Karol cancelou pelo painel. A cliente não pode descobrir na porta. */
 export function textoCancelado(a: DadosAgendamento): string {
   return [
-    `Oi, ${primeiroNome(a.cliente)}. Precisei cancelar o seu horário de ${quando(a.inicioISO)}.`,
+    `Oi, ${primeiroNome(a.cliente)}. Precisei cancelar o seu horário, me desculpa. 🙏`,
     "",
-    `${a.servico}`,
+    `💄 ${a.servico}`,
+    `🗓️ ${quando(a.inicioISO)}`,
     "",
-    "Desculpa o transtorno. Me chama por aqui que a gente remarca.",
+    "Me chama por aqui que a gente acha outro dia — tenho horário essa semana. 💛",
   ].join("\n");
 }
 

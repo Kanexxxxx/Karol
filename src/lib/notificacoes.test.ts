@@ -3,12 +3,14 @@ import {
   enviarEvento,
   notificadorConfigurado,
   textoAgradecimento,
+  linkDoPainel,
   textoConfirmacao,
   textoLembrete,
   textoParaKarol,
   whatsappDaKarol,
   type DadosAgendamento,
 } from "./notificacoes";
+import { SITE_URL } from "@/data/negocio";
 
 const AG: DadosAgendamento = {
   id: "ag-1",
@@ -216,5 +218,31 @@ describe("envio pela Cloud API da Meta", () => {
     await enviarEvento("confirmacao", dados);
     expect(buscar).not.toHaveBeenCalled();
     buscar.mockRestore();
+  });
+});
+
+describe("o endereço do site nas mensagens", () => {
+  /**
+   * O link do painel saiu errado em produção: `karolcarvalho.vercel.app`,
+   * um domínio que nunca existiu (a Vercel criou o projeto como
+   * `karol-zeta`). A Karol tocava no link e caía num 404.
+   *
+   * Passou despercebido porque nada quebra — 404 não é exceção. Este teste
+   * é o que impede o mesmo tipo de erro de voltar calado.
+   */
+  it("o link do painel usa o endereço configurado, não um chutado", () => {
+    expect(linkDoPainel("1c6183a1-9f2b-4c3d-8e1a-5d6e7f809a0b")).toBe(
+      `${SITE_URL}/painel?q=1C6183`,
+    );
+  });
+
+  it("o endereço nunca é o domínio que não existe", () => {
+    expect(SITE_URL).not.toContain("karolcarvalho.vercel.app");
+  });
+
+  it("é uma URL absoluta e sem barra no fim", () => {
+    // barra no fim viraria `//painel?q=`, que alguns clientes de WhatsApp
+    // não transformam em link
+    expect(SITE_URL).toMatch(/^https:\/\/[^/]+$/);
   });
 });
