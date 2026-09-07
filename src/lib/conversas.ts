@@ -61,3 +61,48 @@ export async function janelaAberta(whatsapp: string): Promise<boolean> {
   const ate = data?.janela_ate as string | undefined;
   return Boolean(ate && new Date(ate).getTime() > Date.now());
 }
+
+/** Uma conversa aberta, do jeito que o painel mostra. */
+export type Conversa = {
+  whatsapp: string;
+  /** Última coisa que a pessoa escreveu. Pode vir vazio. */
+  ultimaMensagem: string | null;
+  /** Quando a janela de 24 h fecha. */
+  janelaAte: Date;
+  /** Minutos que faltam. Zero ou menos = fechada. */
+  minutosRestantes: number;
+};
+
+/**
+ * As conversas com janela ABERTA agora.
+ *
+ * Isto é informação de dinheiro, não enfeite: enquanto a janela está
+ * aberta, mandar mensagem pra essa pessoa é de graça e sem template. Fora
+ * dela a Meta recusa (`131047`) ou cobra. A Karol nunca teve como saber
+ * disso — ela abria o WhatsApp e descobria na tentativa.
+ *
+ * Ordenado por quem fecha primeiro: é a fila de urgência de verdade.
+ */
+export async function conversasAbertas(limite = 20): Promise<Conversa[]> {
+  const bd = banco();
+  if (!bd) return [];
+
+  const agora = new Date();
+
+  const { data } = await bd
+    .from("conversas")
+    .select("*")
+    .gte("janela_ate", agora.toISOString())
+    .order("janela_ate", { ascending: true })
+    .limit(limite);
+
+  return (data ?? []).map((r: Record<string, unknown>) => {
+    const janelaAte = new Date(r.janela_ate as string);
+    return {
+      whatsapp: r.whatsapp as string,
+      ultimaMensagem: (r.ultima_mensagem as string | null) ?? null,
+      janelaAte,
+      minutosRestantes: Math.floor((janelaAte.getTime() - agora.getTime()) / 60_000),
+    };
+  });
+}

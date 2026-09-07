@@ -73,7 +73,7 @@ export default async function Painel({
               href="/painel/notificacoes"
               className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
             >
-              Notificações
+              Mensagens
             </Link>
             <form action={sair}>
               <button

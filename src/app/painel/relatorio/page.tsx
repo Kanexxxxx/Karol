@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { sessaoAtiva } from "@/lib/sessao";
 import { bancoConfigurado } from "@/lib/banco";
-import { relatorioDoMes, type Falta, type LinhaRelatorio } from "@/lib/agendamentos";
+import { relatorioDoMes, type ItemRelatorio, type LinhaRelatorio } from "@/lib/agendamentos";
+import { AcoesAgendamento } from "../AcoesAgendamento";
 import { formatarPreco } from "@/data/servicos";
 import { FUSO } from "@/data/negocio";
 import { DIA_E_HORA } from "@/lib/datas";
@@ -16,6 +17,9 @@ const MES_POR_EXTENSO = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
   timeZone: FUSO,
 });
+
+/** Só o nome do mês — usado nas comparações ("mais que agosto"). */
+const MES_SO_NOME = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: FUSO });
 
 /** Quantos meses pra trás aparecem no seletor. */
 const MESES_NO_SELETOR = 12;
@@ -40,6 +44,10 @@ export default async function Relatorio({
   const r = bancoConfigurado()
     ? await relatorioDoMes(atual.getFullYear(), atual.getMonth())
     : null;
+
+  const mesAnterior = MES_SO_NOME.format(
+    new Date(atual.getFullYear(), atual.getMonth() - 1, 1),
+  );
 
   const meses = Array.from({ length: MESES_NO_SELETOR }, (_, i) => {
     const d = new Date(limite.getFullYear(), limite.getMonth() - i, 1);
@@ -94,9 +102,22 @@ export default async function Relatorio({
           <Vazio texto="Nenhum agendamento neste mês." />
         ) : (
           <>
+            {/* Antes dos números, de propósito: enquanto houver atendimento
+                sem marcação, os números abaixo estão errados pra baixo. */}
+            <SemMarcacao itens={r.aMarcar} valor={r.aMarcarValor} />
+
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Cartao rotulo="Faturamento" valor={formatarPreco(r.faturamento / 100)} destaque />
-              <Cartao rotulo="Atendidas" valor={String(r.atendidas)} />
+              <Cartao
+                rotulo="Faturamento"
+                valor={formatarPreco(r.faturamento / 100)}
+                nota={comparar(r.faturamento, r.anterior?.faturamento, mesAnterior)}
+                destaque
+              />
+              <Cartao
+                rotulo="Atendidas"
+                valor={String(r.atendidas)}
+                nota={comparar(r.atendidas, r.anterior?.atendidas, mesAnterior, false)}
+              />
               <Cartao rotulo="Ticket médio" valor={formatarPreco(r.ticketMedio / 100)} />
               <Cartao
                 rotulo="Faltas"
@@ -108,6 +129,8 @@ export default async function Relatorio({
                 }
               />
             </div>
+
+            <QuemVeio novas={r.novas} retornaram={r.retornaram} />
 
             {/* Concordância na mão: "1 foram cancelados" fica feio. */}
             <p className="mt-3 text-[12.5px] text-tinta-3">
@@ -167,7 +190,7 @@ function Cartao({
  * O número seco de faltas não serve pra nada sozinho — o que ela faz com
  * essa informação é falar com a pessoa. Por isso o nome e o link vêm juntos.
  */
-function QuemFaltou({ faltas }: { faltas: Falta[] }) {
+function QuemFaltou({ faltas }: { faltas: ItemRelatorio[] }) {
   if (faltas.length === 0) return null;
 
   return (
@@ -185,7 +208,7 @@ function QuemFaltou({ faltas }: { faltas: Falta[] }) {
               <p className="font-titulo text-[19px] leading-tight">{f.cliente}</p>
               <p className="mt-0.5 text-[13px] text-tinta-3 first-letter:uppercase">
                 {f.servico} · {DIA_E_HORA.format(f.quando)} ·{" "}
-                {formatarPreco(f.valorPerdido / 100)}
+                {formatarPreco(f.valor / 100)}
               </p>
             </div>
             <a
@@ -201,6 +224,141 @@ function QuemFaltou({ faltas }: { faltas: Falta[] }) {
       </ul>
     </section>
   );
+}
+
+/**
+ * Atendimentos que já passaram da hora e continuam "confirmado".
+ *
+ * ⚠️ É a correção mais importante que este relatório recebeu, e ela é sobre
+ * CONFIANÇA no número. O faturamento conta só quem foi marcada como
+ * Atendida — então cada esquecimento é dinheiro que entrou e não aparece
+ * aqui. O relatório errava pra baixo em silêncio, e ninguém tinha como
+ * desconfiar olhando pra ele.
+ *
+ * Vem antes dos números na tela porque, enquanto tiver linha aqui, os
+ * números de baixo estão errados. E traz os botões do painel junto: o lugar
+ * de resolver é o lugar onde o problema aparece.
+ */
+function SemMarcacao({ itens, valor }: { itens: ItemRelatorio[]; valor: number }) {
+  if (itens.length === 0) return null;
+
+  return (
+    <section className="mb-8 border-l-2 border-[#c0632f] bg-[#fbf1ea] p-5">
+      <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#a2521f]">
+        {itens.length === 1
+          ? "1 atendimento sem marcação"
+          : `${itens.length} atendimentos sem marcação`}
+      </h2>
+      <p className="mt-2 mb-4 text-[13.5px] leading-relaxed text-tinta">
+        O horário já passou e ficou sem resposta. Enquanto estiver assim,{" "}
+        <b>{formatarPreco(valor / 100)}</b> não entram no faturamento do mês.
+        Marque como <b>Atendida</b> quem apareceu e <b>Faltou</b> quem não veio.
+      </p>
+
+      <ul className="flex flex-col gap-2">
+        {itens.map((i) => (
+          <li key={i.id} className="border border-[#e6cdbd] bg-papel px-4 py-3">
+            <p className="font-titulo text-[19px] leading-tight">{i.cliente}</p>
+            <p className="mt-0.5 mb-2.5 text-[13px] text-tinta-3 first-letter:uppercase">
+              {i.servico} · {DIA_E_HORA.format(i.quando)} ·{" "}
+              {formatarPreco(i.valor / 100)}
+            </p>
+            <AcoesAgendamento id={i.id} situacao="confirmado" />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Novas contra as que voltaram.
+ *
+ * O número que mais diz sobre o negócio e o único que o relatório não
+ * tinha. Sobrancelha vive de retorno — a cliente volta a cada três ou
+ * quatro semanas, ou não volta mais. Um mês inteiro de clientes novas
+ * parece crescimento e pode ser vazamento.
+ *
+ * Contado por pessoa, não por atendimento: quem veio duas vezes no mês
+ * conta uma.
+ */
+function QuemVeio({ novas, retornaram }: { novas: number; retornaram: number }) {
+  const total = novas + retornaram;
+  if (total === 0) return null;
+
+  const porcentoRetorno = Math.round((retornaram / total) * 100);
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-ouro">
+        Quem você atendeu
+      </h2>
+      <div className="border border-linha bg-papel p-5">
+        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3">
+          <div>
+            <p className="font-titulo text-[30px] leading-none text-ouro tabular-nums">
+              {retornaram}
+            </p>
+            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-tinta-2">
+              {retornaram === 1 ? "Já era cliente" : "Já eram clientes"}
+            </p>
+          </div>
+          <div>
+            <p className="font-titulo text-[30px] leading-none tabular-nums">{novas}</p>
+            <p className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-tinta-2">
+              {novas === 1 ? "Cliente nova" : "Clientes novas"}
+            </p>
+          </div>
+        </div>
+
+        {/* A barra existe pra proporção ser lida sem contas. */}
+        <div
+          className="mt-4 flex h-2 overflow-hidden bg-creme"
+          role="img"
+          aria-label={`${porcentoRetorno}% das clientes do mês já tinham vindo antes`}
+        >
+          <div className="bg-ouro" style={{ width: `${porcentoRetorno}%` }} />
+        </div>
+
+        <p className="mt-3 text-[13px] text-tinta-2">
+          {retornaram === 0
+            ? "Nenhuma delas tinha vindo antes. É mês de gente nova conhecendo o studio."
+            : `${porcentoRetorno}% de quem você atendeu esse mês já tinha vindo antes.`}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * A comparação com o mês anterior — "+18% que agosto", "3 a mais que agosto".
+ *
+ * ⚠️ Dinheiro vai em PORCENTAGEM e quantidade vai em NÚMERO ABSOLUTO, e a
+ * diferença não é estética. Nos volumes da Karol (uma dúzia de atendimentos
+ * por mês), passar de 2 pra 3 é "+50%" — que soa como um mês espetacular e
+ * é uma cliente. Porcentagem sobre número pequeno mente por exagero.
+ *
+ * `undefined` quando não há com o que comparar: mês sem histórico, ou o
+ * anterior zerado — "infinito por cento" não é informação.
+ */
+function comparar(
+  agora: number,
+  antes: number | undefined,
+  nomeDoMes: string,
+  emPorcentagem = true,
+): string | undefined {
+  if (antes === undefined || antes === 0) return undefined;
+  if (agora === antes) return `igual a ${nomeDoMes}`;
+
+  if (emPorcentagem) {
+    const variacao = Math.round(((agora - antes) / antes) * 100);
+    if (variacao === 0) return `quase igual a ${nomeDoMes}`;
+    return `${variacao > 0 ? "+" : ""}${variacao}% que ${nomeDoMes}`;
+  }
+
+  const diferenca = agora - antes;
+  const quantas = Math.abs(diferenca) === 1 ? "1 a" : `${Math.abs(diferenca)} a`;
+  return `${quantas} ${diferenca > 0 ? "mais" : "menos"} que ${nomeDoMes}`;
 }
 
 function Tabela({ titulo, linhas }: { titulo: string; linhas: LinhaRelatorio[] }) {

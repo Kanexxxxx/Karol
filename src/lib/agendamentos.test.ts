@@ -368,6 +368,151 @@ describe("relatorioDoMes", () => {
   });
 });
 
+/**
+ * O furo silencioso do relatório.
+ *
+ * O faturamento conta só quem foi marcada como Atendida, e a Karol marca no
+ * fim do dia, quando lembra. Cada esquecimento é dinheiro que aconteceu e
+ * não aparece — e o relatório errava pra baixo sem nenhum sinal na tela de
+ * que estava errando.
+ */
+describe("relatório: atendimentos sem marcação", () => {
+  /**
+   * ⚠️ As datas aqui são RELATIVAS a agora, de propósito. Com data fixa,
+   * "está no futuro" vira "está no passado" quando o calendário alcança o
+   * teste, e ele passa a falhar sozinho meses depois sem ninguém ter
+   * mexido em nada.
+   */
+  const linhaEm = (horasDaqui: number, situacao: string, preco = 2500) => {
+    const inicio = new Date(Date.now() + horasDaqui * 3600_000);
+    const fim = new Date(inicio.getTime() + 50 * 60_000);
+    return {
+      id: "0".repeat(36),
+      cliente_nome: "Fulana",
+      cliente_whatsapp: "5518999998888",
+      servico_id: "design-simples",
+      servico_nome: "Design de sobrancelha",
+      servico_preco: preco,
+      cidade: "Pereira Barreto",
+      periodo: `["${inicio.toISOString()}","${fim.toISOString()}")`,
+      situacao,
+      observacao: null,
+    };
+  };
+
+  const hoje = new Date();
+  const doMesAtual = () => relatorioDoMes(hoje.getFullYear(), hoje.getMonth());
+
+  it("lista o confirmado cuja hora já passou", async () => {
+    usarBanco({ select: () => ({ data: [linhaEm(-3, "confirmado", 8000)] }) });
+
+    const r = await doMesAtual();
+    expect(r.aMarcar).toHaveLength(1);
+    expect(r.aMarcarValor).toBe(8000);
+    expect(r.aMarcar[0].valor).toBe(8000);
+  });
+
+  it("não lista o confirmado que ainda vai acontecer", async () => {
+    usarBanco({ select: () => ({ data: [linhaEm(+3, "confirmado")] }) });
+
+    const r = await doMesAtual();
+    expect(r.aMarcar).toHaveLength(0);
+    expect(r.aMarcarValor).toBe(0);
+    // continua contando como pendente, que é o que ele é
+    expect(r.pendentes).toBe(1);
+  });
+
+  it("não lista o que já foi resolvido", async () => {
+    usarBanco({
+      select: () => ({
+        data: [linhaEm(-5, "concluido"), linhaEm(-4, "faltou"), linhaEm(-3, "cancelado")],
+      }),
+    });
+
+    const r = await doMesAtual();
+    expect(r.aMarcar).toHaveLength(0);
+  });
+});
+
+/**
+ * Novas contra as que voltaram.
+ *
+ * O relatório precisa de três consultas pra montar isso, e elas saem na
+ * ordem: o mês, o mês anterior, o histórico de quem foi atendida. O mock
+ * devolve por ORDEM DE CHAMADA porque as três batem na mesma tabela e o
+ * handler não vê os filtros.
+ */
+describe("relatório: quem já tinha vindo antes", () => {
+  const atendida = (whatsapp: string, preco = 2500) => ({
+    id: "0".repeat(36),
+    cliente_nome: "Fulana",
+    cliente_whatsapp: whatsapp,
+    servico_id: "design-simples",
+    servico_nome: "Design de sobrancelha",
+    servico_preco: preco,
+    cidade: "Pereira Barreto",
+    periodo: '["2026-09-08 10:00:00+00","2026-09-08 10:50:00+00")',
+    situacao: "concluido",
+    observacao: null,
+  });
+
+  /** Devolve uma resposta diferente pra cada select, na ordem. */
+  function emSequencia(respostas: unknown[][]) {
+    let i = 0;
+    usarBanco({ select: () => ({ data: respostas[i++] ?? [] }) });
+  }
+
+  it("separa quem já tinha vindo de quem é nova", async () => {
+    emSequencia([
+      [atendida("5518911111111"), atendida("5518922222222")], // o mês
+      [], // mês anterior: sem histórico
+      [{ cliente_whatsapp: "5518911111111" }], // só a primeira já tinha vindo
+    ]);
+
+    const r = await relatorioDoMes(2026, 8);
+    expect(r.retornaram).toBe(1);
+    expect(r.novas).toBe(1);
+  });
+
+  /**
+   * Quem faz sobrancelha volta de 15 em 15 dias, então a MESMA pessoa
+   * aparece duas vezes no mesmo mês. Contando por atendimento em vez de
+   * por pessoa, ela inflaria o número de "novas" sozinha.
+   */
+  it("conta a mesma pessoa uma vez, mesmo com dois atendimentos no mês", async () => {
+    emSequencia([
+      [atendida("5518911111111"), atendida("5518911111111")],
+      [],
+      [], // nunca tinha vindo antes
+    ]);
+
+    const r = await relatorioDoMes(2026, 8);
+    expect(r.novas).toBe(1);
+    expect(r.retornaram).toBe(0);
+    expect(r.atendidas).toBe(2); // dois atendimentos, uma cliente
+  });
+
+  it("traz o mês anterior pra comparar", async () => {
+    emSequencia([
+      [atendida("5518911111111", 10000)],
+      [{ servico_preco: 2500 }, { servico_preco: 2500 }],
+      [],
+    ]);
+
+    const r = await relatorioDoMes(2026, 8);
+    expect(r.anterior).toEqual({ faturamento: 5000, atendidas: 2 });
+  });
+
+  it("mês anterior vazio não vira zero, vira nulo", async () => {
+    emSequencia([[atendida("5518911111111")], [], []]);
+
+    // Zero e "não sei" são coisas diferentes: com zero a tela mostraria
+    // "+100% que agosto" num mês que simplesmente não tem histórico.
+    const r = await relatorioDoMes(2026, 8);
+    expect(r.anterior).toBeNull();
+  });
+});
+
 describe("procurarAgendamentos", () => {
   /** Os filtros da última consulta, achatados pra facilitar a asserção. */
   function filtrosDa(m: ReturnType<typeof usarBanco>) {

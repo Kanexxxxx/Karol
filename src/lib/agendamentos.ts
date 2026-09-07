@@ -806,15 +806,24 @@ export async function remarcarAgendamento(
 
 export type LinhaRelatorio = { nome: string; quantidade: number; total: number };
 
-/** Quem não apareceu — com o contato, pra ela poder cobrar ou remarcar. */
-export type Falta = {
+/**
+ * Um atendimento na lista do relatório, com o contato junto.
+ *
+ * Serve pras duas listas que a tela mostra — quem faltou e quem ficou sem
+ * marcação. Nos dois casos o número de quem é vale mais que o número
+ * agregado: o que a Karol FAZ com essa informação é falar com a pessoa.
+ */
+export type ItemRelatorio = {
   id: string;
   cliente: string;
   whatsapp: string;
   servico: string;
   quando: Date;
-  valorPerdido: number;
+  valor: number;
 };
+
+/** Nome antigo, mantido porque a tela de relatório importa por ele. */
+export type Falta = ItemRelatorio;
 
 export type Relatorio = {
   atendidas: number;
@@ -833,7 +842,39 @@ export type Relatorio = {
   porServico: LinhaRelatorio[];
   porCidade: LinhaRelatorio[];
   /** as faltas do mês, da mais recente pra mais antiga */
-  faltas: Falta[];
+  faltas: ItemRelatorio[];
+
+  /**
+   * Horários que JÁ PASSARAM e continuam "confirmado".
+   *
+   * ⚠️ Este é o furo silencioso do relatório. O faturamento conta só quem
+   * ela marcou como Atendida — e ela marca no fim do dia, quando lembra.
+   * Cada esquecimento é dinheiro que aconteceu e não aparece, e o relatório
+   * mente pra baixo sem nenhum sinal de que está mentindo.
+   *
+   * Aparecer numa lista com botão resolve o problema onde ele é percebido.
+   */
+  aMarcar: ItemRelatorio[];
+  /** quanto está pendurado nesses atendimentos sem marcação, em centavos */
+  aMarcarValor: number;
+
+  /**
+   * O mesmo mês anterior, pra comparar. `null` quando não há nada antes.
+   *
+   * Número solto não diz se o mês foi bom. R$ 1.200 é ótimo depois de 800 e
+   * ruim depois de 1.600 — e é essa a pergunta que ela faz olhando aqui.
+   */
+  anterior: { faturamento: number; atendidas: number } | null;
+
+  /**
+   * Clientes novas contra clientes que voltaram, entre as atendidas do mês.
+   *
+   * É o número que mais diz sobre o negócio dela e o único que o relatório
+   * não tinha: sobrancelha vive de retorno (a cada 3 ou 4 semanas), então
+   * um mês só de clientes novas é um mês que não fideliza.
+   */
+  novas: number;
+  retornaram: number;
 };
 
 /**
@@ -853,6 +894,7 @@ export async function relatorioDoMes(ano: number, mes: number): Promise<Relatori
     atendidas: 0, faltaram: 0, canceladas: 0, pendentes: 0,
     faturamento: 0, ticketMedio: 0, taxaFalta: 0, perdidoComFaltas: 0,
     porServico: [], porCidade: [], faltas: [],
+    aMarcar: [], aMarcarValor: 0, anterior: null, novas: 0, retornaram: 0,
   };
 
   const bd = banco();
@@ -870,28 +912,36 @@ export async function relatorioDoMes(ano: number, mes: number): Promise<Relatori
   const linhas = (data ?? []).map(linhaParaAgendamento);
   if (linhas.length === 0) return vazio;
 
-  const r = { ...vazio, porServico: [], porCidade: [], faltas: [] } as Relatorio;
+  const r = {
+    ...vazio,
+    porServico: [], porCidade: [], faltas: [], aMarcar: [],
+  } as Relatorio;
+  const agora = Date.now();
   const servicos = new Map<string, LinhaRelatorio>();
   const cidades = new Map<string, LinhaRelatorio>();
+  const atendidasDoMes: Agendamento[] = [];
 
   for (const a of linhas) {
     if (a.situacao === "cancelado") { r.canceladas++; continue; }
     if (a.situacao === "faltou") {
       r.faltaram++;
       r.perdidoComFaltas += a.servicoPreco;
-      r.faltas.push({
-        id: a.id,
-        cliente: a.clienteNome,
-        whatsapp: a.clienteWhatsapp,
-        servico: a.servicoNome,
-        quando: a.inicio,
-        valorPerdido: a.servicoPreco,
-      });
+      r.faltas.push(paraItem(a));
       continue;
     }
-    if (a.situacao !== "concluido") { r.pendentes++; continue; }
+    if (a.situacao !== "concluido") {
+      r.pendentes++;
+      // Já passou da hora e ninguém marcou nada: provavelmente aconteceu e
+      // ela esqueceu. Vira lista com botão em vez de sumir na contagem.
+      if (a.inicio.getTime() < agora) {
+        r.aMarcar.push(paraItem(a));
+        r.aMarcarValor += a.servicoPreco;
+      }
+      continue;
+    }
 
     r.atendidas++;
+    atendidasDoMes.push(a);
     r.faturamento += a.servicoPreco;
 
     for (const [mapa, chave] of [
@@ -912,9 +962,88 @@ export async function relatorioDoMes(ano: number, mes: number): Promise<Relatori
   // da falta mais recente pra mais antiga: a de ontem importa mais
   r.faltas.sort((a, b) => b.quando.getTime() - a.quando.getTime());
 
+  // da mais recente pra mais antiga também: ela resolve de trás pra frente
+  r.aMarcar.sort((a, b) => b.quando.getTime() - a.quando.getTime());
+
   const porTotal = (a: LinhaRelatorio, b: LinhaRelatorio) => b.total - a.total;
   r.porServico = [...servicos.values()].sort(porTotal);
   r.porCidade = [...cidades.values()].sort(porTotal);
 
+  const [anterior, historico] = await Promise.all([
+    totalDoMesAnterior(ano, mes),
+    quemJaTinhaVindo(atendidasDoMes.map((a) => a.clienteWhatsapp), primeiro),
+  ]);
+
+  r.anterior = anterior;
+
+  // Contado por PESSOA, não por atendimento: quem veio duas vezes no mesmo
+  // mês é uma cliente, não duas. Sem isso, quem faz sobrancelha de 15 em 15
+  // dias apareceria inflando o número de "novas".
+  const numeros = new Set(atendidasDoMes.map((a) => a.clienteWhatsapp));
+  for (const n of numeros) {
+    if (historico.has(n)) r.retornaram++;
+    else r.novas++;
+  }
+
   return r;
+}
+
+function paraItem(a: Agendamento): ItemRelatorio {
+  return {
+    id: a.id,
+    cliente: a.clienteNome,
+    whatsapp: a.clienteWhatsapp,
+    servico: a.servicoNome,
+    quando: a.inicio,
+    valor: a.servicoPreco,
+  };
+}
+
+/** Faturamento e atendimentos do mês anterior, só pra comparação. */
+async function totalDoMesAnterior(
+  ano: number,
+  mes: number,
+): Promise<{ faturamento: number; atendidas: number } | null> {
+  const bd = banco();
+  if (!bd) return null;
+
+  const primeiro = new Date(ano, mes - 1, 1);
+  const depois = new Date(ano, mes, 1);
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("servico_preco")
+    .eq("situacao", "concluido")
+    .overlaps("periodo", montarPeriodo(primeiro, depois));
+
+  if (!data || data.length === 0) return null;
+
+  return {
+    faturamento: data.reduce((t, l) => t + ((l.servico_preco as number) ?? 0), 0),
+    atendidas: data.length,
+  };
+}
+
+/**
+ * Desses números, quais já tinham sido atendidos ANTES do mês.
+ *
+ * Uma consulta só, com `in`, em vez de uma por cliente. A janela vai desde
+ * 2020 (o negócio não existia antes) até a virada do mês.
+ */
+async function quemJaTinhaVindo(
+  numeros: string[],
+  antesDe: Date,
+): Promise<Set<string>> {
+  const bd = banco();
+  const unicos = [...new Set(numeros)];
+  if (!bd || unicos.length === 0) return new Set();
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("cliente_whatsapp")
+    .eq("situacao", "concluido")
+    .in("cliente_whatsapp", unicos)
+    .overlaps("periodo", montarPeriodo(new Date(2020, 0, 1), antesDe));
+
+  return new Set((data ?? []).map((l) => l.cliente_whatsapp as string));
 }

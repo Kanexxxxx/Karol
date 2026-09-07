@@ -33,6 +33,9 @@ export async function alterarSituacao(
   if (!r.ok) return { erro: r.erro };
 
   revalidatePath("/painel");
+  // O relatório também mostra estes botões, na lista de "sem marcação". Sem
+  // revalidar aqui, a Karol marcava "Atendida" e a linha continuava lá.
+  revalidatePath("/painel/relatorio");
   return { okId: id };
 }
 
