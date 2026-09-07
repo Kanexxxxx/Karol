@@ -9,8 +9,9 @@
 >
 > Setup técnico e comandos: [`README.md`](./README.md).
 > Armadilhas do Next 16: [`AGENTS.md`](./AGENTS.md).
+> O assistente da Karol no WhatsApp: [`ASSISTENTE.md`](./ASSISTENTE.md).
 
-Última atualização: **2026-09-07**
+Última atualização: **2026-09-07** (etapa 18)
 
 ---
 
@@ -28,22 +29,26 @@ SP). Feito pelo **Kainã** (`Kanexxxxx`), que ofereceu o serviço a ela.
 | **Agenda online** | ✅ ligada no Supabase e testada contra o banco de verdade |
 | **Painel da Karol** | ✅ agenda, busca por nome/telefone, bloqueios, marcar, remarcar, relatório |
 | **WhatsApp** | ✅ **funcionando de verdade** — envia, recebe, responde e remarca |
+| **Assistente da Karol** | ✅ código pronto — ela controla a agenda conversando. Falta chave e migração (8.7) |
 | **Deploy** | ✅ Vercel, `karol-zeta.vercel.app` (provisório, 1 mês de teste) |
-| **Build / testes** | ✅ `npm run build` limpo · ✅ **234 testes** passando |
+| **Build / testes** | ✅ `npm run build` limpo · ✅ **276 testes** passando |
 
 **Tudo que é infraestrutura está de pé.** Supabase criado, quatro tabelas,
 variáveis preenchidas, deploy automático a cada push, app da Meta publicado,
 webhook verificado e recebendo. Testado ponta a ponta com celular de verdade
 em 06/09/2026.
 
-⚠️ **Duas coisas que NÃO estão prontas e você precisa saber antes de tocar em
-qualquer coisa — leia a seção 8.1 e 8.2:**
+⚠️ **Três coisas que NÃO estão prontas e você precisa saber antes de tocar
+em qualquer coisa — leia as seções 8.1, 8.2 e 8.7:**
 
 1. `KAROL_WHATSAPP` está desviando todos os avisos pro número do Kainã. A
    Karol não recebe nada enquanto isso existir.
 2. Sem template aprovado na Meta, a confirmação **não chega** em quem marcou
    pelo site e nunca escreveu pro número. Os textos estão prontos em
    `TEMPLATES-WHATSAPP.md`; falta criar e esperar aprovação.
+3. **As migrações 04 e 05 não foram rodadas no banco, e a
+   `DEEPSEEK_API_KEY` não está na Vercel.** Sem elas o lembrete de 30 min
+   e o assistente da Karol existem em código e não funcionam. Ver 8.7.
 
 ---
 
@@ -352,7 +357,8 @@ Se você só vai ler cinco arquivos, leia estes.
 | `data/servicos.ts` | preço, duração e **quem aparece no `/agendar`** (`agendavel`) |
 | `lib/agenda.ts` | o motor. Função pura sobre minutos do dia, sem `Date` por dentro |
 | `lib/agendamentos.ts` | tudo que toca a tabela `agendamentos` |
-| `lib/atendente.ts` | **o que o robô responde no WhatsApp.** É aqui que se mexe |
+| `lib/atendente.ts` | **o que o robô responde às CLIENTES no WhatsApp** |
+| `lib/recepcao.ts` | quem atende quem — cliente vai pro atendente, a Karol pro assistente |
 
 E os que entraram na etapa 17:
 
@@ -365,21 +371,42 @@ E os que entraram na etapa 17:
 | `lib/webhook-meta.ts` | assinatura e leitura do payload da Meta. Função pura |
 | `app/api/whatsapp/route.ts` | só transporte: assinatura, parse, não repetir |
 
+E os da etapa 18:
+
+| Arquivo | Papel |
+|---|---|
+| `lib/assistente.ts` | **a IA da Karol.** As ferramentas, as propostas e a execução |
+| `lib/ia.ts` | só o transporte até o modelo. Não sabe o que é agendamento |
+| `lib/acoes-pendentes.ts` | as propostas da IA esperando o toque dela |
+| `lib/lembretes.ts` | as duas varreduras: a diária e a de ~30 min antes |
+| `components/Esqueleto.tsx` | as peças dos `loading.tsx` |
+
+⚠️ **`assistente.ts` e `atendente.ts` são separados de propósito.** O
+atendente tem um teste que lê o texto do arquivo e reprova se ele importar
+`mudarSituacao`, `criarAgendamento` ou `salvarBloqueio` — é o que garante
+que a cliente não desmarca sozinha. O assistente precisa dessas funções.
+Juntos, a trava teria que ser afrouxada pras clientes também. **Nunca
+mova uma coisa pra dentro da outra.**
+
 **Por que a decisão mora fora da rota:** rota não é importável, então não é
 testável. Foi um bug de costura entre duas partes certas que derrubou os
 bloqueios na etapa 11 — a lição virou regra.
 
-### 6.1.2 As quatro tabelas
+### 6.1.2 As cinco tabelas
 
-| Tabela | Guarda | Migração |
-|---|---|---|
-| `agendamentos` | os atendimentos. `sem_choque` impede sobreposição | `schema.sql` |
-| `bloqueios` | férias, feriado, compromisso | `schema.sql` |
-| `conversas` | até quando a janela de 24 h de cada número está aberta | `migracao-02` |
-| `remarcacoes` | pedido de remarcação em andamento | `migracao-03` |
+| Tabela | Guarda | Migração | Aplicada? |
+|---|---|---|---|
+| `agendamentos` | os atendimentos. `sem_choque` impede sobreposição | `schema.sql` | ✅ |
+| `bloqueios` | férias, feriado, compromisso | `schema.sql` | ✅ |
+| `conversas` | a janela de 24 h de cada número **e a memória do assistente** | `migracao-02` · `05` | ✅ / ⛔ |
+| `remarcacoes` | pedido de remarcação em andamento | `migracao-03` | ✅ |
+| `acoes_pendentes` | o que a IA propôs e espera o toque da Karol | `migracao-05` | ⛔ |
 
-Todas com RLS ligado e **zero policies** — só a chave de serviço passa. As
-três migrações já estão aplicadas no banco de produção.
+E a coluna `avisado_30min_em` em `agendamentos` (`migracao-04`, ⛔).
+
+Todas com RLS ligado e **zero policies** — só a chave de serviço passa.
+
+⛔ **As migrações 04 e 05 ainda NÃO foram rodadas em produção.** Ver 8.7.
 
 ### 6.2 Armadilhas do Next 16 que já morderam
 
@@ -474,6 +501,7 @@ um commit.
 | 15 | Página da Karol (`/sobre`) e acerto das fotos | ✅ |
 | 16 | Código do agendamento, busca no painel e webhook do WhatsApp | ✅ |
 | 17 | WhatsApp ligado de verdade: botões, remarcação com memória, avisos do painel | ✅ |
+| 18 | Carregamento, lembrete de 30 min, relatório e o assistente da Karol | ✅ |
 
 ### Detalhes que valem saber
 
@@ -605,6 +633,110 @@ busca do painel aceita ele calada, mas oferece "nome ou telefone".
 - **Auditoria da agenda** em `agenda-auditoria.test.ts`, respondendo pela
   terceira vez a dúvida dele sobre horários sumindo "pra trás" — com prova
   em vez de explicação.
+
+### Etapa 18 — o dia do carregamento, do lembrete e do assistente
+
+Quatro frentes pedidas pelo Kainã de uma vez.
+
+#### O site não estava travando, estava mudo
+
+Existia **um único `loading.tsx` no projeto inteiro**, no `/agendar`. Sem
+ele, o Next segura a tela ANTIGA congelada até a nova ficar pronta, e o
+único sinal de vida era o fio de 3 px no topo. O painel é `force-dynamic` e
+lê 60 dias do Supabase toda vez que abre — era onde mais aparecia, e é a
+tela que a Karol usa no celular no meio do atendimento.
+
+A barra também jogava contra: `avanca` rodava em **9 segundos** com
+aceleração suave, então em meio segundo de navegação ela tinha andado 7 %
+da tela. Barra que não anda comunica travamento. Agora são 45 % nos
+primeiros 300 ms e cada vez mais devagar depois — o começo da espera é onde
+a pessoa duvida que o toque pegou; o resto ela já sabe que está carregando.
+Mais brilho na ponta, sem o qual 3 px de dourado somem no creme do site.
+
+#### O lembrete de 30 min mora no cartão, não numa tela à parte
+
+O Kainã pediu automático **e** manual. Os dois estão no cartão do
+agendamento: o estado ("Lembrete 06:45") e o botão. A Karol não pensa "vou
+disparar lembretes", ela pensa "a Larissa das 8h não respondeu, será que
+chegou?" — pergunta sobre UMA cliente, respondida olhando pro cartão dela.
+
+⚠️ **A ordem `marcar → mandar` não é detalhe.** Invertida, cabe a próxima
+batida do cron entre uma coisa e outra, e a cliente recebe a mesma mensagem
+três vezes enquanto se arruma. Provado por mutação: com a ordem trocada de
+propósito, 2 testes ficam vermelhos.
+
+#### O painel de notificações dizia o estado do servidor
+
+Listava variável de ambiente com bolinha do lado. O Kainã chamou de
+informação inútil e estava certo: são coisas que a Karol não pode resolver.
+Virou **conversas abertas** — quem escreveu nas últimas 24 h, com quanto
+tempo falta. Isso é dinheiro: dentro da janela, mensagem é livre e sem
+template. O diagnóstico técnico continua, dentro de um `details` fechado no
+rodapé.
+
+#### O relatório mentia pra baixo, em silêncio
+
+O faturamento conta só quem foi marcada como **Atendida**, e ela marca no
+fim do dia, quando lembra. Cada esquecimento era dinheiro que aconteceu e
+não aparecia, sem nenhum sinal na tela. Agora os atendimentos que passaram
+da hora e ficaram sem marcação vêm **antes** dos números, com quanto está
+pendurado e os botões pra resolver ali mesmo.
+
+Mais comparação com o mês anterior e **clientes novas contra as que
+voltaram** — o número que mais diz sobre o negócio, porque sobrancelha vive
+de retorno. Contado por pessoa e não por atendimento: quem faz de 15 em 15
+dias inflava as "novas" sozinha.
+
+Dinheiro compara em porcentagem, quantidade em número absoluto. Com uma
+dúzia de atendimentos por mês, passar de 2 pra 3 vira "+50 %", que soa como
+um mês espetacular e é uma cliente.
+
+#### O assistente da Karol — e por que ele mora fora do `atendente.ts`
+
+Ela manda mensagem pro próprio número do studio e uma IA responde com a
+agenda na mão. Ver [`ASSISTENTE.md`](./ASSISTENTE.md).
+
+**A regra: ler é direto, escrever pede o toque dela.** Consultar responde na
+hora. Mudar a agenda a IA não faz — descreve o que entendeu (nome, serviço,
+dia e hora por extenso, nunca o código) e manda dois botões.
+
+Isso é sobre o modo como um LLM erra: ele não trava nem devolve erro,
+acerta a forma e erra o alvo com convicção total. Com duas clientes na
+quinta, "cancela a de quinta" tem metade de chance de apagar a errada, e
+nada aparece na tela — quem descobre é a cliente, na porta do studio.
+
+⚠️ **A separação de arquivos é a decisão mais importante da etapa.**
+`atendente.ts` tem um teste que lê o texto do arquivo e reprova se ele
+importar `mudarSituacao`, `criarAgendamento` ou `salvarBloqueio` — a trava
+que garante que cliente não desmarca sozinha. O assistente precisa
+justamente dessas funções; no mesmo módulo, a trava teria que ser
+afrouxada, e afrouxada pras clientes junto. Quem separa é `recepcao.ts`,
+pelo número de quem mandou.
+
+E os botões `k:` da remarcação continuam indo pro atendente. Eles vêm do
+número da Karol, então a regra "é a Karol → assistente" os pegaria, e a
+remarcação por WhatsApp — que já funciona e foi testada com celular de
+verdade — pararia de existir sem nenhum teste reclamar.
+
+**Custo:** zero de Meta, porque a janela dela nunca fecha (ela é sempre quem
+escreve primeiro). No DeepSeek, R$ 1 a 3 por mês no volume dela.
+
+#### Protótipos da `/sobre`
+
+Duas direções publicadas como Artifact, com as fotos reais embutidas:
+https://claude.ai/code/artifact/7da38244-cd6b-43d6-b701-9c0d2f77368f
+
+O que estava errado na página de hoje, e que as duas corrigem:
+
+- **`karol-paleta.jpg` é 1200×800 (3:2) e a página força `aspect-4/3`** — o
+  corte come a paleta que ela segura na borda direita. Era a "foto cortada"
+  que o Kainã viu.
+- **A faixa de números** ("2 Cidades · 6 Serviços · 1 Cliente por vez") é
+  número trivial vestido de conquista. É o que mais dava cara de site
+  genérico. Saiu nas duas direções.
+- **O ritmo**: seis seções repetindo "rótulo → título → parágrafo".
+
+Falta ele escolher. **Nenhuma das duas foi para o código ainda.**
 
 ### Etapa 16 — o fluxo do WhatsApp
 
@@ -797,23 +929,37 @@ template — hoje `enviarEvento` só manda texto livre e interativo.
 | `lembrete_vespera` | cai fora da janela quase sempre |
 | `aviso_karol_novo_agendamento` | a janela da Karol vive fechada |
 
-### 8.3 Aviso 30 minutos antes — precisa de decisão, não de código
+### 8.3 Aviso 30 minutos antes — construído, falta ligar o cron
 
-O Kainã pediu. Esbarra num limite que não é nosso: **o plano Hobby da Vercel
-só roda cron 1×/dia**. Um aviso de 30 min antes precisa de alguém batendo em
-`/api/lembretes` a cada 15 min.
+**Feito na etapa 18.** O que falta é infraestrutura, não código.
 
-| Saída | Custo |
+O plano Hobby da Vercel só roda cron **1×/dia**, e um aviso de 30 min antes
+precisa de alguém batendo no endpoint a cada 10–15 minutos. O Kainã escolheu
+o cron externo (R$ 0) em vez do Vercel Pro.
+
+**Como ligar**, em cron-job.org (ou qualquer serviço parecido):
+
+| Campo | Valor |
 |---|---|
-| Cron externo (cron-job.org) apontando pro endpoint | R$ 0 |
-| Vercel Pro | ~US$ 20/mês |
+| URL | `https://karol-zeta.vercel.app/api/lembretes?tipo=curto` |
+| Intervalo | a cada 10 minutos |
+| Cabeçalho | `Authorization: Bearer <CRON_SECRET>` |
 
-O endpoint já é protegido por `CRON_SECRET`, então um cron externo só precisa
-mandar o cabeçalho. **Ele mandou deixar isso pra depois** — não comece sem
-confirmar.
+⚠️ **O `?tipo=curto` não é opcional.** Sem ele o cron roda também a varredura
+da véspera, e cada cliente com horário amanhã receberia o lembrete umas 140
+vezes ao longo do dia.
 
-Quando for feito, vai precisar de marcação de "já avisei" (coluna nova ou
-reaproveitar `remarcacoes`), senão um cron de 15 min manda cinco vezes.
+O cron diário da Vercel continua como está, batendo em `/api/lembretes` sem
+parâmetro — ele é quem manda o lembrete da véspera e o agradecimento.
+
+⚠️ **Precisa da migração 04** (`avisado_30min_em`). Sem ela a coluna não
+existe, a marcação de "já avisei" falha, e o lembrete simplesmente não sai.
+
+⚠️ **E provavelmente precisa de um quarto template na Meta.** Trinta minutos
+antes do horário a janela de 24 h da cliente está fechada — ela marcou dias
+atrás. Existe um atalho: se o lembrete da véspera for template com botão e
+ela tocar, a janela abre e cobre o horário do dia seguinte inteiro. Aí o de
+30 min sai como texto livre, de graça.
 
 ### 8.4 Pendências de negócio (dependem da Karol)
 
@@ -832,11 +978,26 @@ reaproveitar `remarcacoes`), senão um cron de 15 min manda cinco vezes.
 - **Ela ABRIR um dia** em que normalmente não atende (inverso do bloqueio).
   Mexe no motor, que hoje deriva o expediente de `EXPEDIENTE` e não tem
   conceito de exceção pra mais.
-- **Ver as conversas do WhatsApp no painel.** Hoje `conversas` guarda só a
-  última mensagem de cada número. O Kainã perguntou por isso.
 - **Vídeos** dela no site (pedido antigo, nunca feito).
 - Freio por IP sério (Upstash ou o próprio Supabase) se virar problema. O
   atual é `Map` em memória — some no deploy e não é compartilhado.
+
+### 8.7 O que a etapa 18 deixou esperando
+
+Tudo abaixo é **código pronto que não funciona até alguém apertar um botão
+fora do repositório.** Nenhuma dessas coisas quebra nada enquanto estiver
+pendente — o site continua no ar e nada dá erro. Elas só não acontecem.
+
+| O quê | Onde | Sem isso |
+|---|---|---|
+| Rodar `migracao-04-lembrete-30min.sql` | SQL Editor do Supabase | o lembrete de 30 min não sai |
+| Rodar `migracao-05-assistente.sql` | SQL Editor do Supabase | o assistente da Karol não guarda nada e não responde |
+| `DEEPSEEK_API_KEY` na Vercel | Environment Variables | o assistente se cala e responde com o link do painel |
+| Cron externo de 10 min | cron-job.org | ver 8.3 |
+| Os 3 templates da Meta | WhatsApp Manager | ver 8.2 |
+
+Depois de qualquer variável nova: **redeploy**. Variável só vale no build
+seguinte — isso já mordeu duas vezes neste projeto.
 
 ### 8.6 Revisão de segurança
 

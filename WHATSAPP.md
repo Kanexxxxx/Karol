@@ -351,8 +351,42 @@ a linha aparece na tabela `conversas` do Supabase.
 3. Faça um agendamento de teste no site
 4. Na tela de confirmação, toque em **"Avisar a Karol no WhatsApp"**. Esse
    toque abre a janela de 24 h e é o que faz o resto sair de graça.
-5. `/painel/notificacoes` tem um botão que dispara os lembretes na hora, sem
-   esperar o cron do dia seguinte
+5. `/painel/notificacoes` tem um botão que dispara os lembretes do dia na
+   hora, sem esperar o cron do dia seguinte. O lembrete de ~30 min antes é
+   outro: ele tem botão próprio no cartão de cada cliente, na agenda.
+
+---
+
+## 8. O cron do lembrete de 30 minutos
+
+O plano Hobby da Vercel roda cron **1×/dia**, e um aviso de meia hora antes
+precisa de alguém batendo a cada 10–15 minutos. Sai por fora, de graça.
+
+Em **cron-job.org** (ou qualquer serviço parecido):
+
+| Campo | Valor |
+|---|---|
+| URL | `https://karol-zeta.vercel.app/api/lembretes?tipo=curto` |
+| Intervalo | a cada 10 minutos |
+| Cabeçalho | `Authorization: Bearer <CRON_SECRET>` |
+
+⚠️ **O `?tipo=curto` não é opcional.** Sem ele, o cron roda também a
+varredura da véspera — e cada cliente com horário amanhã receberia o
+lembrete umas 140 vezes ao longo do dia.
+
+O cron da Vercel continua batendo em `/api/lembretes` sem parâmetro, 1×/dia:
+é ele que manda o lembrete da véspera e o agradecimento.
+
+Conferir que está de pé:
+
+```bash
+curl -i -H "Authorization: Bearer <CRON_SECRET>"   "https://karol-zeta.vercel.app/api/lembretes?tipo=curto"
+# {"ok":true,"curtos":0}  -> funcionando, ninguém pra avisar agora
+# 401                      -> segredo errado ou CRON_SECRET fora do ambiente
+```
+
+⚠️ Precisa da **migração 04** aplicada. Sem a coluna `avisado_30min_em` a
+marcação de "já avisei" falha e o lembrete não sai.
 
 ---
 
