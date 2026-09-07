@@ -81,6 +81,61 @@ body {
   }
 }
 
+/* ---------- a página da Karol ---------- */
+
+/*
+   Trama de fundo.
+
+   Tirada da categoria "Patterns" do uiverse.io, que resolve tudo com
+   `linear-gradient` empilhado e `background-size` — sem imagem, sem
+   requisição, alguns bytes de CSS.
+
+   Por que ela existe: o site inteiro é preenchimento chapado. Uma trama
+   fininha dá superfície de papel à página dela sem inventar cor nenhuma,
+   e é a coisa mais barata que diferencia essa página do resto.
+
+   A opacidade é baixa de propósito. Trama que se enxerga vira xadrez.
+*/
+.trama {
+  background-color: var(--color-osso);
+  background-image:
+    linear-gradient(0deg, transparent 24%, var(--color-linha) 25%, var(--color-linha) 26%, transparent 27%, transparent 74%, var(--color-linha) 75%, var(--color-linha) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, var(--color-linha) 25%, var(--color-linha) 26%, transparent 27%, transparent 74%, var(--color-linha) 75%, var(--color-linha) 76%, transparent 77%, transparent);
+  background-size: 56px 56px;
+}
+
+/*
+   O nome dela entrando palavra por palavra.
+
+   É a ideia do `SplitText` do reactbits, sem o pacote: lá são spans por
+   palavra com atraso escalonado, e é exatamente isso que dá pra fazer com
+   `animation-delay` inline.
+
+   Diferente do `Revelar` do site, que anima BLOCO ao rolar. Aqui é
+   palavra, e no carregamento — a página dela abre se apresentando.
+*/
+@keyframes entra-palavra {
+  from {
+    opacity: 0;
+    transform: translateY(0.34em) rotate(1.4deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.palavra {
+  display: inline-block;
+  animation: entra-palavra 0.9s var(--ease-marca) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .palavra {
+    animation: none;
+  }
+}
+
 /* ---------- barra de carregamento ---------- */
 /* Ver components/BarraCarregando.tsx. O avanço é daqui, não do JS. */
 
