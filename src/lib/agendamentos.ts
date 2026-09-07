@@ -18,7 +18,7 @@ import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
 import { faixaDoCodigo, normalizarCodigo } from "./codigo";
 import { normalizarWhatsapp } from "./telefone";
-import { buscarServico, type Servico } from "@/data/servicos";
+import { buscarServico, buscarServicoAgendavel, type Servico } from "@/data/servicos";
 import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
 
 export type Agendamento = {
@@ -236,7 +236,11 @@ export async function criarAgendamento(dados: {
   const bd = banco();
   if (!bd) return { ok: false, erro: "O agendamento online ainda não está ligado." };
 
-  const servico = buscarServico(dados.servicoId);
+  // `buscarServicoAgendavel` e não `buscarServico`: tirar o curso da LISTA
+  // da tela não impede ninguém de mandar o id dele no POST. A tela é
+  // conveniência; a regra mora aqui. O painel continua podendo marcar
+  // curso na mão, porque lá quem decide é a Karol.
+  const servico = buscarServicoAgendavel(dados.servicoId);
   if (!servico) return { ok: false, erro: "Serviço não encontrado." };
 
   const dia = deChave(dados.chaveDia);

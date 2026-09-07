@@ -13,6 +13,18 @@ export type Servico = {
    */
   descricao: string;
   categoria: "sobrancelha" | "maquiagem" | "curso";
+  /**
+   * Aparece na lista de agendar pelo site.
+   *
+   * O curso não aparece: são 130 min numa janela de 240 min de dia útil, ou
+   * seja, ele come mais da metade do dia e some da agenda assim que existe
+   * qualquer outro atendimento na manhã. Além disso a data é combinada
+   * entre as duas — não é escolher horário numa grade.
+   *
+   * Ele continua no site inteiro (preço, descrição, seção própria); o que
+   * muda é que a conversa começa no WhatsApp da Karol.
+   */
+  agendavel: boolean;
 };
 
 /** Preços e durações informados por ela no briefing de 29/08/2026. */
@@ -26,6 +38,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "Modelagem da sobrancelha de acordo com o formato do seu rosto.",
     categoria: "sobrancelha",
+    agendavel: true,
   },
   {
     id: "design-henna",
@@ -36,6 +49,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "A modelagem com aplicação de henna, que preenche as falhas e marca o desenho.",
     categoria: "sobrancelha",
+    agendavel: true,
   },
   {
     id: "design-masculino",
@@ -46,6 +60,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "Modelagem masculina, com acabamento discreto e natural.",
     categoria: "sobrancelha",
+    agendavel: true,
   },
   {
     id: "brow-lamination",
@@ -56,6 +71,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "Alinhamento dos fios, que deixa a sobrancelha mais cheia e penteada.",
     categoria: "sobrancelha",
+    agendavel: true,
   },
   {
     id: "maquiagem-social",
@@ -66,6 +82,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "Maquiagem para festa, casamento, formatura e ensaio.",
     categoria: "maquiagem",
+    agendavel: true,
   },
   {
     id: "curso-automaquiagem",
@@ -76,6 +93,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "Aula individual e presencial pra você aprender a se maquiar sozinha. Você sai com certificado.",
     categoria: "curso",
+    agendavel: false,
   },
 ];
 
@@ -105,4 +123,18 @@ export function formatarDuracao(servico: Servico): string {
 
 export function buscarServico(id: string): Servico | undefined {
   return SERVICOS.find((s) => s.id === id);
+}
+
+/**
+ * Os serviços que a cliente escolhe no `/agendar`.
+ *
+ * O site inteiro continua usando `SERVICOS` — preço, rodapé, seções. Só a
+ * grade de horários usa esta lista menor. Ver o comentário de `agendavel`.
+ */
+export const SERVICOS_AGENDAVEIS: Servico[] = SERVICOS.filter((s) => s.agendavel);
+
+/** Como `buscarServico`, mas recusa o que não se marca pelo site. */
+export function buscarServicoAgendavel(id: string): Servico | undefined {
+  const s = buscarServico(id);
+  return s?.agendavel ? s : undefined;
 }

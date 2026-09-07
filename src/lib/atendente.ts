@@ -5,7 +5,8 @@ import { proximoAgendamentoDe, type Agendamento } from "./agendamentos";
 import { codigoDoAgendamento } from "./codigo";
 import { abrirJanela } from "./conversas";
 import { DIA_HORA_POR_EXTENSO } from "./datas";
-import { enviarTexto, whatsappDaKarol } from "./notificacoes";
+import { enviarTexto, linkDoPainel, whatsappDaKarol } from "./notificacoes";
+import { linkWhatsapp } from "./whatsapp";
 import { lerIntencao, type Intencao, type MensagemRecebida } from "./webhook-meta";
 
 /**
@@ -37,7 +38,7 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
   // próximas 24 h. Ver lib/conversas.ts.
   await abrirJanela(m.de, m.texto);
 
-  const intencao = lerIntencao(m.texto);
+  const intencao = lerIntencao(m.texto, m.botao);
 
   // Conversa de verdade ("você atende sábado?") é da Karol. Robô chutando
   // resposta em pergunta que ele não entendeu é pior do que robô calado.
@@ -89,16 +90,23 @@ function textoDoHorario(ag: Agendamento): string {
 }
 
 /**
- * Recibo pra cliente.
+ * Recibo pra cliente — e o caminho pra resolver.
  *
- * Sem ele, ela fica sem saber se a mensagem chegou em alguém e manda de
- * novo — e o custo disso é a Karol respondendo três vezes a mesma pessoa.
+ * Sem recibo ela fica sem saber se a mensagem chegou em alguém e manda de
+ * novo, e o custo disso é a Karol respondendo três vezes a mesma pessoa.
+ *
+ * E vai junto o **WhatsApp pessoal da Karol**, decisão do Kainã: quem quer
+ * desmarcar resolve falando com ela, não com um robô. Este número aqui é o
+ * chip da automação — a Karol não fica olhando ele.
  */
 function reciboDoPedido(ag: Agendamento, pedido: "cancelar" | "remarcar"): string {
+  const verbo = pedido === "cancelar" ? "cancelar" : "remarcar";
   return [
-    `Recebi seu pedido pra ${pedido}. Já avisei a ${primeiroNome(NEGOCIO.profissional)} e ela te responde por aqui.`,
+    `Recebi seu pedido pra ${verbo}, já avisei a ${primeiroNome(NEGOCIO.profissional)}. 💛`,
     "",
     `${ag.servicoNome} — ${DIA_HORA_POR_EXTENSO.format(ag.inicio)}`,
+    "",
+    `Pra resolver mais rápido, fala direto com ela aqui: ${linkWhatsapp()}`,
   ].join("\n");
 }
 
@@ -115,8 +123,11 @@ function avisoParaKarol(
     `${ag.servicoNome} — ${DIA_HORA_POR_EXTENSO.format(ag.inicio)}`,
     ag.cidade,
     "",
-    `Código ${codigoDoAgendamento(ag.id)}`,
     `"${original.slice(0, 200)}"`,
+    "",
+    // Link em vez de código escrito: ela toca e cai no painel com esta
+    // cliente aberta, sem digitar nada.
+    linkDoPainel(ag.id),
   ].join("\n");
 }
 

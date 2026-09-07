@@ -198,3 +198,61 @@ describe("o que a cliente quis dizer", () => {
     expect(lerIntencao("oi, você atende no sábado?")).toBe("outro");
   });
 });
+
+describe("botões", () => {
+  /** Ela tocou num botão de mensagem interativa. */
+  function payloadBotao(id: string, titulo: string) {
+    return {
+      entry: [{ changes: [{ value: { messages: [{
+        from: "5518999998888",
+        id: "wamid.botao",
+        type: "interactive",
+        interactive: { type: "button_reply", button_reply: { id, title: titulo } },
+      }] } }] }],
+    };
+  }
+
+  /** Ela tocou num botão de TEMPLATE — formato diferente, mesma ideia. */
+  function payloadBotaoTemplate(payload: string, texto: string) {
+    return {
+      entry: [{ changes: [{ value: { messages: [{
+        from: "5518999998888",
+        id: "wamid.template",
+        type: "button",
+        button: { payload, text: texto },
+      }] } }] }],
+    };
+  }
+
+  it("lê o toque no botão interativo", () => {
+    expect(lerMensagem(payloadBotao("cancelar", "❌ Cancelar"))).toEqual({
+      de: "5518999998888",
+      id: "wamid.botao",
+      botao: "cancelar",
+      texto: "❌ Cancelar",
+    });
+  });
+
+  it("lê o toque no botão de template", () => {
+    const m = lerMensagem(payloadBotaoTemplate("remarcar", "📅 Remarcar"));
+    expect(m).toMatchObject({ botao: "remarcar", texto: "📅 Remarcar" });
+  });
+
+  it("o botão manda mais que o texto", () => {
+    // "cancelar o horário, ou remarcar se der" nenhuma regex resolve;
+    // o toque no botão resolve
+    expect(lerIntencao("cancelar o horário, ou remarcar se der", "remarcar")).toBe("remarcar");
+    expect(lerIntencao("qualquer coisa escrita", "confirmar")).toBe("confirmar");
+    expect(lerIntencao("", "cancelar")).toBe("cancelar");
+  });
+
+  it("botão que a gente não conhece cai no texto", () => {
+    expect(lerIntencao("quero cancelar", "botao_inventado")).toBe("cancelar");
+    expect(lerIntencao("oi tudo bem", "botao_inventado")).toBe("outro");
+  });
+
+  it("sem botão, continua lendo o texto como antes", () => {
+    expect(lerIntencao("quero cancelar")).toBe("cancelar");
+    expect(lerIntencao("8C6377")).toBe("codigo");
+  });
+});

@@ -141,13 +141,39 @@ describe("envio pela Cloud API da Meta", () => {
     const [url, opcoes] = buscar.mock.calls[0];
     expect(String(url)).toContain("/1232997019905897/messages");
     const corpo = JSON.parse(String((opcoes as RequestInit).body));
+    // A confirmação vai INTERATIVA: ela acabou de marcar e é o momento em
+    // que ainda pode querer trocar alguma coisa.
     expect(corpo).toMatchObject({
       messaging_product: "whatsapp",
       to: "5516991557552",
-      type: "text",
+      type: "interactive",
     });
-    expect(corpo.text.body).toContain("Maria");
+    expect(corpo.interactive.body.text).toContain("Maria");
     buscar.mockRestore();
+  });
+
+  it("a confirmação leva os três botões, e nenhum título estoura o limite", async () => {
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("{}", { status: 200 }),
+    );
+    await enviarEvento("confirmacao", dados);
+
+    const corpo = JSON.parse(String((buscar.mock.calls[0][1] as RequestInit).body));
+    const botoes = corpo.interactive.action.buttons;
+    expect(botoes.map((b: { reply: { id: string } }) => b.reply.id)).toEqual([
+      "confirmar",
+      "remarcar",
+      "cancelar",
+    ]);
+    // A Meta recusa título com mais de 20 caracteres, e emoji conta 2.
+    for (const b of botoes) expect([...b.reply.title].length).toBeLessThanOrEqual(20);
+    buscar.mockRestore();
+  });
+
+  it("a mensagem da cliente não leva mais o código escrito", async () => {
+    // O Kainã achou o código estranho pra um studio de beleza. Ele continua
+    // existindo por dentro, como chave do link do painel da Karol.
+    expect(textoConfirmacao(dados)).not.toMatch(/c[óo]digo/i);
   });
 
   it("o aviso de novo agendamento vai pra Karol, não pra cliente", async () => {

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { NEGOCIO, NOTIFICACOES } from "@/data/negocio";
+import { NEGOCIO, NOTIFICACOES, SITE_URL } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
 import { DIA_HORA_POR_EXTENSO } from "./datas";
 import { codigoDoAgendamento } from "./codigo";
@@ -82,10 +82,18 @@ export function textoParaKarol(a: DadosAgendamento): string {
     a.cidade,
     "",
     `${a.cliente} · ${a.whatsappCliente}`,
-    // O código é o que ela digita na busca do painel pra abrir este
-    // agendamento. Sem ele, achar a pessoa certa é rolar a agenda no olho.
-    `Código ${codigoDoAgendamento(a.id)}`,
+    "",
+    // Link, e não código pra digitar. Ela toca e cai no painel com este
+    // agendamento já aberto. O código continua existindo como chave do
+    // link — ninguém digita, ninguém vê. O Kainã achou o código escrito
+    // estranho pra um studio de beleza, e tinha razão.
+    linkDoPainel(a.id),
   ].join("\n");
+}
+
+/** Abre o painel da Karol já filtrado neste agendamento. */
+export function linkDoPainel(id: string): string {
+  return `${SITE_URL}/painel?q=${codigoDoAgendamento(id)}`;
 }
 
 export function textoConfirmacao(a: DadosAgendamento): string {
@@ -96,8 +104,6 @@ export function textoConfirmacao(a: DadosAgendamento): string {
     `${quando(a.inicioISO)} — ${a.cidade}`,
     "",
     "Venha sem maquiagem. Qualquer coisa, é só me chamar por aqui.",
-    "",
-    `Seu código: ${codigoDoAgendamento(a.id)}`,
   ].join("\n");
 }
 
@@ -167,6 +173,82 @@ async function enviarPelaMeta(para: string, texto: string): Promise<Response> {
   );
 }
 
+/**
+ * Os botões que a cliente vê embaixo da confirmação.
+ *
+ * O `id` é o que volta no webhook quando ela toca — é por ele que
+ * `lerIntencao` decide, sem depender de adivinhar o que ela escreveu.
+ *
+ * ⚠️ O título tem limite de **20 caracteres** na Meta, e emoji fora do
+ * plano básico conta 2. "💬 Falar com a Karol" dá exatamente 20 e a Meta
+ * recusa por um fio — por isso os títulos aqui são curtos.
+ */
+export const BOTOES_CLIENTE = [
+  { id: "confirmar", titulo: "✅ Confirmar" },
+  { id: "remarcar", titulo: "📅 Remarcar" },
+  { id: "cancelar", titulo: "❌ Cancelar" },
+] as const;
+
+/**
+ * Manda texto com botões de resposta rápida.
+ *
+ * ⚠️ Só funciona **dentro da janela de 24 h**, igual ao texto livre. Fora
+ * dela quem resolve é template com botões — ver TEMPLATES-WHATSAPP.md.
+ */
+async function enviarComBotoes(
+  para: string,
+  texto: string,
+  botoes: readonly { id: string; titulo: string }[],
+): Promise<Response> {
+  return fetch(
+    `https://graph.facebook.com/v23.0/${process.env.META_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${process.env.META_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: para,
+        type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: texto.slice(0, 1024) },
+          action: {
+            buttons: botoes.slice(0, 3).map((b) => ({
+              type: "reply",
+              reply: { id: b.id, title: b.titulo.slice(0, 20) },
+            })),
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(5000),
+    },
+  );
+}
+
+/** Texto + botões, sem lançar. Devolve false quando não deu. */
+export async function enviarTextoComBotoes(
+  para: string,
+  texto: string,
+  botoes: readonly { id: string; titulo: string }[] = BOTOES_CLIENTE,
+): Promise<boolean> {
+  if (!metaConfigurada()) return false;
+  try {
+    const resp = await enviarComBotoes(para, texto, botoes);
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+      console.error(`botões pro ${para}: ${resp.status} ${detalhe.slice(0, 300)}`);
+    }
+    return resp.ok;
+  } catch (e) {
+    console.error(`botões pro ${para} falharam:`, e);
+    return false;
+  }
+}
+
 /** Manda pro webhook configurável, que repassa. Caminho antigo, ainda vale. */
 async function enviarPeloWebhook(
   url: string,
@@ -229,9 +311,18 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
   // é montada e simplesmente não sai — e nada quebra.
   if (!metaConfigurada() && !webhook) return;
 
+  // A confirmação da cliente vai COM BOTÕES: ela acabou de marcar e é o
+  // momento em que ainda pode querer trocar alguma coisa. Botão é escolha
+  // de lista — não obriga ninguém a escrever nem a gente a adivinhar.
+  // O aviso da Karol não leva botão: ele leva o link do painel, que é onde
+  // ela resolve de verdade.
+  const comBotoes = evento === "confirmacao";
+
   try {
     const resp = metaConfigurada()
-      ? await enviarPelaMeta(para, texto)
+      ? comBotoes
+        ? await enviarComBotoes(para, texto, BOTOES_CLIENTE)
+        : await enviarPelaMeta(para, texto)
       : await enviarPeloWebhook(webhook!, evento, a, para, texto);
 
     if (!resp.ok) {

@@ -23,6 +23,13 @@ export type MensagemRecebida = {
   texto: string;
   /** Id da mensagem na Meta. Serve pra não processar a mesma duas vezes. */
   id: string;
+  /**
+   * O `id` do botão, quando ela TOCOU num em vez de escrever.
+   *
+   * Vale mais que o texto: é escolha de uma lista, não linguagem que
+   * precisa ser adivinhada. Quando existe, `lerIntencao` decide por ele.
+   */
+  botao?: string;
 };
 
 /**
@@ -107,18 +114,41 @@ export function lerMensagem(payload: unknown): MensagemRecebida | null {
           id?: unknown;
           type?: unknown;
           text?: { body?: unknown };
+          // toque em botão de mensagem interativa
+          interactive?: { type?: unknown; button_reply?: { id?: unknown; title?: unknown } };
+          // toque em botão de TEMPLATE (formato diferente, mesma ideia)
+          button?: { payload?: unknown; text?: unknown };
         };
-        if (msg.type !== "text") continue;
         if (typeof msg.from !== "string" || typeof msg.id !== "string") continue;
 
         const de = msg.from.replace(/\D/g, "");
         if (!/^[0-9]{10,15}$/.test(de)) continue;
+        const base = { de, id: msg.id };
 
-        return {
-          de,
-          texto: typeof msg.text?.body === "string" ? msg.text.body.slice(0, 2000) : "",
-          id: msg.id,
-        };
+        if (msg.type === "text") {
+          const texto = typeof msg.text?.body === "string" ? msg.text.body.slice(0, 2000) : "";
+          return { ...base, texto };
+        }
+
+        // Ela tocou num botão nosso. Guardamos o título como `texto` pra o
+        // log e o aviso da Karol continuarem legíveis.
+        if (msg.type === "interactive" && msg.interactive?.type === "button_reply") {
+          const r = msg.interactive.button_reply;
+          if (typeof r?.id !== "string") continue;
+          return {
+            ...base,
+            botao: r.id,
+            texto: typeof r.title === "string" ? r.title : r.id,
+          };
+        }
+
+        if (msg.type === "button" && typeof msg.button?.payload === "string") {
+          return {
+            ...base,
+            botao: msg.button.payload,
+            texto: typeof msg.button.text === "string" ? msg.button.text : msg.button.payload,
+          };
+        }
       }
     }
   }
@@ -140,7 +170,17 @@ const CONFIRMAR = /\b(confirmar|confirmo|confirmado|sim,? confirmo|ok|beleza)\b/
  * cancelar, e o que a Karol precisa saber é que a pessoa quer cancelar. O
  * código sozinho é a pergunta mais comum — "que horas mesmo é o meu?".
  */
-export function lerIntencao(texto: string): Intencao {
+export function lerIntencao(texto: string, botao?: string): Intencao {
+  // Botão vence texto, sempre. É escolha de uma lista curta, não linguagem
+  // que precisa ser adivinhada — "quero cancelar o horário de amanhã, mas
+  // se der pra remarcar eu prefiro" é ambíguo pra qualquer regex, e o
+  // toque no botão não é.
+  if (botao) {
+    if (botao === "cancelar") return "cancelar";
+    if (botao === "remarcar") return "remarcar";
+    if (botao === "confirmar") return "confirmar";
+  }
+
   if (CANCELAR.test(texto)) return "cancelar";
   if (REMARCAR.test(texto)) return "remarcar";
   if (CONFIRMAR.test(texto)) return "confirmar";

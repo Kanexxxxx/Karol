@@ -18,6 +18,7 @@ vi.mock("./agendamentos", () => ({ proximoAgendamentoDe: vi.fn() }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
   whatsappDaKarol: vi.fn(() => "5518997525291"),
+  linkDoPainel: vi.fn((id: string) => `https://exemplo/painel?q=${id.slice(0, 6).toUpperCase()}`),
 }));
 
 import { abrirJanela } from "./conversas";
@@ -129,8 +130,10 @@ describe("cliente pede pra cancelar ou remarcar", () => {
     const paraKarol = enviados().find(([p]) => p === KAROL)![1];
     expect(paraKarol).toContain("Maria da Silva");
     expect(paraKarol).toContain(CLIENTE);
-    expect(paraKarol).toContain("8C6377");
     expect(paraKarol).toContain("CANCELAMENTO");
+    // Link do painel, e não código escrito pra ela digitar.
+    expect(paraKarol).toContain("/painel?q=8C6377");
+    expect(paraKarol).not.toMatch(/C[óo]digo /);
   });
 
   it("o recibo diz pra cliente que a Karol vai responder", async () => {
@@ -140,6 +143,9 @@ describe("cliente pede pra cancelar ou remarcar", () => {
     const paraCliente = enviados().find(([p]) => p === CLIENTE)![1];
     expect(paraCliente).toContain("remarcar");
     expect(paraCliente).toMatch(/Karol/);
+    // Vai junto o WhatsApp PESSOAL dela: quem quer desmarcar resolve
+    // falando com a Karol, nao com o robo.
+    expect(paraCliente).toContain("wa.me/5518997525291");
   });
 
   it("repassa o que ela escreveu, pra Karol ver o contexto", async () => {

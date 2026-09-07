@@ -7,7 +7,7 @@ import { Env, Rotulo } from "@/components/ui";
 import { FOTO_DO_SERVICO } from "@/data/fotos";
 import { ANTES_DE_VIR, CIDADES, type CidadeId } from "@/data/negocio";
 import {
-  SERVICOS,
+  SERVICOS_AGENDAVEIS,
   buscarServico,
   formatarDuracao,
   formatarPreco,
@@ -108,7 +108,7 @@ function EscolherServico() {
       </h1>
 
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {SERVICOS.map((s) => {
+        {SERVICOS_AGENDAVEIS.map((s) => {
           const foto = FOTO_DO_SERVICO[s.id];
           return (
             <li key={s.id}>
