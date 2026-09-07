@@ -53,7 +53,6 @@ const AVISOS: { chave: keyof typeof NOTIFICACOES; texto: string }[] = [
 export default async function Notificacoes() {
   if (!(await sessaoAtiva())) redirect("/painel/login");
 
-  const desviado = avisosDesviadosPara();
   const conversas = bancoConfigurado() ? await conversasAbertas() : [];
 
   return (
@@ -71,8 +70,6 @@ export default async function Notificacoes() {
       </header>
 
       <div className="mx-auto flex max-w-[720px] flex-col gap-9 px-5 py-8">
-        {desviado && <Desvio numero={desviado} />}
-
         <ConversasAbertas conversas={conversas} />
 
         <section>
@@ -94,27 +91,6 @@ export default async function Notificacoes() {
         <Diagnostico />
       </div>
     </main>
-  );
-}
-
-/**
- * O aviso que mais importa nesta tela.
- *
- * Enquanto `KAROL_WHATSAPP` existir na Vercel, a Karol não recebe
- * agendamento nenhum — tudo cai no telefone de quem estava testando. Isso
- * some sem ninguém perceber por semanas, porque nada quebra.
- */
-function Desvio({ numero }: { numero: string }) {
-  return (
-    <section className="border-l-2 border-[#c0632f] bg-[#fbf1ea] px-4 py-3.5">
-      <p className="text-[14px] leading-relaxed text-tinta">
-        <b>⚠️ Os avisos NÃO estão indo pra Karol.</b> Estão indo pro{" "}
-        {formatarWhatsapp(numero)}, por causa da variável <code>KAROL_WHATSAPP</code>,
-        usada pra testar sem incomodar ela. Enquanto isso estiver aqui,{" "}
-        <b>ela não recebe agendamento nenhum</b>. Apague a variável na Vercel
-        quando for pra valer.
-      </p>
-    </section>
   );
 }
 
@@ -238,8 +214,20 @@ function Diagnostico() {
         </ul>
 
         <p className="mt-4 text-[12.5px] text-tinta-3">
+          {/*
+            ⚠️ O desvio do KAROL_WHATSAPP ficava num quadro laranja no topo
+            desta tela. Saiu daí a pedido do Kainã, e ele tem razão: o aviso
+            é PRA ELE, que foi quem configurou o desvio pra testar — e quem
+            abre esta tela é a KAROL, que leria um alerta vermelho sobre uma
+            variável de ambiente que ela não sabe o que é.
+
+            Continua aqui dentro porque continua sendo a armadilha mais cara
+            do projeto: enquanto a variável existir, ela não recebe
+            agendamento nenhum e nada quebra pra denunciar isso. Este bloco
+            nasce fechado e é escrito pra quem for consertar.
+          */}
           {avisosDesviadosPara()
-            ? "Os avisos estão desviados — ver o quadro laranja no topo."
+            ? `⚠️ Os avisos NÃO estão indo pra Karol — estão indo pro ${formatarWhatsapp(avisosDesviadosPara()!)}, por causa da variável KAROL_WHATSAPP. Apague ela na Vercel quando for entregar.`
             : `Os avisos vão pro ${formatarWhatsapp(whatsappDaKarol())}.`}{" "}
           Para mudar o que é enviado, edite <code>NOTIFICACOES</code> em{" "}
           <code>src/data/negocio.ts</code>.
