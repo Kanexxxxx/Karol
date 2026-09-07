@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { atender } from "@/lib/atendente";
+import { receber } from "@/lib/recepcao";
 import { assinaturaConfere, lerMensagem, respostaDaVerificacao } from "@/lib/webhook-meta";
 
 /**
@@ -7,8 +7,12 @@ import { assinaturaConfere, lerMensagem, respostaDaVerificacao } from "@/lib/web
  *
  * Esta rota só cuida do transporte: conferir assinatura, ler o payload e não
  * processar a mesma mensagem duas vezes. **A decisão do que responder está
- * em `lib/atendente.ts`**, que é importável e por isso testável — a rota
+ * em `lib/recepcao.ts`**, que é importável e por isso testável — a rota
  * não é.
+ *
+ * Pelo mesmo número entram duas pessoas diferentes: as clientes, que caem
+ * no `atendente.ts`, e a própria Karol, que cai no `assistente.ts` e pode
+ * mexer na agenda. Quem separa é a recepção, pelo número de quem mandou.
  *
  * Duas coisas acontecem quando a cliente escreve:
  *
@@ -62,7 +66,7 @@ export async function POST(req: NextRequest) {
   if (jaProcessada(mensagem.id)) return Response.json({ ok: true, repetida: true });
 
   try {
-    const desfecho = await atender(mensagem);
+    const desfecho = await receber(mensagem);
     return Response.json({ ok: true, ...desfecho });
   } catch (e) {
     // 200 mesmo com erro, de propósito: a Meta reenvia o evento quando o

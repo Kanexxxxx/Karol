@@ -106,3 +106,76 @@ export async function conversasAbertas(limite = 20): Promise<Conversa[]> {
     };
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* A memória do assistente da Karol                                    */
+/* ------------------------------------------------------------------ */
+
+/** Uma fala guardada. Só o essencial — isto vira token pago. */
+export type Fala = { papel: "user" | "assistant"; texto: string };
+
+/**
+ * Quantas falas ficam guardadas.
+ *
+ * Oito é o suficiente pra "cancela a segunda" saber a que lista o "segunda"
+ * se refere, e curto o bastante pra conversa de ontem não voltar do nada
+ * nem inflar a conta. Ver `migracao-05-assistente.sql`.
+ */
+export const FALAS_GUARDADAS = 8;
+
+/** O que já foi dito com este número. Vazio quando não há nada. */
+export async function historicoDe(whatsapp: string): Promise<Fala[]> {
+  const bd = banco();
+  if (!bd) return [];
+
+  const { data } = await bd
+    .from("conversas")
+    .select("historico")
+    .eq("whatsapp", whatsapp)
+    .maybeSingle();
+
+  const bruto = data?.historico;
+  if (!Array.isArray(bruto)) return [];
+
+  // Vem de coluna jsonb, que aceita qualquer forma. Filtrar aqui evita
+  // mandar lixo pro modelo se alguém editar a linha na mão no Supabase.
+  return bruto
+    .filter(
+      (f): f is Fala =>
+        Boolean(f) &&
+        typeof f === "object" &&
+        (f.papel === "user" || f.papel === "assistant") &&
+        typeof f.texto === "string",
+    )
+    .slice(-FALAS_GUARDADAS);
+}
+
+/**
+ * Acrescenta o que foi dito agora, jogando fora o que passou do limite.
+ *
+ * Nunca lança: perder a memória de uma conversa é bem menos grave do que
+ * derrubar o webhook e fazer a Meta reenviar tudo.
+ */
+export async function guardarFalas(whatsapp: string, novas: Fala[]): Promise<void> {
+  const bd = banco();
+  if (!bd || novas.length === 0) return;
+
+  const anterior = await historicoDe(whatsapp);
+  const historico = [...anterior, ...novas]
+    .slice(-FALAS_GUARDADAS)
+    .map((f) => ({ papel: f.papel, texto: f.texto.slice(0, 1000) }));
+
+  const { error } = await bd
+    .from("conversas")
+    .update({ historico })
+    .eq("whatsapp", whatsapp);
+
+  if (error) console.error("não consegui guardar o histórico:", error.message);
+}
+
+/** Zera a memória — o "esquece tudo" da Karol. */
+export async function limparHistorico(whatsapp: string): Promise<void> {
+  const bd = banco();
+  if (!bd) return;
+  await bd.from("conversas").update({ historico: [] }).eq("whatsapp", whatsapp);
+}
