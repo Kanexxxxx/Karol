@@ -1,6 +1,6 @@
 import { formatarPreco } from "@/data/servicos";
 import { paraChave } from "@/lib/agenda";
-import type { Agendamento } from "@/lib/agendamentos";
+import { podeLembrar, type Agendamento } from "@/lib/agendamentos";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
 import { formatarWhatsapp } from "@/lib/telefone";
 import { AcoesAgendamento } from "./AcoesAgendamento";
@@ -98,7 +98,7 @@ export function Cartao({
         <Lembrete
           id={ag.id}
           enviadoAs={ag.avisado30minEm ? HORA.format(ag.avisado30minEm) : null}
-          podeEnviar={ag.situacao === "confirmado" && ag.inicio.getTime() > Date.now()}
+          podeEnviar={podeLembrar(ag)}
         />
       </div>
     </li>

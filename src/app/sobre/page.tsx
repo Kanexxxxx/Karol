@@ -4,8 +4,8 @@ import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Botao, Env, Revela, Rotulo } from "@/components/ui";
 import { FOTOS } from "@/data/fotos";
-import { CIDADES, NEGOCIO, REGRAS, type CidadeId } from "@/data/negocio";
-import { SERVICOS } from "@/data/servicos";
+import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
+import { SERVICOS, formatarPreco } from "@/data/servicos";
 import { faixaDeDias, janelaDaCidade } from "@/lib/agenda";
 
 /**
@@ -21,9 +21,31 @@ import { faixaDeDias, janelaDaCidade } from "@/lib/agenda";
  * página. Se for preciso acrescentar (ano em que começou, quantas alunas já
  * formou), pergunte a ela primeiro — é a página que leva o nome dela.
  *
- * As duas fotos são do mesmo ensaio de estúdio: a capa que ela não escolheu
- * pra abertura (`capaReserva`) e a da paleta, que a Karol pediu pra tirar do
- * cartão do curso.
+ * ---------------------------------------------------------------------
+ * A reforma de 07/09/2026 — o que estava errado e não pode voltar
+ * ---------------------------------------------------------------------
+ *
+ * 1. **As fotos estavam cortadas.** `karol-paleta.jpg` é 1200×800 (3:2) e a
+ *    página forçava `aspect-4/3` — o corte comia a paleta que ela segura na
+ *    borda direita, que é o assunto da foto. Agora as duas aparecem na
+ *    proporção do arquivo, sem `object-cover` decidindo o enquadramento.
+ *
+ * 2. **A faixa de números saiu.** "2 Cidades · 6 Serviços · 1 Cliente por
+ *    vez" era número trivial vestido de conquista, e era o que mais dava
+ *    cara de site genérico. No lugar entrou informação que a cliente usa:
+ *    onde ela está em cada dia da semana, tirado do motor da agenda.
+ *
+ * 3. **O ritmo era o mesmo seis vezes.** Rótulo → título → parágrafo, de
+ *    cima a baixo. Agora a página tem quatro andamentos diferentes: capa,
+ *    fita em movimento, matéria de leitura com citação estourando a
+ *    margem, e tijolos.
+ *
+ * A linguagem visual veio das referências que o Kainã mandou (uiverse.io,
+ * 21st.dev, reactbits.dev), **reescrita em CSS na mão**. Nenhuma biblioteca
+ * entrou: as três servem componente React que traz `framer-motion` ou `gsap`
+ * junto, e isso são centenas de KB no celular de uma cliente pra fazer uma
+ * palavra subir na tela. O projeto tem quatro dependências e continua com
+ * quatro.
  */
 
 export const metadata: Metadata = {
@@ -43,11 +65,10 @@ export default function Sobre() {
     <>
       <Cabecalho />
       <main className="flex-1 pb-20 lg:pb-0">
-        <Abertura />
-        <Comeco />
-        <Trabalho />
-        <Numeros />
-        <Assinatura />
+        <Capa />
+        <Fita />
+        <Materia />
+        <Tijolos />
         <Fecho />
       </main>
       <Rodape />
@@ -56,117 +77,58 @@ export default function Sobre() {
   );
 }
 
-/** Nome, foto inteira e a frase dela. No celular a foto vem primeiro. */
-function Abertura() {
+/* ------------------------------------------------------------------ */
+
+/**
+ * Capa de revista: nome grande à esquerda, retrato INTEIRO à direita.
+ *
+ * ⚠️ A foto não é cortada. É um retrato de corpo inteiro de estúdio, e
+ * espremer isso num quadrado era o que fazia a página parecer descuidada.
+ * O `bg-creme` com respiro em volta é o que dá o ar de página impressa —
+ * a moldura faz o trabalho que o corte fazia, sem perder a foto.
+ *
+ * No celular a foto vem primeiro (`order`), porque é ela que segura a
+ * atenção antes de qualquer texto.
+ */
+function Capa() {
   const foto = FOTOS.capaReserva;
 
   return (
-    <section className="bg-creme">
-      <Env className="grid items-center gap-8 py-10 lg:grid-cols-[1fr_0.82fr] lg:gap-16 lg:py-20">
-        {/* `order` inverte só no computador: no celular a foto abre a página. */}
+    <section className="bg-osso">
+      <Env className="grid items-end gap-8 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-20">
         <Revela className="lg:order-2">
-          <Image
-            src={foto.arquivo}
-            alt={foto.alt}
-            width={foto.largura}
-            height={foto.altura}
-            priority
-            sizes="(min-width: 1024px) 42vw, 100vw"
-            className="aspect-4/5 w-full object-cover object-[center_18%] outline outline-linha lg:aspect-auto"
-          />
+          <div className="bg-creme p-4 outline outline-linha lg:p-7">
+            <Image
+              src={foto.arquivo}
+              alt={foto.alt}
+              width={foto.largura}
+              height={foto.altura}
+              priority
+              sizes="(min-width: 1024px) 44vw, 100vw"
+              className="h-auto w-full"
+            />
+          </div>
         </Revela>
 
         <Revela className="lg:order-1">
           <Rotulo>Quem faz</Rotulo>
-          <h1 className="mt-3 mb-5 font-titulo text-[clamp(40px,10vw,84px)] leading-[0.95] font-light">
+          <h1 className="mt-3.5 mb-0 font-titulo text-[clamp(56px,13vw,124px)] leading-[0.84] font-light tracking-[-0.015em]">
             Karol
-            <br />
-            <em className="text-ouro italic">Carvalho</em>
+            {/* o sobrenome recua: é o desalinho de capa de revista, e é o
+                único gesto tipográfico da página — o resto é alinhado */}
+            <em className="ml-[0.12em] block text-ouro italic">Carvalho</em>
           </h1>
-          <p className="max-w-[46ch] text-[clamp(15.5px,4vw,19px)] leading-relaxed text-tinta-2">
+
+          <p className="mt-6 max-w-[30ch] border-t border-linha pt-5 font-titulo text-[clamp(19px,2.4vw,26px)] leading-[1.38] text-tinta-2">
             {NEGOCIO.frase}
           </p>
-          {/* Fecha a coluna: sem isto o texto fica boiando ao lado da foto. */}
-          <p className="mt-7 border-t border-linha pt-5 text-[10.5px] font-bold uppercase tracking-[0.2em] text-tinta-3">
-            {NEGOCIO.atuacaoCidades.replace(", São Paulo", "")}
-          </p>
-        </Revela>
-      </Env>
-    </section>
-  );
-}
 
-/** De onde ela veio — na frase dela, que é melhor que qualquer texto meu. */
-function Comeco() {
-  return (
-    <section className="border-y border-linha bg-osso py-14 lg:py-20">
-      <Env>
-        <Revela className="mx-auto max-w-[720px]">
-          <Rotulo>O começo</Rotulo>
-          <blockquote className="mt-4 mb-7 font-titulo text-[clamp(26px,6vw,46px)] leading-[1.14] font-light italic text-balance">
-            “{NEGOCIO.lemaCurso}”
-          </blockquote>
-          <div className="flex flex-col gap-4 text-[16.5px] leading-relaxed text-tinta-2">
-            <p>
-              Ela começou como aluna. Hoje é ela quem assina o certificado — e o
-              curso de automaquiagem que ela dá é individual, uma aluna por vez,
-              do zero até a pessoa conseguir se maquiar sozinha.
-            </p>
-            <p>
-              É a mesma coisa que ela faz na cadeira, do outro lado: sobrancelha
-              e maquiagem não são o produto. O que sai dali é a pessoa se
-              olhando no espelho de outro jeito.
-            </p>
-          </div>
-        </Revela>
-      </Env>
-    </section>
-  );
-}
-
-/** Como ela trabalha — os dias vêm do motor da agenda, não de texto solto. */
-function Trabalho() {
-  return (
-    <section className="py-14 lg:py-20">
-      <Env className="grid items-center gap-9 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
-        <Revela>
-          <Image
-            src={FOTOS.paleta.arquivo}
-            alt={FOTOS.paleta.alt}
-            width={FOTOS.paleta.largura}
-            height={FOTOS.paleta.altura}
-            sizes="(min-width: 1024px) 54vw, 100vw"
-            /* A foto tem muito fundo cinza sobrando dos lados. O 4/3 corta
-               isso no CSS, sem mexer no arquivo — o navegador continua
-               baixando os 1200 px e ela ocupa mais o quadro. */
-            className="aspect-4/3 w-full object-cover outline outline-linha"
-          />
-        </Revela>
-
-        <Revela>
-          <Rotulo>Como ela atende</Rotulo>
-          <h2 className="mt-2.5 mb-5 font-titulo text-[clamp(28px,5.6vw,44px)] leading-[1.05] font-light text-balance">
-            Duas cidades, uma cliente por vez
-          </h2>
-          <p className="mb-6 text-tinta-2">
-            Sobrancelha feminina e masculina, henna, brow lamination, maquiagem
-            social e o curso. Ela atende sozinha, do começo ao fim de cada
-            atendimento — por isso a agenda do site só oferece horário que
-            existe de verdade.
-          </p>
-
-          <dl className="flex flex-col gap-px bg-linha outline outline-linha">
-            {cidades.map(([id, cidade]) => (
-              <div key={id} className="bg-papel px-5 py-4">
-                <dt className="font-titulo text-[23px] leading-tight font-light">
-                  {cidade.nome}
-                </dt>
-                <dd className="mt-1 text-[10.5px] font-bold uppercase tracking-[0.16em] text-ouro">
-                  {faixaDeDias(id)} · {janelaDaCidade(id)}
-                </dd>
-              </div>
+          <p className="mt-6 flex flex-wrap gap-x-5 gap-y-1.5 text-[9.5px] font-bold uppercase tracking-[0.2em] text-tinta-3">
+            {cidades.map(([id, c]) => (
+              <span key={id}>{c.nome}</span>
             ))}
-          </dl>
+            <span>São Paulo</span>
+          </p>
         </Revela>
       </Env>
     </section>
@@ -174,53 +136,230 @@ function Trabalho() {
 }
 
 /**
- * Três números, todos tirados dos dados — nada de "mais de 500 clientes".
+ * A frase dela correndo numa fita dourada.
  *
- * Se um serviço for criado ou uma cidade entrar, o número muda sozinho.
+ * Reaproveita o `desliza` da esteira de fotos da home — mesma animação,
+ * mesmo vocabulário de movimento. É o único movimento contínuo da página, e
+ * leva palavra dela, não decoração.
+ *
+ * O trilho é duplicado e anda até -50%: é o que faz o laço não ter emenda
+ * visível. `aria-hidden` porque a mesma frase é lida logo abaixo, e um
+ * leitor de tela repetindo texto em loop é ruído.
  */
-function Numeros() {
-  const numeros = [
-    { valor: String(cidades.length), rotulo: "Cidades" },
-    { valor: String(SERVICOS.length), rotulo: "Serviços" },
-    { valor: String(REGRAS.atendimentosSimultaneos), rotulo: "Cliente por vez" },
-  ];
+function Fita() {
+  const frase = NEGOCIO.lema;
 
   return (
-    <div className="border-y border-linha bg-papel">
-      <Env>
-        <dl className="grid grid-cols-3">
-          {numeros.map((n, i) => (
-            <div
-              key={n.rotulo}
-              className={`px-2 py-8 text-center lg:py-11 ${i > 0 ? "border-l border-linha" : ""}`}
-            >
-              <dt className="font-titulo text-[clamp(38px,9vw,60px)] leading-none font-light text-ouro">
-                {n.valor}
-              </dt>
-              <dd className="mt-2 text-[9.5px] font-bold uppercase tracking-[0.18em] text-tinta-2">
-                {n.rotulo}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </Env>
-    </div>
+    <section className="overflow-hidden bg-ouro py-4 lg:py-5">
+      <div
+        aria-hidden="true"
+        className="flex w-max motion-safe:animate-[desliza_38s_linear_infinite]"
+      >
+        {[0, 1].map((i) => (
+          <p
+            key={i}
+            className="m-0 whitespace-nowrap font-titulo text-[clamp(24px,3.6vw,40px)] leading-tight font-light italic text-osso"
+          >
+            {frase}
+            <span className="px-[0.7em] not-italic text-ouro-luz">✦</span>
+            {frase}
+            <span className="px-[0.7em] not-italic text-ouro-luz">✦</span>
+          </p>
+        ))}
+      </div>
+    </section>
   );
 }
 
-/** A frase que ela usa pra se apresentar. É o fecho da história. */
-function Assinatura() {
+/**
+ * A matéria: coluna de leitura estreita, com o nome dela deitado num
+ * trilho fixo ao lado.
+ *
+ * O trilho só existe no computador. No celular ele roubaria largura da
+ * leitura, que é a única coisa que importa nesta seção.
+ */
+function Materia() {
   return (
-    <section className="bg-creme py-16 text-center lg:py-24">
+    <section className="py-14 lg:py-20">
+      <Env className="grid gap-7 lg:grid-cols-[108px_minmax(0,1fr)] lg:gap-13">
+        <p
+          aria-hidden="true"
+          className="hidden text-[10px] font-bold uppercase tracking-[0.42em] whitespace-nowrap text-tinta-3 lg:sticky lg:top-24 lg:block lg:self-start lg:[writing-mode:vertical-rl]"
+        >
+          {NEGOCIO.profissional} · {NEGOCIO.nome}
+        </p>
+
+        <div className="max-w-[62ch]">
+          <Revela>
+            <Rotulo>O começo</Rotulo>
+
+            {/* A capitular é o detalhe que muda o caráter do primeiro
+                parágrafo inteiro, e custa uma linha de CSS. */}
+            <p className="mt-4 text-[17px] leading-[1.72] text-tinta-2 first-letter:float-left first-letter:pt-[0.06em] first-letter:pr-[0.11em] first-letter:font-titulo first-letter:text-[4.15em] first-letter:leading-[0.78] first-letter:text-ouro">
+              Ela começou como aluna. Fez o curso de design de sobrancelha sem
+              saber direito onde aquilo ia dar, e hoje é ela quem assina o
+              certificado no fim — uma aluna por vez, do zero até a pessoa
+              conseguir se maquiar sozinha em casa.
+            </p>
+          </Revela>
+
+          {/*
+            A citação ESTOURA a coluna de leitura pela esquerda. É o gesto
+            que separa uma página composta de uma página empilhada — e usa
+            palavra dela, não texto meu.
+          */}
+          <Revela>
+            <blockquote className="my-10 max-w-[20ch] border-l-2 border-ouro-claro pl-6.5 lg:-ml-[6%]">
+              <p className="m-0 font-titulo text-[clamp(27px,4.4vw,46px)] leading-[1.16] font-light text-balance italic">
+                {NEGOCIO.lemaCurso}
+              </p>
+              <cite className="mt-3.5 block text-[9.5px] font-bold uppercase not-italic tracking-[0.28em] text-ouro">
+                Karol Carvalho
+              </cite>
+            </blockquote>
+          </Revela>
+
+          <Revela>
+            <p className="mb-[1.15em] text-[17px] leading-[1.72] text-tinta-2">
+              É a mesma coisa que ela faz na cadeira, do outro lado. Sobrancelha
+              e maquiagem não são o produto: o que sai dali é a pessoa se
+              olhando no espelho de outro jeito. Por isso ela atende sozinha,
+              uma cliente por vez, do começo ao fim de cada atendimento — e por
+              isso a agenda do site só oferece horário que existe de verdade.
+            </p>
+            <p className="text-[17px] leading-[1.72] text-tinta-2">
+              Atende mulheres e homens. O design masculino tem lugar próprio na
+              tabela, não é adaptação de outra coisa.
+            </p>
+          </Revela>
+
+          <Onde />
+        </div>
+      </Env>
+    </section>
+  );
+}
+
+/**
+ * Onde ela está em cada dia da semana.
+ *
+ * ⚠️ Isto substituiu a faixa de números ("2 Cidades · 6 Serviços · 1
+ * Cliente por vez"). Aquilo era número trivial vestido de conquista; isto
+ * é a informação que a cliente precisa antes de marcar — e a única
+ * particularidade de verdade do negócio dela, que é atender em duas
+ * cidades diferentes conforme o dia.
+ *
+ * Os dias e as horas vêm do MOTOR da agenda, não de texto solto. Se o
+ * expediente mudar em `data/negocio.ts`, esta seção muda junto.
+ */
+function Onde() {
+  return (
+    <Revela>
+      <section className="mt-13 border-t border-linha pt-6.5">
+        <Rotulo>Onde ela está, em cada dia</Rotulo>
+        <ul className="mt-4.5 grid gap-px bg-linha outline outline-linha sm:grid-cols-2">
+          {cidades.map(([id, cidade]) => (
+            <li key={id} className="bg-papel px-6 py-5.5">
+              <p className="font-titulo text-[27px] leading-tight font-light">
+                {cidade.nome}
+              </p>
+              <p className="mt-2 text-[10.5px] font-bold uppercase tracking-[0.16em] text-ouro">
+                {faixaDeDias(id)} · {janelaDaCidade(id)}
+              </p>
+              <p className="mt-1.5 text-[13.5px] text-tinta-3">
+                {cidade.local ??
+                  "O endereço vai no seu WhatsApp depois de marcar"}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </Revela>
+  );
+}
+
+/**
+ * Os tijolos: a foto larga, a tabela e o curso, em tamanhos diferentes.
+ *
+ * ⚠️ A foto da paleta aparece na PROPORÇÃO DELA (1200×800). Era aqui que
+ * estava o corte que o Kainã viu: a página forçava `aspect-4/3`, e como a
+ * paleta que ela segura fica quase na borda direita, o corte comia
+ * justamente o assunto da foto.
+ *
+ * O clarão que aparece ao passar o ponteiro é CSS puro, sem rastrear
+ * posição — a versão com JS exigiria transformar isto num componente de
+ * cliente, e no celular, que é onde a cliente está, não existe ponteiro
+ * nenhum pra rastrear.
+ */
+function Tijolos() {
+  const brilho =
+    "relative overflow-hidden bg-papel outline outline-linha transition-colors duration-300 hover:outline-ouro-claro " +
+    "after:pointer-events-none after:absolute after:inset-0 after:opacity-0 after:transition-opacity after:duration-300 " +
+    "after:bg-[radial-gradient(340px_circle_at_50%_0%,rgba(199,165,94,0.18),transparent_62%)] hover:after:opacity-100";
+
+  return (
+    <section className="pb-4">
       <Env>
-        <Revela>
-          <blockquote className="mx-auto max-w-[20ch] font-titulo text-[clamp(30px,7.4vw,58px)] leading-[1.1] font-light italic text-balance">
-            {NEGOCIO.lema}
-          </blockquote>
-          <p className="mt-6 text-[9.5px] font-bold uppercase tracking-[0.28em] text-ouro">
-            Karol Carvalho
-          </p>
-        </Revela>
+        <div className="grid gap-3.5 lg:grid-cols-3">
+          <Revela className="lg:col-span-2">
+            <figure className={`m-0 h-full ${brilho}`}>
+              <Image
+                src={FOTOS.paleta.arquivo}
+                alt={FOTOS.paleta.alt}
+                width={FOTOS.paleta.largura}
+                height={FOTOS.paleta.altura}
+                sizes="(min-width: 1024px) 66vw, 100vw"
+                className="h-auto w-full"
+              />
+            </figure>
+          </Revela>
+
+          <Revela>
+            <article className={`h-full p-6 lg:p-7.5 ${brilho}`}>
+              <Rotulo>O curso</Rotulo>
+              <h2 className="mt-3 mb-2.5 font-titulo text-[clamp(24px,2.8vw,34px)] leading-[1.08] font-light">
+                Uma aluna por vez
+              </h2>
+              <p className="text-[14.5px] leading-[1.62] text-tinta-2">
+                Ela começou como aluna e hoje é ela quem assina o certificado.
+                Do zero até você conseguir se maquiar sozinha em casa. A data é
+                combinada entre vocês duas — é só chamar ela no WhatsApp.
+              </p>
+            </article>
+          </Revela>
+
+          <Revela className="lg:col-span-2">
+            <article className={`h-full p-6 lg:p-7.5 ${brilho}`}>
+              <Rotulo>O que ela faz</Rotulo>
+              <ul className="mt-4">
+                {SERVICOS.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex items-baseline justify-between gap-3 border-b border-linha py-2.5 text-[14.5px] last:border-b-0"
+                  >
+                    <span>{s.nome}</span>
+                    <b className="font-semibold tabular-nums text-ouro">
+                      {formatarPreco(s.preco)}
+                    </b>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </Revela>
+
+          <Revela>
+            <figure className={`m-0 h-full ${brilho}`}>
+              <Image
+                src={FOTOS.atendimento.arquivo}
+                alt={FOTOS.atendimento.alt}
+                width={FOTOS.atendimento.largura}
+                height={FOTOS.atendimento.altura}
+                sizes="(min-width: 1024px) 33vw, 100vw"
+                className="h-auto w-full"
+              />
+            </figure>
+          </Revela>
+        </div>
       </Env>
     </section>
   );
@@ -234,7 +373,7 @@ function Fecho() {
   ];
 
   return (
-    <section className="bg-ouro py-14 text-center text-white lg:py-20">
+    <section className="mt-14 bg-ouro py-14 text-center text-white lg:mt-20 lg:py-20">
       <Env>
         <Revela>
           <h2 className="mb-3.5 font-titulo text-[clamp(32px,6.4vw,54px)] leading-none font-light">

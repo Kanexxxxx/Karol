@@ -14,7 +14,7 @@ import {
 } from "./agendamentos";
 import { criarBloqueio } from "./bloqueios";
 import { codigoDoAgendamento } from "./codigo";
-import { guardarFalas, historicoDe, limparHistorico, type Fala } from "./conversas";
+import { guardarFalas, historicoDe, limparHistorico } from "./conversas";
 import { DIA_HORA_POR_EXTENSO, DIA_POR_EXTENSO, HORA } from "./datas";
 import { buscarAcao, fecharAcao, guardarAcao } from "./acoes-pendentes";
 import { iaConfigurada, lerArgumentos, perguntar, type Ferramenta, type Mensagem } from "./ia";

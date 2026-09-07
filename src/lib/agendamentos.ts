@@ -438,6 +438,22 @@ export async function marcarLembreteEnviado(id: string): Promise<boolean> {
   return (data ?? []).length > 0;
 }
 
+/**
+ * Ainda faz sentido mandar o lembrete desta cliente?
+ *
+ * ⚠️ Mora aqui, e não no cartão do painel, porque `Date.now()` é chamada
+ * impura: dentro de um componente ela é reavaliada a cada render e o lint
+ * do React reprova (`react-hooks/purity`). E o motivo do lint é bom — num
+ * componente, "agora" muda no meio do desenho da tela.
+ *
+ * Além disso é regra de negócio, não de tela: lembrar só vale pra
+ * atendimento CONFIRMADO que ainda vai acontecer. Cancelado, concluído ou
+ * vencido não têm lembrete nenhum pra mandar.
+ */
+export function podeLembrar(a: Agendamento, agora = Date.now()): boolean {
+  return a.situacao === "confirmado" && a.inicio.getTime() > agora;
+}
+
 /** Apaga a marca, pra Karol poder mandar de novo pelo painel. */
 export async function limparLembreteEnviado(id: string): Promise<void> {
   const bd = banco();
