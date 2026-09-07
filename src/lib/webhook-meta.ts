@@ -115,7 +115,11 @@ export function lerMensagem(payload: unknown): MensagemRecebida | null {
           type?: unknown;
           text?: { body?: unknown };
           // toque em botão de mensagem interativa
-          interactive?: { type?: unknown; button_reply?: { id?: unknown; title?: unknown } };
+          interactive?: {
+            type?: unknown;
+            button_reply?: { id?: unknown; title?: unknown };
+            list_reply?: { id?: unknown; title?: unknown };
+          };
           // toque em botão de TEMPLATE (formato diferente, mesma ideia)
           button?: { payload?: unknown; text?: unknown };
         };
@@ -134,6 +138,18 @@ export function lerMensagem(payload: unknown): MensagemRecebida | null {
         // log e o aviso da Karol continuarem legíveis.
         if (msg.type === "interactive" && msg.interactive?.type === "button_reply") {
           const r = msg.interactive.button_reply;
+          if (typeof r?.id !== "string") continue;
+          return {
+            ...base,
+            botao: r.id,
+            texto: typeof r.title === "string" ? r.title : r.id,
+          };
+        }
+
+        // Escolha numa LISTA (os horários da remarcação). Mesmo tratamento
+        // do botão: o `id` é o que manda, o título só serve pra log.
+        if (msg.type === "interactive" && msg.interactive?.type === "list_reply") {
+          const r = msg.interactive.list_reply;
           if (typeof r?.id !== "string") continue;
           return {
             ...base,

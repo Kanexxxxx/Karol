@@ -14,11 +14,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 vi.mock("./conversas", () => ({ abrirJanela: vi.fn(async () => {}) }));
-vi.mock("./agendamentos", () => ({ proximoAgendamentoDe: vi.fn() }));
+vi.mock("./agendamentos", () => ({
+  proximoAgendamentoDe: vi.fn(),
+  remarcarAgendamento: vi.fn(async () => ({ ok: true })),
+}));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
+  enviarTextoComBotoes: vi.fn(async () => true),
+  enviarTextoComLista: vi.fn(async () => true),
   whatsappDaKarol: vi.fn(() => "5518997525291"),
   linkDoPainel: vi.fn((id: string) => `https://exemplo/painel?q=${id.slice(0, 6).toUpperCase()}`),
+}));
+vi.mock("./remarcacao", () => ({
+  horariosParaOferecer: vi.fn(async () => []),
+  abrirPedido: vi.fn(async () => null),
+  pedidoAberto: vi.fn(async () => null),
+  buscarPedido: vi.fn(async () => null),
+  registrarEscolha: vi.fn(async () => null),
+  agendamentoDoPedido: vi.fn(async () => null),
+  fechar: vi.fn(async () => {}),
 }));
 
 import { abrirJanela } from "./conversas";
@@ -136,7 +150,8 @@ describe("cliente pede pra cancelar ou remarcar", () => {
     expect(paraKarol).not.toMatch(/C[óo]digo /);
   });
 
-  it("o recibo diz pra cliente que a Karol vai responder", async () => {
+  it("sem horário livre pra oferecer, remarcar vira aviso pra Karol", async () => {
+    // `horariosParaOferecer` devolve [] no mock: agenda cheia
     acharMock.mockResolvedValue(agendamentoFalso());
     await atender(mensagem("dá pra remarcar?"));
 
@@ -205,10 +220,18 @@ describe("o que o robô NÃO faz", () => {
 describe("o atendimento automático não pode mexer na agenda", () => {
   const fonte = readFileSync(new URL("./atendente.ts", import.meta.url), "utf8");
 
-  // A Karol respondeu no briefing que a cliente não desmarca sozinha.
+  /**
+   * A regra mudou quando a remarcação por WhatsApp entrou, e este teste
+   * mudou junto — mas o limite continua no mesmo lugar.
+   *
+   * ANTES: nada aqui podia tocar na agenda.
+   * AGORA: só `remarcarAgendamento`, e só dentro de `decisaoDaKarol`, que
+   * roda depois de a KAROL tocar em "Confirmar".
+   *
+   * Cancelar e criar continuam proibidos. A cliente escolhe; a Karol decide.
+   */
   const PROIBIDAS = [
     "mudarSituacao",
-    "remarcarAgendamento",
     "criarAgendamento",
     "criarAgendamentoNoPainel",
     "salvarBloqueio",
@@ -219,12 +242,25 @@ describe("o atendimento automático não pode mexer na agenda", () => {
     expect(fonte).not.toContain(nome);
   });
 
-  it("do banco de agendamentos, só lê", () => {
+  it("do banco de agendamentos, importa só o ler e o remarcar", () => {
     const importados = fonte.match(/import \{([^}]+)\} from "\.\/agendamentos"/)?.[1] ?? "";
     const nomes = importados
       .split(",")
       .map((n) => n.replace(/\btype\b/, "").trim())
       .filter(Boolean);
-    expect(nomes.sort()).toEqual(["Agendamento", "proximoAgendamentoDe"]);
+    expect(nomes.sort()).toEqual([
+      "Agendamento",
+      "proximoAgendamentoDe",
+      "remarcarAgendamento",
+    ]);
+  });
+
+  it("o remarcar só é chamado dentro da decisão da Karol", () => {
+    // A garantia que importa: se alguém mover essa chamada pra outro
+    // caminho, o horário passa a mudar sem a Karol apertar nada.
+    const corte = fonte.indexOf("async function decisaoDaKarol");
+    expect(corte).toBeGreaterThan(0);
+    expect(fonte.slice(corte)).toContain("await remarcarAgendamento(");
+    expect(fonte.slice(0, corte)).not.toContain("await remarcarAgendamento(");
   });
 });

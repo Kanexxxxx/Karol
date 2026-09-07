@@ -296,6 +296,79 @@ export async function enviarTextoComBotoes(
   }
 }
 
+/**
+ * Manda uma LISTA de opções — o menu que abre quando ela toca no botão.
+ *
+ * Botão só cabe 3; lista cabe 10. Pra oferecer horários de remarcação, 3 é
+ * pouco: se nenhum dos três servir, a conversa morre e sobra pra Karol.
+ *
+ * Limites da Meta, todos cortados aqui porque estourar qualquer um faz a
+ * mensagem inteira ser recusada: título da linha 24, descrição 72, texto do
+ * botão que abre a lista 20, corpo 1024.
+ */
+async function enviarLista(
+  para: string,
+  texto: string,
+  textoDoBotao: string,
+  linhas: readonly { id: string; titulo: string; descricao?: string }[],
+): Promise<Response> {
+  return fetch(
+    `https://graph.facebook.com/v23.0/${process.env.META_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${process.env.META_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: para,
+        type: "interactive",
+        interactive: {
+          type: "list",
+          body: { text: texto.slice(0, 1024) },
+          action: {
+            button: textoDoBotao.slice(0, 20),
+            sections: [
+              {
+                title: "Horários livres",
+                rows: linhas.slice(0, 10).map((l) => ({
+                  id: l.id,
+                  title: l.titulo.slice(0, 24),
+                  ...(l.descricao ? { description: l.descricao.slice(0, 72) } : {}),
+                })),
+              },
+            ],
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(5000),
+    },
+  );
+}
+
+/** Lista de opções, sem lançar. Devolve false quando não deu. */
+export async function enviarTextoComLista(
+  para: string,
+  texto: string,
+  textoDoBotao: string,
+  linhas: readonly { id: string; titulo: string; descricao?: string }[],
+): Promise<boolean> {
+  if (!metaConfigurada() || linhas.length === 0) return false;
+  try {
+    const resp = await enviarLista(para, texto, textoDoBotao, linhas);
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+      console.error(`lista pro ${para}: ${resp.status} ${detalhe.slice(0, 300)}`);
+    }
+    return resp.ok;
+  } catch (e) {
+    console.error(`lista pro ${para} falhou:`, e);
+    return false;
+  }
+}
+
 /** Manda pro webhook configurável, que repassa. Caminho antigo, ainda vale. */
 async function enviarPeloWebhook(
   url: string,
