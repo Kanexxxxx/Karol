@@ -39,8 +39,8 @@ const CAPAS = {
   branca: {
     arquivo: `${P}/karol-capa.jpg`,
     alt: "Karol Carvalho, maquiadora e designer de sobrancelhas",
-    largura: 1200,
-    altura: 1464,
+    largura: 1440,
+    altura: 1757,
   },
   laranja: {
     arquivo: `${P}/karol-capa-laranja.jpg`,
