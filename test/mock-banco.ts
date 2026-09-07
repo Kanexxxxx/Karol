@@ -62,6 +62,12 @@ export function mockBanco(handlers: Handlers = {}) {
       return Promise.resolve(r ?? { data: op === "select" ? [] : null, error: null });
     };
 
+    /** Como `resolver`, mas com o default de linha única: `null`. */
+    const umSo = async (): Promise<Resposta> => {
+      const r = await resolver();
+      return Array.isArray(r.data) && r.data.length === 0 ? { ...r, data: null } : r;
+    };
+
     const builder = {
       select: () => builder,
       insert: (v: Record<string, unknown>) => ((op = "insert"), (valores = v), builder),
@@ -76,8 +82,12 @@ export function mockBanco(handlers: Handlers = {}) {
       lte: anota("lte"),
       ilike: anota("ilike"),
       limit: (n: number) => (filtros.push({ metodo: "limit", valor: n }), builder),
-      single: () => resolver(),
-      maybeSingle: () => resolver(),
+      // `single`/`maybeSingle` devolvem UM objeto ou null no PostgREST de
+      // verdade, nunca lista. O default do resolver é `[]` (que serve pro
+      // select comum), e devolver `[]` aqui fazia o teste ver uma "linha"
+      // vazia que o código real nunca receberia.
+      single: () => umSo(),
+      maybeSingle: () => umSo(),
       then: (ok: (v: Resposta) => unknown, err?: (e: unknown) => unknown) =>
         resolver().then(ok, err),
     };

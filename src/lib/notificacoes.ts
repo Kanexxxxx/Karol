@@ -36,7 +36,13 @@ export type DadosAgendamento = {
   valorCentavos: number;
 };
 
-export type Evento = "novo-agendamento" | "confirmacao" | "lembrete" | "agradecimento";
+export type Evento =
+  | "novo-agendamento"
+  | "confirmacao"
+  | "remarcado"
+  | "cancelado"
+  | "lembrete"
+  | "agradecimento";
 
 function quando(iso: string): string {
   return DIA_HORA_POR_EXTENSO.format(new Date(iso));
@@ -126,9 +132,39 @@ export function textoAgradecimento(a: DadosAgendamento): string {
   ].join("\n");
 }
 
+/**
+ * O horário MUDOU — quem mudou foi a Karol, pelo painel.
+ *
+ * Sem esta mensagem, remarcar deixava a agenda dela dizendo uma coisa e a
+ * cliente sabendo outra: a pessoa aparecia no dia e na hora antigos.
+ */
+export function textoRemarcado(a: DadosAgendamento): string {
+  return [
+    `Oi, ${primeiroNome(a.cliente)}! Precisei mudar o seu horário. 💛`,
+    "",
+    `${a.servico}`,
+    `Ficou para ${quando(a.inicioISO)} — ${a.cidade}`,
+    "",
+    "Se esse novo horário não der, me avisa por aqui que a gente acha outro.",
+  ].join("\n");
+}
+
+/** A Karol cancelou pelo painel. A cliente não pode descobrir na porta. */
+export function textoCancelado(a: DadosAgendamento): string {
+  return [
+    `Oi, ${primeiroNome(a.cliente)}. Precisei cancelar o seu horário de ${quando(a.inicioISO)}.`,
+    "",
+    `${a.servico}`,
+    "",
+    "Desculpa o transtorno. Me chama por aqui que a gente remarca.",
+  ].join("\n");
+}
+
 const TEXTO: Record<Evento, (a: DadosAgendamento) => string> = {
   "novo-agendamento": textoParaKarol,
   confirmacao: textoConfirmacao,
+  remarcado: textoRemarcado,
+  cancelado: textoCancelado,
   lembrete: textoLembrete,
   agradecimento: textoAgradecimento,
 };
@@ -343,6 +379,11 @@ function ligado(evento: Evento): boolean {
       return NOTIFICACOES.avisaKarolNoWhatsapp;
     case "confirmacao":
       return NOTIFICACOES.confirmacaoNaHora;
+    // Remarcar e cancelar não têm interruptor de propósito: são mudanças
+    // que a Karol fez no horário de alguém. Não avisar não é uma opção.
+    case "remarcado":
+    case "cancelado":
+      return true;
     case "lembrete":
       return NOTIFICACOES.lembreteUmDiaAntes;
     case "agradecimento":

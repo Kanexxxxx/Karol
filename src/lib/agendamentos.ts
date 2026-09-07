@@ -463,6 +463,9 @@ export async function mudarSituacao(
     return { ok: false, erro: "Situação inválida." };
   }
 
+  // Lido ANTES do update: depois já não dá pra saber de onde veio.
+  const antes = await buscarAgendamento(id);
+
   const { error } = await bd.from("agendamentos").update({ situacao }).eq("id", id);
   if (error) {
     if (error.code === "23P01") {
@@ -470,6 +473,32 @@ export async function mudarSituacao(
     }
     return { ok: false, erro: "Não consegui salvar agora." };
   }
+
+  /*
+    Cancelar sem avisar é o pior jeito de cancelar: a cliente se arruma,
+    se desloca, e descobre na porta.
+
+    Só quando o horário AINDA IA ACONTECER e só quando a mudança é pra
+    cancelado. Marcar "faltou" ou "atendida" é registro do que já passou —
+    mandar mensagem nesses seria constrangedor.
+  */
+  if (
+    situacao === "cancelado" &&
+    antes &&
+    antes.situacao !== "cancelado" &&
+    antes.inicio.getTime() > Date.now()
+  ) {
+    await enviarEvento("cancelado", {
+      id,
+      cliente: antes.clienteNome,
+      whatsappCliente: antes.clienteWhatsapp,
+      servico: antes.servicoNome,
+      cidade: antes.cidade,
+      inicioISO: antes.inicio.toISOString(),
+      valorCentavos: antes.servicoPreco,
+    });
+  }
+
   return { ok: true };
 }
 
@@ -578,6 +607,29 @@ export async function criarAgendamentoNoPainel(dados: {
     return { ok: false, erro: "Não consegui salvar agora." };
   }
 
+  /*
+    A cliente precisa saber, mesmo quando quem marcou foi a Karol.
+
+    Antes isto não avisava ninguém: ela encaixava alguém pelo painel e a
+    pessoa nunca recebia confirmação, nem lembrete da véspera com o horário
+    escrito. Marcar pelo painel virava um acordo verbal com data.
+
+    Só a `confirmacao` sai — o `novo-agendamento` avisa a Karol, e ela é
+    quem acabou de marcar. E só quando existe WhatsApp de verdade: sem
+    número, a linha guarda o dela e mandar seria avisar ela mesma.
+  */
+  if (whatsapp) {
+    await enviarEvento("confirmacao", {
+      id: data.id,
+      cliente: nome,
+      whatsappCliente: whatsapp,
+      servico: servico.nome,
+      cidade: CIDADES[dados.cidade].nome,
+      inicioISO: inicio.toISOString(),
+      valorCentavos: servico.preco * 100,
+    });
+  }
+
   return { ok: true, id: data.id };
 }
 
@@ -620,6 +672,22 @@ export async function remarcarAgendamento(
     }
     return { ok: false, erro: "Não consegui remarcar agora." };
   }
+
+  /*
+    ⚠️ Remarcar SEM avisar era o pior dos três buracos: a agenda da Karol
+    passava a dizer uma coisa e a cliente continuava sabendo outra. Ela
+    aparecia na hora antiga, no dia antigo, e as duas ficavam achando que a
+    errada era a outra.
+  */
+  await enviarEvento("remarcado", {
+    id,
+    cliente: atual.clienteNome,
+    whatsappCliente: atual.clienteWhatsapp,
+    servico: atual.servicoNome,
+    cidade: atual.cidade,
+    inicioISO: inicio.toISOString(),
+    valorCentavos: atual.servicoPreco,
+  });
 
   return { ok: true };
 }
