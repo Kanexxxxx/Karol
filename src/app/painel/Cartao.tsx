@@ -1,7 +1,6 @@
 import { formatarPreco } from "@/data/servicos";
 import { paraChave } from "@/lib/agenda";
 import type { Agendamento } from "@/lib/agendamentos";
-import { codigoDoAgendamento } from "@/lib/codigo";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
 import { formatarWhatsapp } from "@/lib/telefone";
 import { AcoesAgendamento } from "./AcoesAgendamento";
@@ -58,13 +57,12 @@ export function Cartao({
               {formatarWhatsapp(ag.clienteWhatsapp)}
             </a>
           </p>
+          {/* O código sumiu daqui também. A Karol acha a cliente pelo nome
+              ou pelo telefone, que é o que ela tem na conversa. O código
+              continua existindo por baixo, só como chave do link que abre
+              este agendamento — ninguém digita, ninguém vê. */}
           <p className="mt-0.5 text-[12px] uppercase tracking-[0.1em] text-tinta-3">
-            {ag.cidade} · {formatarPreco(ag.servicoPreco / 100)} ·{" "}
-            {/* O mesmo código que a cliente recebeu. É por ele que a Karol
-                confere que abriu o agendamento certo. */}
-            <span className="font-mono tracking-[0.12em] text-tinta-2">
-              {codigoDoAgendamento(ag.id)}
-            </span>
+            {ag.cidade} · {formatarPreco(ag.servicoPreco / 100)}
           </p>
           {ag.observacao && (
             <p className="mt-1.5 border-l-2 border-linha pl-2.5 text-[13px] text-tinta-2">

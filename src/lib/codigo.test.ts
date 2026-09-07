@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   TAMANHO_CODIGO,
@@ -86,5 +88,51 @@ describe("faixa de busca no banco", () => {
     const formato = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
     expect(de).toMatch(formato);
     expect(ate).toMatch(formato);
+  });
+});
+
+describe("o código não aparece pra ninguém", () => {
+  /**
+   * O Kainã pediu isso três vezes, e nas duas primeiras eu tirei de um lugar
+   * e deixei em outro: saiu da mensagem do WhatsApp e ficou na tela de
+   * confirmação; saiu de lá e ficou no cartão do painel.
+   *
+   * A regra é simples: **o código é chave de link, não texto.** Ele existe
+   * pra o `?q=` das mensagens da Karol funcionar. Ninguém digita, ninguém lê.
+   * A Karol acha a cliente pelo nome ou pelo telefone.
+   *
+   * Este teste lê os arquivos que desenham tela, porque a regra é sobre onde
+   * o código PODE ser importado — e isso não se testa chamando função.
+   */
+  const RAIZ = resolve(import.meta.dirname, "..");
+
+  /** Todo .tsx: são os que viram tela. */
+  function telas(pasta: string): string[] {
+    const achados: string[] = [];
+    for (const nome of readdirSync(pasta)) {
+      const caminho = join(pasta, nome);
+      if (statSync(caminho).isDirectory()) achados.push(...telas(caminho));
+      else if (nome.endsWith(".tsx")) achados.push(caminho);
+    }
+    return achados;
+  }
+
+  it("nenhuma tela importa o gerador de código", () => {
+    const culpadas = telas(join(RAIZ, "app"))
+      .concat(telas(join(RAIZ, "components")))
+      .filter((c) => readFileSync(c, "utf8").includes("codigoDoAgendamento"))
+      .map((c) => relative(RAIZ, c));
+
+    expect(
+      culpadas,
+      `estas telas mostram o código, e não deveriam:\n${culpadas.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("o link do painel continua usando o código — é pra isso que ele existe", () => {
+    // se este quebrar, alguém tirou o código de onde ele PRECISA estar
+    const fonte = readFileSync(join(RAIZ, "lib", "notificacoes.ts"), "utf8");
+    expect(fonte).toContain("codigoDoAgendamento");
+    expect(fonte).toContain("/painel?q=");
   });
 });

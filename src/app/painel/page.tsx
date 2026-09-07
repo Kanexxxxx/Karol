@@ -118,7 +118,12 @@ export default async function Painel({
 }
 
 /**
- * Um campo só pra código, nome e telefone.
+ * Um campo só pra nome e telefone — que é o que a Karol tem na conversa
+ * do WhatsApp quando vai procurar alguém.
+ *
+ * Ele ainda aceita o código de seis caracteres, calado: é o que o link
+ * `?q=` das mensagens dela usa. Mas não está escrito em lugar nenhum,
+ * porque ninguém precisa digitar isso.
  *
  * É um `form` com `method="get"`: a busca vira `?q=` na barra de endereço,
  * funciona sem JavaScript, o botão voltar do celular faz o que se espera, e
@@ -132,8 +137,8 @@ function Busca({ valor }: { valor: string }) {
         name="q"
         defaultValue={valor}
         maxLength={80}
-        placeholder="Código, nome ou telefone"
-        aria-label="Procurar agendamento por código, nome ou telefone"
+        placeholder="Nome ou telefone"
+        aria-label="Procurar agendamento por nome ou telefone"
         className="min-h-[44px] min-w-0 flex-1 border border-linha bg-papel px-3.5 text-[15px] outline-none focus:border-ouro-claro"
       />
       <button
@@ -158,7 +163,7 @@ function Resultados({ termo, achados }: { termo: string; achados: Agendamento[] 
   if (achados.length === 0) {
     return (
       <Vazio
-        texto={`Nada encontrado para “${termo}”. O código tem 6 caracteres; pelo telefone, digite pelo menos 4 números.`}
+        texto={`Nada encontrado para “${termo}”. Tente o primeiro nome, ou pelo menos 4 números do telefone.`}
       />
     );
   }
