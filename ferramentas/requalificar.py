@@ -93,6 +93,22 @@ LARGURA_CAPA = 1700
 # original. Esta lista devolve esse comportamento.
 SEM_RECORTE = ("karol-capa",)
 
+# Fotos que este script NAO PODE TOCAR.
+#
+# ⚠️ As seis fotos de aluna vem de originais que estao ANONIMIZADOS em
+# `ferramentas/originais/` — o mosaico sobre o certificado esta gravado no
+# arquivo de arquivo morto, de proposito.
+#
+# Rodar este script sobre elas puxa o mosaico de volta pra dentro do site,
+# e foi exatamente isso que aconteceu em 07/09/2026: o acervo inteiro foi
+# regerado e as alunas voltaram com uma tarja cinza cobrindo um terco da
+# foto. O Kaina viu no site e reclamou.
+#
+# As versoes publicadas hoje vieram dos originais LIMPOS, recuperados do
+# commit `fa55dfa` (anterior a anonimizacao), com autorizacao dele em
+# 07/09/2026. Elas ja estao em 1400 px e nao precisam deste script.
+NAO_MEXER = tuple(f"aluna-{i:02d}" for i in range(1, 7))
+
 # Focos que o `fotos2.py` usou. O recorte é procurado entre eles.
 FOCOS = [round(0.14 + i * 0.02, 2) for i in range(20)]  # 0.14 .. 0.52
 
@@ -198,6 +214,10 @@ def main():
         with Image.open(caminho) as im:
             pub = im.convert("RGB").copy()
         antes_kb = os.path.getsize(caminho) / 1024
+
+        if nome.rsplit(".", 1)[0] in NAO_MEXER:
+            print(f"  {nome:<24} PULADO de proposito (ver NAO_MEXER)")
+            continue
 
         d, fonte, prop, foco = achar_fonte(pub, originais)
 
