@@ -152,7 +152,10 @@ export const REGRAS = {
 /** Resposta dela: o que a cliente precisa saber antes de chegar. */
 export const ANTES_DE_VIR = [
   "Venha sem maquiagem.",
-  "Se for trazer acompanhante, no máximo uma pessoa — o espaço é pequeno.",
+  // A regra é dela ("no máximo 1 acompanhante"). O "porque o espaço é
+  // pequeno" era acréscimo meu e saiu: a regra sozinha se sustenta, e
+  // pedir desculpa pelo próprio studio na primeira mensagem vende mal.
+  "Se for trazer acompanhante, no máximo uma pessoa.",
 ];
 
 /** Mensagens automáticas que ela pediu. */

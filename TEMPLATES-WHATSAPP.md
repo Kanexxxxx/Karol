@@ -61,7 +61,7 @@ Oi, {{1}}! Seu horário no Studio Karol Carvalho está reservado. 💛
 📍 {{4}}
 💰 {{5}}
 
-Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa — o espaço é pequeno. 🤍
+Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa. 🤍
 
 É só tocar num botão aqui embaixo pra falar comigo.
 ```
