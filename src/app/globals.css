@@ -84,12 +84,33 @@ body {
 /* ---------- barra de carregamento ---------- */
 /* Ver components/BarraCarregando.tsx. O avanço é daqui, não do JS. */
 
+/*
+   O ritmo importa mais que a barra existir.
+
+   A versão anterior corria em 9 s com aceleração suave: em meio segundo de
+   navegação — que é o caso comum — ela tinha andado 7 % da tela. Barra que
+   não anda comunica travamento, que é o contrário do que ela existe pra
+   fazer.
+
+   Agora o avanço é DESPROPORCIONAL de propósito: 45 % nos primeiros 300 ms,
+   e daí em diante cada vez mais devagar, sem nunca chegar ao fim. É a mesma
+   curva que o YouTube e o GitHub usam, e ela funciona porque o começo da
+   espera é onde a pessoa duvida que o toque pegou. O resto da espera ela já
+   sabe que está carregando.
+
+   O tempo total continua longo (8 s) pra barra nunca "terminar" antes da
+   página chegar. Quem termina é o `.barra-carregando-fim`.
+
+   `linear` porque a curva já está nas porcentagens abaixo — deixar as duas
+   coisas curvando ao mesmo tempo é o que fazia o começo ficar lento.
+*/
 @keyframes avanca {
-  0%   { width: 0%;   opacity: 0; }
-  8%   { opacity: 1; }
-  35%  { width: 58%; }
-  70%  { width: 80%; }
-  100% { width: 93%; }
+  0%    { width: 0%;  opacity: 0; }
+  0.5%  { opacity: 1; }
+  3.75% { width: 45%; }  /* 300 ms */
+  12.5% { width: 68%; }  /* 1 s    */
+  37.5% { width: 85%; }  /* 3 s    */
+  100%  { width: 96%; }
 }
 
 .barra-carregando,
@@ -98,12 +119,18 @@ body {
   width: 0;
   background-color: var(--color-ouro);
   opacity: 0;
+  /* O brilho na ponta é o que faz 3 px de dourado existirem sobre o creme
+     do site. Sem ele a barra some no fundo claro, ainda mais no celular,
+     onde ela nasce colada na barra de endereço do navegador. */
+  box-shadow:
+    0 0 8px 1px color-mix(in srgb, var(--color-ouro) 55%, transparent),
+    0 1px 3px color-mix(in srgb, var(--color-ouro) 30%, transparent);
 }
 
 /* O atraso de 140 ms é o que impede a barra de piscar em página já
    guardada em cache, que abre praticamente na hora. */
 .barra-carregando {
-  animation: avanca 9s var(--ease-marca) 140ms forwards;
+  animation: avanca 8s linear 140ms forwards;
 }
 
 .barra-carregando-fim {
