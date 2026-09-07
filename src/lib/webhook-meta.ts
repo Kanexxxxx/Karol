@@ -1,5 +1,4 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { normalizarCodigo } from "./codigo";
 
 /**
  * O que chega da Meta no webhook — leitura e conferência de assinatura.
@@ -173,7 +172,7 @@ export function lerMensagem(payload: unknown): MensagemRecebida | null {
 }
 
 /** O que a cliente quis dizer. */
-export type Intencao = "codigo" | "cancelar" | "remarcar" | "confirmar" | "outro";
+export type Intencao = "cancelar" | "remarcar" | "confirmar" | "outro";
 
 const CANCELAR = /\b(cancelar|cancela|desmarcar|desmarca|nao vou|não vou)\b/i;
 const REMARCAR = /\b(remarcar|remarca|trocar|mudar|adiar|outro hor)/i;
@@ -200,8 +199,14 @@ export function lerIntencao(texto: string, botao?: string): Intencao {
   if (CANCELAR.test(texto)) return "cancelar";
   if (REMARCAR.test(texto)) return "remarcar";
   if (CONFIRMAR.test(texto)) return "confirmar";
-  // `normalizarCodigo` exige o tamanho exato, então um telefone inteiro não
-  // vira "código" por acaso.
-  if (normalizarCodigo(texto)) return "codigo";
+  /*
+    ⚠️ Existia aqui uma intenção "codigo": se a cliente digitasse os seis
+    caracteres do agendamento, o robô respondia o horário dela.
+
+    O código saiu do projeto. Quem manda qualquer outra coisa cai em
+    "outro", e "outro" é silêncio de propósito — quem responde conversa de
+    verdade é a Karol. Robô chutando resposta em pergunta que ele não
+    entendeu é pior que robô calado.
+  */
   return "outro";
 }

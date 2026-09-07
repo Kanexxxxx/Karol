@@ -170,12 +170,21 @@ describe("ler a mensagem do payload", () => {
 });
 
 describe("o que a cliente quis dizer", () => {
-  it("reconhece o código sozinho", () => {
-    expect(lerIntencao("8C6377")).toBe("codigo");
-    expect(lerIntencao("  8c6377 ")).toBe("codigo");
+  /**
+   * ⚠️ Existia aqui uma intenção "codigo": seis caracteres soltos viravam
+   * uma consulta ao horário da cliente.
+   *
+   * O código saiu do projeto inteiro a pedido do Kainã — era mais uma
+   * coisa pra Karol decorar e explicar, e ela já acha qualquer cliente
+   * pelo nome ou pelo telefone. Estes testes provam que aquilo virou
+   * "outro", que é silêncio: quem responde conversa é ela.
+   */
+  it("o que parecia código agora é conversa comum", () => {
+    expect(lerIntencao("8C6377")).toBe("outro");
+    expect(lerIntencao("  8c6377 ")).toBe("outro");
   });
 
-  it("cancelar vence o código na mesma frase", () => {
+  it("cancelar continua vencendo qualquer coisa na mesma frase", () => {
     // o que a Karol precisa saber é que a pessoa quer cancelar
     expect(lerIntencao("quero cancelar o 8C6377")).toBe("cancelar");
   });
@@ -190,7 +199,7 @@ describe("o que a cliente quis dizer", () => {
     expect(lerIntencao("ok")).toBe("confirmar");
   });
 
-  it("telefone inteiro não vira código", () => {
+  it("telefone inteiro é conversa, não comando", () => {
     expect(lerIntencao("5518997525291")).toBe("outro");
   });
 
@@ -253,6 +262,6 @@ describe("botões", () => {
 
   it("sem botão, continua lendo o texto como antes", () => {
     expect(lerIntencao("quero cancelar")).toBe("cancelar");
-    expect(lerIntencao("8C6377")).toBe("codigo");
+    expect(lerIntencao("confirmo")).toBe("confirmar");
   });
 });

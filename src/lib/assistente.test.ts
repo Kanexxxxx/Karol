@@ -43,6 +43,7 @@ vi.mock("./acoes-pendentes", () => ({
 }));
 vi.mock("./agendamentos", () => ({
   agendaDaKarol: vi.fn(async () => []),
+  buscarAgendamento: vi.fn(async () => null),
   procurarAgendamentos: vi.fn(async () => []),
   horariosDoDia: vi.fn(async () => []),
   relatorioDoMes: vi.fn(async () => ({})),
@@ -56,6 +57,7 @@ import { perguntar } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
 import { buscarAcao, guardarAcao } from "./acoes-pendentes";
 import {
+  buscarAgendamento,
   mudarSituacao,
   procurarAgendamentos,
   remarcarAgendamento,
@@ -65,6 +67,7 @@ import { assistente, decisaoDoBotao } from "./assistente";
 
 const perguntarMock = vi.mocked(perguntar);
 const procurarMock = vi.mocked(procurarAgendamentos);
+const buscarMock = vi.mocked(buscarAgendamento);
 const buscarAcaoMock = vi.mocked(buscarAcao);
 
 const KAROL = "5518997525291";
@@ -105,12 +108,13 @@ const falando = (texto: string) => ({ texto, chamadas: [] });
 beforeEach(() => {
   vi.clearAllMocks();
   procurarMock.mockResolvedValue([agendamento()]);
+  buscarMock.mockResolvedValue(agendamento());
 });
 
 describe("o que o modelo dizer NÃO muda a agenda", () => {
   it.each([
-    ["mudar_situacao", { codigo: "8C6377", situacao: "cancelado" }],
-    ["remarcar", { codigo: "8C6377", dia: "2026-10-09", hora: "08:00" }],
+    ["mudar_situacao", { id: ID, situacao: "cancelado" }],
+    ["remarcar", { id: ID, dia: "2026-10-09", hora: "08:00" }],
     ["bloquear", { dia_inicio: "2026-10-09", dia_fim: "2026-10-09", motivo: "viagem" }],
     [
       "marcar",
@@ -134,12 +138,12 @@ describe("o que o modelo dizer NÃO muda a agenda", () => {
 
   /**
    * A descrição é a única coisa que ela lê antes de confirmar. Se vier o
-   * código em vez do nome e do horário, o botão vira um "confirmar?" no
+   * id em vez do nome e do horário, o botão vira um "confirmar?" no
    * escuro e não protege de nada.
    */
-  it("a proposta descreve o alvo por extenso, não pelo código", async () => {
+  it("a proposta descreve o alvo por extenso, não pelo id", async () => {
     perguntarMock.mockResolvedValue(
-      chamando("mudar_situacao", { codigo: "8C6377", situacao: "cancelado" }),
+      chamando("mudar_situacao", { id: ID, situacao: "cancelado" }),
     );
 
     await assistente(KAROL, "cancela a da Larissa");
@@ -147,18 +151,27 @@ describe("o que o modelo dizer NÃO muda a agenda", () => {
     const descricao = vi.mocked(guardarAcao).mock.calls[0][0].descricao;
     expect(descricao).toContain("Larissa Souza");
     expect(descricao).toContain("CANCELAR");
-    expect(descricao).not.toContain("8C6377");
+    expect(descricao).not.toContain(ID);
   });
 
   /**
-   * Seis dígitos hexadecimais podem colidir, e o modelo pode simplesmente
-   * inventar um código. Nos dois casos a busca devolve zero ou duas linhas
-   * — e agir na dúvida é justamente o erro que não pode acontecer.
+   * ⚠️ O risco que sobrou depois que o código saiu do projeto.
+   *
+   * Antes o alvo era um código de seis caracteres, e dois agendamentos
+   * podiam casar com o mesmo — agir na dúvida seria o erro. Com o id
+   * inteiro isso acabou: id não colide.
+   *
+   * O que continua possível é o modelo INVENTAR um id, que é o modo mais
+   * comum de um LLM errar. Aí a busca não acha nada, e nada pode ser
+   * proposto a partir de um alvo que não existe.
    */
-  it("não propõe nada quando o código casa com mais de um agendamento", async () => {
-    procurarMock.mockResolvedValue([agendamento(), agendamento()]);
+  it("não propõe nada quando o id não existe", async () => {
+    buscarMock.mockResolvedValue(null);
     perguntarMock.mockResolvedValue(
-      chamando("mudar_situacao", { codigo: "8C6377", situacao: "cancelado" }),
+      chamando("mudar_situacao", {
+        id: "00000000-0000-0000-0000-000000000000",
+        situacao: "cancelado",
+      }),
     );
 
     await assistente(KAROL, "cancela essa");
@@ -169,7 +182,7 @@ describe("o que o modelo dizer NÃO muda a agenda", () => {
 
   it("não propõe situação que não existe", async () => {
     perguntarMock.mockResolvedValue(
-      chamando("mudar_situacao", { codigo: "8C6377", situacao: "explodir" }),
+      chamando("mudar_situacao", { id: ID, situacao: "explodir" }),
     );
 
     await assistente(KAROL, "explode a da Larissa");
@@ -183,7 +196,7 @@ describe("o toque dela é que executa", () => {
       id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
       whatsapp: KAROL,
       ferramenta: "mudar_situacao",
-      argumentos: { codigo: "8C6377", situacao: "cancelado" },
+      argumentos: { id: ID, situacao: "cancelado" },
       descricao: "CANCELAR o horário de Larissa Souza",
     });
 
@@ -198,7 +211,7 @@ describe("o toque dela é que executa", () => {
       id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
       whatsapp: KAROL,
       ferramenta: "mudar_situacao",
-      argumentos: { codigo: "8C6377", situacao: "cancelado" },
+      argumentos: { id: ID, situacao: "cancelado" },
       descricao: "CANCELAR o horário de Larissa Souza",
     });
 

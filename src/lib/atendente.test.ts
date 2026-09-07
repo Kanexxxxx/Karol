@@ -23,7 +23,8 @@ vi.mock("./notificacoes", () => ({
   enviarTextoComBotoes: vi.fn(async () => true),
   enviarTextoComLista: vi.fn(async () => true),
   whatsappDaKarol: vi.fn(() => "5518997525291"),
-  linkDoPainel: vi.fn((id: string) => `https://exemplo/painel?q=${id.slice(0, 6).toUpperCase()}`),
+  // agora recebe o TELEFONE da cliente, não um código derivado do id
+  linkDoPainel: vi.fn((whatsapp: string) => `https://exemplo/painel?q=${whatsapp}`),
 }));
 vi.mock("./remarcacao", () => ({
   horariosParaOferecer: vi.fn(async () => []),
@@ -96,7 +97,7 @@ describe("a janela de 24 h", () => {
     abrirMock.mockImplementation(async () => void ordem.push("janela"));
     acharMock.mockImplementation(async () => (ordem.push("banco"), agendamentoFalso()));
 
-    await atender(mensagem("8C6377"));
+    await atender(mensagem("confirmo"));
     expect(ordem).toEqual(["janela", "banco"]);
   });
 });
@@ -104,9 +105,9 @@ describe("a janela de 24 h", () => {
 describe("cliente pergunta pelo horário", () => {
   it("responde com serviço, dia e cidade", async () => {
     acharMock.mockResolvedValue(agendamentoFalso());
-    const r = await atender(mensagem("8C6377"));
+    const r = await atender(mensagem("confirmo"));
 
-    expect(r).toEqual({ fez: "respondeu-horario", codigo: "8C6377" });
+    expect(r).toEqual({ fez: "respondeu-horario" });
     const [[para, texto]] = enviados();
     expect(para).toBe(CLIENTE);
     expect(texto).toContain("Design com henna");
@@ -114,15 +115,15 @@ describe("cliente pergunta pelo horário", () => {
     expect(texto).toContain("sem maquiagem");
   });
 
-  it("responde igual a um 'confirmo'", async () => {
+  it("responde igual a um 'ok'", async () => {
     acharMock.mockResolvedValue(agendamentoFalso());
-    const r = await atender(mensagem("confirmo"));
+    const r = await atender(mensagem("ok"));
     expect(r.fez).toBe("respondeu-horario");
   });
 
   it("não vaza o horário pra Karol nem pra ninguém além da cliente", async () => {
     acharMock.mockResolvedValue(agendamentoFalso());
-    await atender(mensagem("8C6377"));
+    await atender(mensagem("confirmo"));
     expect(enviados().map(([para]) => para)).toEqual([CLIENTE]);
   });
 });
@@ -132,13 +133,13 @@ describe("cliente pede pra cancelar ou remarcar", () => {
     acharMock.mockResolvedValue(agendamentoFalso());
     const r = await atender(mensagem("preciso cancelar, não vou conseguir ir"));
 
-    expect(r).toEqual({ fez: "avisou-karol", pedido: "cancelar", codigo: "8C6377" });
+    expect(r).toEqual({ fez: "avisou-karol", pedido: "cancelar" });
 
     const destinos = enviados().map(([para]) => para);
     expect(destinos).toEqual([CLIENTE, KAROL]);
   });
 
-  it("o aviso da Karol traz nome, número e código", async () => {
+  it("o aviso da Karol traz nome, número e o link do painel", async () => {
     acharMock.mockResolvedValue(agendamentoFalso());
     await atender(mensagem("quero cancelar"));
 
@@ -146,8 +147,13 @@ describe("cliente pede pra cancelar ou remarcar", () => {
     expect(paraKarol).toContain("Maria da Silva");
     expect(paraKarol).toContain(CLIENTE);
     expect(paraKarol).toContain("CANCELAMENTO");
-    // Link do painel, e não código escrito pra ela digitar.
-    expect(paraKarol).toContain("/painel?q=8C6377");
+    /*
+      ⚠️ O link filtra pelo TELEFONE da cliente. Antes era um código de
+      seis caracteres, que saiu do projeto inteiro: era mais uma coisa pra
+      Karol decorar, e ela já acha qualquer pessoa pelo nome ou pelo
+      número que está na conversa.
+    */
+    expect(paraKarol).toContain("/painel?q=" + CLIENTE);
     expect(paraKarol).not.toMatch(/C[óo]digo /);
   });
 
@@ -198,9 +204,9 @@ describe("o que o robô NÃO faz", () => {
     expect(enviados()).toEqual([]);
   });
 
-  it("manda pro site quem digitou código e não tem nada marcado", async () => {
+  it("manda pro site quem confirma e não tem nada marcado", async () => {
     acharMock.mockResolvedValue(null);
-    const r = await atender(mensagem("A1B2C3"));
+    const r = await atender(mensagem("confirmo"));
     expect(r).toEqual({ fez: "mandou-pro-site" });
     expect(enviados()[0][1]).toContain("/agendar");
   });

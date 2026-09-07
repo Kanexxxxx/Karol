@@ -172,10 +172,18 @@ describe("envio pela Cloud API da Meta", () => {
     buscar.mockRestore();
   });
 
-  it("a mensagem da cliente não leva mais o código escrito", async () => {
-    // O Kainã achou o código estranho pra um studio de beleza. Ele continua
-    // existindo por dentro, como chave do link do painel da Karol.
+  it("nenhuma mensagem fala em código", async () => {
+    // O código de seis caracteres foi REMOVIDO do projeto inteiro: era
+    // mais uma coisa pra Karol decorar e explicar pra cliente. Hoje ela
+    // acha qualquer pessoa pelo nome ou pelo telefone.
     expect(textoConfirmacao(dados)).not.toMatch(/c[óo]digo/i);
+    expect(textoParaKarol(dados)).not.toMatch(/c[óo]digo/i);
+  });
+
+  it("o link do painel filtra pelo telefone da cliente", async () => {
+    expect(linkDoPainel(dados.whatsappCliente)).toContain(
+      `/painel?q=${dados.whatsappCliente}`,
+    );
   });
 
   it("o aviso de novo agendamento vai pra Karol, não pra cliente", async () => {
@@ -231,9 +239,9 @@ describe("o endereço do site nas mensagens", () => {
    * é o que impede o mesmo tipo de erro de voltar calado.
    */
   it("o link do painel usa o endereço configurado, não um chutado", () => {
-    expect(linkDoPainel("1c6183a1-9f2b-4c3d-8e1a-5d6e7f809a0b")).toBe(
-      `${SITE_URL}/painel?q=1C6183`,
-    );
+    // O alvo do link é o TELEFONE da cliente: o código de seis caracteres
+    // saiu do projeto. Ver `linkDoPainel`.
+    expect(linkDoPainel("5518999998888")).toBe(`${SITE_URL}/painel?q=5518999998888`);
   });
 
   it("o endereço nunca é o domínio que não existe", () => {

@@ -58,3 +58,57 @@ describe('arquivos "use server"', () => {
       .toEqual([]);
   });
 });
+
+/**
+ * O código do agendamento não pode voltar.
+ *
+ * ⚠️ Existia um "código" de seis caracteres derivado do uuid (`8C6377`).
+ * Ele aparecia na confirmação da cliente, no aviso da Karol, na busca do
+ * painel e como intenção do webhook.
+ *
+ * O Kainã pediu a remoção três vezes, e o motivo dele é o melhor tipo de
+ * motivo — não é técnico, é de uso: **era mais uma coisa pra Karol decorar
+ * e explicar pra cliente.** Ela já tem na mão as duas que resolvem, o nome
+ * e o telefone de quem está falando com ela no WhatsApp. O link que chega
+ * pra ela abre o painel já filtrado; ninguém digita nada.
+ *
+ * Isto é um teste de TEXTO porque a regra é sobre o vocabulário do
+ * projeto, não sobre o retorno de uma função. Uma reintrodução começaria
+ * exatamente assim: alguém acha útil "achar rápido pelo código" e cria o
+ * módulo de novo.
+ */
+describe("o código do agendamento saiu do projeto", () => {
+  const todos = arquivosDe(RAIZ).map((caminho) => ({
+    caminho: relative(RAIZ, caminho),
+    texto: readFileSync(caminho, "utf8"),
+  }));
+
+  it("existem arquivos pra varrer, senão o teste não guarda nada", () => {
+    expect(todos.length).toBeGreaterThan(20);
+  });
+
+  it("nenhum arquivo importa um módulo de código", () => {
+    const culpados = todos
+      .filter(({ texto }) => /from\s+["'][^"']*\/codigo["']/.test(texto))
+      .map(({ caminho }) => caminho);
+    expect(culpados).toEqual([]);
+  });
+
+  it("ninguém deriva código a partir do id", () => {
+    const culpados = todos
+      .filter(({ texto }) => /codigoDoAgendamento|faixaDoCodigo|normalizarCodigo/.test(texto))
+      .map(({ caminho }) => caminho);
+    expect(culpados).toEqual([]);
+  });
+
+  /**
+   * O link que a Karol recebe é o que a leva ao painel. Se ele voltar a
+   * apontar pro id, a busca não acha nada — ela abriria uma tela vazia e
+   * não teria como saber por quê.
+   */
+  it("o link do painel é montado com o telefone da cliente", () => {
+    const fonte = readFileSync(join(RAIZ, "lib/notificacoes.ts"), "utf8");
+    expect(fonte).toContain("linkDoPainel(a.whatsappCliente)");
+    expect(fonte).not.toContain("linkDoPainel(a.id)");
+  });
+});

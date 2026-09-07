@@ -4,6 +4,7 @@ import { CIDADES, NEGOCIO, SITE_URL, type CidadeId } from "@/data/negocio";
 import { SERVICOS, buscarServico, formatarPreco } from "@/data/servicos";
 import {
   agendaDaKarol,
+  buscarAgendamento,
   criarAgendamentoNoPainel,
   horariosDoDia,
   mudarSituacao,
@@ -13,7 +14,6 @@ import {
   type Agendamento,
 } from "./agendamentos";
 import { criarBloqueio } from "./bloqueios";
-import { codigoDoAgendamento } from "./codigo";
 import { guardarFalas, historicoDe, limparHistorico } from "./conversas";
 import { DIA_HORA_POR_EXTENSO, DIA_POR_EXTENSO, HORA } from "./datas";
 import { buscarAcao, fecharAcao, guardarAcao } from "./acoes-pendentes";
@@ -165,9 +165,10 @@ const FERRAMENTAS: Ferramenta[] = [
       parameters: {
         type: "object",
         properties: {
-          codigo: {
+          id: {
             type: "string",
-            description: "O código de 6 caracteres do agendamento, vindo de ver_agenda ou procurar.",
+            description:
+              "O id do agendamento, copiado EXATAMENTE como veio de ver_agenda ou procurar.",
           },
           situacao: {
             type: "string",
@@ -175,7 +176,7 @@ const FERRAMENTAS: Ferramenta[] = [
               "cancelado, concluido (foi atendida), faltou (não apareceu) ou confirmado (reativar).",
           },
         },
-        required: ["codigo", "situacao"],
+        required: ["id", "situacao"],
       },
     },
   },
@@ -188,11 +189,11 @@ const FERRAMENTAS: Ferramenta[] = [
       parameters: {
         type: "object",
         properties: {
-          codigo: { type: "string", description: "O código de 6 caracteres do agendamento." },
+          id: { type: "string", description: "O id do agendamento, copiado de ver_agenda ou procurar." },
           dia: { type: "string", description: "Data no formato AAAA-MM-DD." },
           hora: { type: "string", description: "Hora no formato HH:MM." },
         },
-        required: ["codigo", "dia", "hora"],
+        required: ["id", "dia", "hora"],
       },
     },
   },
@@ -291,7 +292,7 @@ function instrucoes(): string {
 /** Um agendamento do jeito que o modelo enxerga. */
 function paraModelo(a: Agendamento) {
   return {
-    codigo: codigoDoAgendamento(a.id),
+    id: a.id,
     cliente: a.clienteNome,
     telefone: formatarWhatsapp(a.clienteWhatsapp),
     servico: a.servicoNome,
@@ -304,14 +305,21 @@ function paraModelo(a: Agendamento) {
   };
 }
 
-/** Resolve o código de 6 caracteres num agendamento de verdade. */
-async function porCodigo(codigo: unknown): Promise<Agendamento | null> {
-  if (typeof codigo !== "string" || codigo.trim().length < 4) return null;
-  const achados = await procurarAgendamentos(codigo.trim());
-  // A busca por código devolve LISTA porque seis dígitos hexadecimais
-  // podem colidir. Duas linhas aqui significam que não dá pra ter certeza
-  // de qual ela quis — e agir na dúvida é o erro que não pode acontecer.
-  return achados.length === 1 ? achados[0] : null;
+/**
+ * Resolve o id que o modelo devolveu num agendamento de verdade.
+ *
+ * ⚠️ Antes isto recebia o CÓDIGO de seis caracteres e resolvia por busca,
+ * o que trazia um risco junto: seis dígitos hexadecimais podem colidir, e
+ * duas linhas voltando significava não dar pra ter certeza de qual era.
+ *
+ * Com o código fora do projeto, o modelo passa a copiar o id inteiro — e
+ * `buscarAgendamento` valida o formato antes de ir ao banco. Some a
+ * ambiguidade, e o id nunca aparece pra ninguém: é conversa entre o
+ * modelo e o servidor.
+ */
+async function porId(id: unknown): Promise<Agendamento | null> {
+  if (typeof id !== "string") return null;
+  return buscarAgendamento(id.trim());
 }
 
 async function executarLeitura(
@@ -403,7 +411,7 @@ async function descrever(
 ): Promise<string | null> {
   switch (nome) {
     case "mudar_situacao": {
-      const ag = await porCodigo(args.codigo);
+      const ag = await porId(args.id);
       const situacao = String(args.situacao ?? "");
       const verbo = SITUACAO_EM_PALAVRAS[situacao];
       if (!ag || !verbo) return null;
@@ -411,7 +419,7 @@ async function descrever(
     }
 
     case "remarcar": {
-      const ag = await porCodigo(args.codigo);
+      const ag = await porId(args.id);
       const dia = String(args.dia ?? "");
       const hora = String(args.hora ?? "");
       if (!ag || !/^\d{4}-\d{2}-\d{2}$/.test(dia) || !/^\d{2}:\d{2}$/.test(hora)) return null;
@@ -477,13 +485,13 @@ async function executar(
 ): Promise<{ ok: boolean; erro?: string }> {
   switch (ferramenta) {
     case "mudar_situacao": {
-      const ag = await porCodigo(args.codigo);
+      const ag = await porId(args.id);
       if (!ag) return { ok: false, erro: "Não achei mais esse agendamento." };
       return mudarSituacao(ag.id, String(args.situacao ?? ""));
     }
 
     case "remarcar": {
-      const ag = await porCodigo(args.codigo);
+      const ag = await porId(args.id);
       if (!ag) return { ok: false, erro: "Não achei mais esse agendamento." };
       return remarcarAgendamento(ag.id, String(args.dia), String(args.hora));
     }

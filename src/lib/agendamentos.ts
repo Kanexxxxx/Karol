@@ -16,7 +16,6 @@ import {
 } from "./agenda";
 import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
-import { faixaDoCodigo, normalizarCodigo } from "./codigo";
 import { normalizarWhatsapp } from "./telefone";
 import { buscarServico, buscarServicoAgendavel, type Servico } from "@/data/servicos";
 import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
@@ -515,20 +514,17 @@ export async function procurarAgendamentos(termo: string): Promise<Agendamento[]
   const limpo = termo.trim();
   if (limpo.length < 3) return [];
 
-  const codigo = normalizarCodigo(limpo);
-  if (codigo) {
-    // Comparação de intervalo no uuid: usa o índice da chave primária.
-    const { de, ate } = faixaDoCodigo(codigo);
-    const { data } = await bd
-      .from("agendamentos")
-      .select("*")
-      .gte("id", de)
-      .lte("id", ate)
-      .order("periodo", { ascending: false })
-      .limit(LIMITE_BUSCA);
-    return (data ?? []).map(linhaParaAgendamento);
-  }
+  /*
+    ⚠️ Aqui existia um terceiro caminho: o código de seis caracteres do
+    agendamento. Ele foi REMOVIDO do projeto inteiro a pedido do Kainã, e a
+    razão é boa — era mais uma coisa pra Karol decorar e explicar, e ela já
+    tem na mão as duas que resolvem: o nome e o telefone de quem está
+    falando com ela no WhatsApp.
 
+    Se algum dia voltar a ideia de "achar rápido pelo código", a resposta é
+    não: o link que chega no WhatsApp dela já abre o painel filtrado pelo
+    telefone da cliente. Ninguém digita nada.
+  */
   const digitos = limpo.replace(/\D/g, "");
   // Quatro dígitos é o mínimo que distingue alguém — menos que isso casa com
   // meia agenda e a Karol acha mais rápido rolando a tela.

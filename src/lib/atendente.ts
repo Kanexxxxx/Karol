@@ -6,7 +6,6 @@ import {
   remarcarAgendamento,
   type Agendamento,
 } from "./agendamentos";
-import { codigoDoAgendamento } from "./codigo";
 import { abrirJanela } from "./conversas";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import {
@@ -61,9 +60,9 @@ export type Desfecho =
   | { fez: "aguardando-karol"; quando: string }
   | { fez: "remarcado"; quando: string }
   | { fez: "karol-recusou" }
-  | { fez: "respondeu-horario"; codigo: string }
+  | { fez: "respondeu-horario" }
   | { fez: "mandou-pro-site" }
-  | { fez: "avisou-karol"; pedido: "cancelar" | "remarcar"; codigo: string };
+  | { fez: "avisou-karol"; pedido: "cancelar" | "remarcar" };
 
 export async function atender(m: MensagemRecebida): Promise<Desfecho> {
   // Primeiro de tudo, e sempre: registrar que ela falou. Mesmo que o resto
@@ -93,10 +92,9 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
   if (!ag) return semAgendamento(m, intencao);
 
   switch (intencao) {
-    case "codigo":
     case "confirmar":
       await enviarTexto(m.de, textoDoHorario(ag));
-      return { fez: "respondeu-horario", codigo: codigoDoAgendamento(ag.id) };
+      return { fez: "respondeu-horario" };
 
     case "remarcar":
       return oferecerHorarios(ag, m);
@@ -104,7 +102,7 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
     case "cancelar":
       await enviarTexto(m.de, reciboDoPedido(ag, "cancelar"));
       await enviarTexto(whatsappDaKarol(), avisoParaKarol(ag, "cancelar", m.texto));
-      return { fez: "avisou-karol", pedido: "cancelar", codigo: codigoDoAgendamento(ag.id) };
+      return { fez: "avisou-karol", pedido: "cancelar" };
   }
 }
 
@@ -125,7 +123,7 @@ async function oferecerHorarios(ag: Agendamento, m: MensagemRecebida): Promise<D
   if (!pedido) {
     await enviarTexto(m.de, reciboDoPedido(ag, "remarcar"));
     await enviarTexto(whatsappDaKarol(), avisoParaKarol(ag, "remarcar", m.texto));
-    return { fez: "avisou-karol", pedido: "remarcar", codigo: codigoDoAgendamento(ag.id) };
+    return { fez: "avisou-karol", pedido: "remarcar" };
   }
 
   await enviarTextoComLista(
@@ -251,12 +249,17 @@ async function decisaoDaKarol(m: MensagemRecebida): Promise<Desfecho> {
 /**
  * Ela mandou algo objetivo mas não tem horário marcado neste número.
  *
- * Só o código merece resposta aqui: quem digitou um código espera achar
- * alguma coisa. "Cancelar" sem agendamento é quase sempre número trocado ou
+ * Só "confirmar" merece resposta: quem escreve "confirmo" está tentando
+ * confirmar ALGUMA coisa, e ficar sem resposta nenhuma é o pior desfecho.
+ *
+ * "Cancelar" e "remarcar" sem agendamento é quase sempre número trocado ou
  * horário que a Karol já resolveu na mão — responder ali confundiria.
+ *
+ * ⚠️ Esta resposta já foi um bug caro: com o número gravado sem DDI, ela
+ * caía em quem TINHA acabado de marcar. Ver `lib/telefone.ts`.
  */
 async function semAgendamento(m: MensagemRecebida, intencao: Intencao): Promise<Desfecho> {
-  if (intencao !== "codigo") return { fez: "nada", motivo: "sem-agendamento" };
+  if (intencao !== "confirmar") return { fez: "nada", motivo: "sem-agendamento" };
 
   await enviarTexto(
     m.de,
@@ -312,9 +315,9 @@ function avisoParaKarol(
     "",
     `"${original.slice(0, 200)}"`,
     "",
-    // Link em vez de código escrito: ela toca e cai no painel com esta
-    // cliente aberta, sem digitar nada.
-    linkDoPainel(ag.id),
+    // Ela toca e cai no painel com esta cliente aberta, sem digitar nada.
+    // O filtro é o telefone: o código de seis caracteres saiu do projeto.
+    linkDoPainel(ag.clienteWhatsapp),
   ].join("\n");
 }
 

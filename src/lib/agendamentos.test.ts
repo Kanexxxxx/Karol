@@ -520,21 +520,28 @@ describe("procurarAgendamentos", () => {
     return m.chamadas.at(-1)!.filtros.map((f) => `${f.metodo}:${f.coluna ?? ""}=${f.valor}`);
   }
 
-  it("procura por código como intervalo de uuid, não como texto", async () => {
+  /**
+   * ⚠️ A busca por CÓDIGO foi removida do projeto.
+   *
+   * Existia um caminho que lia seis caracteres hexadecimais e os traduzia
+   * num intervalo de uuid. Saiu a pedido do Kainã: era mais uma coisa pra
+   * Karol decorar e explicar pra cliente, e ela já tem na mão as duas que
+   * resolvem — o nome e o telefone de quem está falando com ela.
+   *
+   * Este teste existe pra o caminho não voltar por engano: seis caracteres
+   * hexadecimais têm que cair na busca por NOME, como qualquer outro texto.
+   */
+  it("o que parecia código não vira mais consulta por id", async () => {
     const m = usarBanco({ select: () => ({ data: [], error: null }) });
     await procurarAgendamentos("8C6377");
 
     const filtros = filtrosDa(m);
-    expect(filtros).toContain("gte:id=8c637700-0000-0000-0000-000000000000");
-    expect(filtros).toContain("lte:id=8c6377ff-ffff-ffff-ffff-ffffffffffff");
-    // se cair no ilike, a consulta varre a tabela convertendo uuid em texto
-    expect(filtros.some((f) => f.startsWith("ilike:"))).toBe(false);
-  });
-
-  it("aceita o código sujo, do jeito que vem colado do WhatsApp", async () => {
-    const m = usarBanco({ select: () => ({ data: [], error: null }) });
-    await procurarAgendamentos("  #8c6377 ");
-    expect(filtrosDa(m)).toContain("gte:id=8c637700-0000-0000-0000-000000000000");
+    // nada de intervalo de uuid: esse caminho não existe mais
+    expect(filtros.some((f) => f.startsWith("gte:id"))).toBe(false);
+    expect(filtros.some((f) => f.startsWith("lte:id"))).toBe(false);
+    // "8C6377" tem cinco dígitos, então cai na busca por telefone, que é
+    // o comportamento de qualquer texto com número — sem caso especial.
+    expect(filtros).toContain("ilike:cliente_whatsapp=%86377%");
   });
 
   it("procura por telefone quando vêm 4 dígitos ou mais", async () => {
@@ -543,7 +550,7 @@ describe("procurarAgendamentos", () => {
     expect(filtrosDa(m)).toContain("ilike:cliente_whatsapp=%18997525291%");
   });
 
-  it("procura por nome quando não é código nem telefone", async () => {
+  it("procura por nome quando não são 4 dígitos ou mais", async () => {
     const m = usarBanco({ select: () => ({ data: [], error: null }) });
     await procurarAgendamentos("Maria");
     expect(filtrosDa(m)).toContain("ilike:cliente_nome=%Maria%");
@@ -563,18 +570,23 @@ describe("procurarAgendamentos", () => {
     expect(m.chamadas).toHaveLength(0);
   });
 
-  it("devolve LISTA: se dois códigos colidirem, a Karol escolhe", async () => {
+  /**
+   * Duas clientes com o mesmo primeiro nome é o caso comum, não a exceção.
+   * A busca devolve as duas e a Karol escolhe — devolver "a primeira" seria
+   * o sistema decidindo por ela sem avisar.
+   */
+  it("devolve LISTA quando o nome casa com mais de uma", async () => {
     const m = usarBanco({
       select: () => ({
         data: [
-          linhaFalsa("8c6377a1-0000-4000-8000-000000000001", "Ana"),
-          linhaFalsa("8c6377b2-0000-4000-8000-000000000002", "Bia"),
+          linhaFalsa("8c6377a1-0000-4000-8000-000000000001", "Ana Paula"),
+          linhaFalsa("8c6377b2-0000-4000-8000-000000000002", "Ana Clara"),
         ],
         error: null,
       }),
     });
-    const achados = await procurarAgendamentos("8C6377");
-    expect(achados.map((a) => a.clienteNome)).toEqual(["Ana", "Bia"]);
+    const achados = await procurarAgendamentos("Ana");
+    expect(achados.map((a) => a.clienteNome)).toEqual(["Ana Paula", "Ana Clara"]);
     expect(m.chamadas).toHaveLength(1);
   });
 

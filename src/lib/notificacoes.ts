@@ -3,7 +3,6 @@ import "server-only";
 import { NEGOCIO, NOTIFICACOES, SITE_URL } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
-import { codigoDoAgendamento } from "./codigo";
 
 /**
  * Notificações.
@@ -91,17 +90,28 @@ export function textoParaKarol(a: DadosAgendamento): string {
     "",
     `Chamar no WhatsApp: https://wa.me/${a.whatsappCliente}`,
     "",
-    // Link, e não código pra digitar. Ela toca e cai no painel com este
-    // agendamento já aberto. O código continua existindo como chave do
-    // link — ninguém digita, ninguém vê. O Kainã achou o código escrito
-    // estranho pra um studio de beleza, e tinha razão.
-    linkDoPainel(a.id),
+    // Ela toca e cai no painel já filtrado nesta cliente. Sem código, sem
+    // digitar nada.
+    linkDoPainel(a.whatsappCliente),
   ].join("\n");
 }
 
-/** Abre o painel da Karol já filtrado neste agendamento. */
-export function linkDoPainel(id: string): string {
-  return `${SITE_URL}/painel?q=${codigoDoAgendamento(id)}`;
+/**
+ * Abre o painel da Karol já filtrado nesta cliente.
+ *
+ * ⚠️ Filtra pelo TELEFONE, não mais por um código.
+ *
+ * O código de seis caracteres saiu do projeto: era mais uma coisa pra ela
+ * decorar, e a busca do painel já aceita as duas que ela tem na mão — o
+ * nome e o número de quem está falando com ela. O telefone é o melhor dos
+ * dois aqui porque vem pronto do agendamento, sem depender de a cliente ter
+ * escrito o nome do mesmo jeito.
+ *
+ * Se a pessoa tiver mais de um horário, a busca devolve os dois e ela
+ * escolhe — que é o comportamento certo, não um problema.
+ */
+export function linkDoPainel(whatsappCliente: string): string {
+  return `${SITE_URL}/painel?q=${encodeURIComponent(whatsappCliente)}`;
 }
 
 export function textoConfirmacao(a: DadosAgendamento): string {
