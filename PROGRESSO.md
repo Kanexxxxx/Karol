@@ -10,7 +10,7 @@
 > Setup técnico e comandos: [`README.md`](./README.md).
 > Armadilhas do Next 16: [`AGENTS.md`](./AGENTS.md).
 
-Última atualização: **2026-09-06**
+Última atualização: **2026-09-07**
 
 ---
 
@@ -26,16 +26,24 @@ SP). Feito pelo **Kainã** (`Kanexxxxx`), que ofereceu o serviço a ela.
 | **Stack** | Next.js 16 · React 19 · Tailwind 4 · Supabase · Vercel |
 | **Site institucional** | ✅ pronto, no ar, com página própria da Karol (`/sobre`) |
 | **Agenda online** | ✅ ligada no Supabase e testada contra o banco de verdade |
-| **Painel da Karol** | ✅ agenda, busca por código/nome/telefone, bloqueios, marcar, remarcar, relatório |
-| **WhatsApp** | ✅ envia pela Cloud API e **recebe** em `/api/whatsapp` · ⛔ faltam as 4 variáveis na Vercel |
+| **Painel da Karol** | ✅ agenda, busca por nome/telefone, bloqueios, marcar, remarcar, relatório |
+| **WhatsApp** | ✅ **funcionando de verdade** — envia, recebe, responde e remarca |
 | **Deploy** | ✅ Vercel, `karol-zeta.vercel.app` (provisório, 1 mês de teste) |
-| **Build / testes** | ✅ `npm run build` limpo · ✅ **178 testes** passando |
+| **Build / testes** | ✅ `npm run build` limpo · ✅ **234 testes** passando |
 
-**O caminho crítico já foi andado:** Supabase criado, variáveis preenchidas,
-deploy feito. Pro WhatsApp automático ficar de pé falta só configurar na
-Vercel: `META_TOKEN` e `META_PHONE_NUMBER_ID` (enviar) e `META_VERIFY_TOKEN`
-e `META_APP_SECRET` (receber). Passo a passo em [`WHATSAPP.md`](./WHATSAPP.md),
-seções 5 e 6.
+**Tudo que é infraestrutura está de pé.** Supabase criado, quatro tabelas,
+variáveis preenchidas, deploy automático a cada push, app da Meta publicado,
+webhook verificado e recebendo. Testado ponta a ponta com celular de verdade
+em 06/09/2026.
+
+⚠️ **Duas coisas que NÃO estão prontas e você precisa saber antes de tocar em
+qualquer coisa — leia a seção 8.1 e 8.2:**
+
+1. `KAROL_WHATSAPP` está desviando todos os avisos pro número do Kainã. A
+   Karol não recebe nada enquanto isso existir.
+2. Sem template aprovado na Meta, a confirmação **não chega** em quem marcou
+   pelo site e nunca escreveu pro número. Os textos estão prontos em
+   `TEMPLATES-WHATSAPP.md`; falta criar e esperar aprovação.
 
 ---
 
@@ -334,6 +342,45 @@ Estrutura de pastas e comandos: [`README.md`](./README.md). O essencial:
   antes e gravar depois abriria janela para duas clientes pegarem o mesmo
   horário no mesmo instante.
 
+### 6.1.1 Onde está o quê
+
+Se você só vai ler cinco arquivos, leia estes.
+
+| Arquivo | O que decide |
+|---|---|
+| `data/negocio.ts` | expediente, cidades, regras, `SITE_URL`, interruptores de aviso |
+| `data/servicos.ts` | preço, duração e **quem aparece no `/agendar`** (`agendavel`) |
+| `lib/agenda.ts` | o motor. Função pura sobre minutos do dia, sem `Date` por dentro |
+| `lib/agendamentos.ts` | tudo que toca a tabela `agendamentos` |
+| `lib/atendente.ts` | **o que o robô responde no WhatsApp.** É aqui que se mexe |
+
+E os que entraram na etapa 17:
+
+| Arquivo | Papel |
+|---|---|
+| `lib/telefone.ts` | o ÚNICO lugar que decide o formato do número. Sempre com DDI |
+| `lib/codigo.ts` | o código derivado do UUID. Chave de link, nunca texto de tela |
+| `lib/conversas.ts` | a janela de 24 h de cada número |
+| `lib/remarcacao.ts` | o pedido de remarcação que atravessa várias mensagens |
+| `lib/webhook-meta.ts` | assinatura e leitura do payload da Meta. Função pura |
+| `app/api/whatsapp/route.ts` | só transporte: assinatura, parse, não repetir |
+
+**Por que a decisão mora fora da rota:** rota não é importável, então não é
+testável. Foi um bug de costura entre duas partes certas que derrubou os
+bloqueios na etapa 11 — a lição virou regra.
+
+### 6.1.2 As quatro tabelas
+
+| Tabela | Guarda | Migração |
+|---|---|---|
+| `agendamentos` | os atendimentos. `sem_choque` impede sobreposição | `schema.sql` |
+| `bloqueios` | férias, feriado, compromisso | `schema.sql` |
+| `conversas` | até quando a janela de 24 h de cada número está aberta | `migracao-02` |
+| `remarcacoes` | pedido de remarcação em andamento | `migracao-03` |
+
+Todas com RLS ligado e **zero policies** — só a chave de serviço passa. As
+três migrações já estão aplicadas no banco de produção.
+
 ### 6.2 Armadilhas do Next 16 que já morderam
 
 - `middleware.ts` virou **`proxy.ts`** (mesma API, nome novo)
@@ -426,6 +473,7 @@ um commit.
 | 14 | Relatório do mês, com quem faltou e o contato | ✅ |
 | 15 | Página da Karol (`/sobre`) e acerto das fotos | ✅ |
 | 16 | Código do agendamento, busca no painel e webhook do WhatsApp | ✅ |
+| 17 | WhatsApp ligado de verdade: botões, remarcação com memória, avisos do painel | ✅ |
 
 ### Detalhes que valem saber
 
@@ -449,6 +497,114 @@ contra script ingênuo, não proteção séria.
 **Testes:** `npm test` (vitest). `test/mock-banco.ts` é um fake do cliente
 Supabase; `test/stubs/server-only.ts` substitui o pacote real, que lança fora do
 runtime do Next. `vitest.config.ts` fixa `TZ=America/Sao_Paulo`.
+
+### Etapa 17 — o WhatsApp funcionando de verdade
+
+Dia inteiro com o Kainã testando no celular dele. **Tudo abaixo foi provado
+com mensagem de verdade, não só com teste.**
+
+#### O que a Meta exigia e ninguém sabia
+
+Três coisas travaram o webhook por quase uma hora, e nenhuma dá erro claro:
+
+1. **App tem que estar PUBLICADO.** Em desenvolvimento a Meta entrega só
+   webhook de teste do painel — mensagem real não chega, e a tela mostra
+   tudo verde. Publicar exigiu política de privacidade (a `/privacidade` que
+   já existia serviu), ícone 1024×1024 e categoria.
+2. **São DUAS assinaturas, não uma.** O app assina o campo `messages`
+   (vem ligado de fábrica) **e** a conta do WhatsApp precisa assinar o app —
+   botão "Assinar webhook" no bloco do número, na Etapa 2. Sem a segunda, a
+   Meta aceita tudo e não repassa nada.
+3. **O `to` da API precisa do DDI.** Ver abaixo.
+
+#### O bug do número sem DDI
+
+O primeiro agendamento de verdade gravou `16991557552`. A Meta manda o
+remetente como `5516991557552`. O webhook procurava por igualdade, não
+achava, e respondia "não achei nenhum horário nesse número" pra quem tinha
+acabado de marcar.
+
+Quebrava três coisas, não uma: o webhook, o botão "Chamar" do painel
+(`wa.me/16991557552` é lido como **+1 631 955-7552**, dos Estados Unidos) e a
+formatação da tela.
+
+`lib/telefone.ts` passou a ser o único lugar que decide o formato. **O teste
+do caminho feliz esperava o número SEM DDI** — ele travava o bug em vez de
+pegá-lo. Corrigido, com o motivo escrito na asserção.
+
+#### O link que apontava pra um 404
+
+`SITE_URL` tinha como padrão `karolcarvalho.vercel.app` — um domínio que
+**nunca existiu**. A Vercel criou o projeto como `karol-zeta`. O link "abrir
+no painel" que chegava no WhatsApp dela não abria nada, e o `sitemap.xml`
+mandava o Google pras quatro páginas de um domínio morto.
+
+Passou meses despercebido porque **nada quebra**: 404 não lança exceção, não
+falha build, não aparece em log de erro.
+
+Agora a cadeia é `NEXT_PUBLIC_SITE_URL` → `VERCEL_PROJECT_PRODUCTION_URL` →
+literal. A do meio a Vercel injeta sozinha, com o domínio real, sem ninguém
+configurar. **É isso que impede o erro de voltar.**
+
+#### Remarcar dentro do WhatsApp — a conversa com memória
+
+O webhook era sem memória: cada mensagem sozinha. Isso basta pra "me manda
+meu horário". Remarcar são quatro momentos com espera humana entre eles.
+
+```
+cliente toca 📅 Remarcar   →  recebe LISTA de horários livres
+cliente escolhe um         →  Karol recebe pedido com 2 botões
+Karol toca ✅ Confirmar     →  A AGENDA MUDA (só aqui)
+cliente é avisada          →  sai de remarcarAgendamento
+```
+
+Tabela `remarcacoes` (migração 03). Ela guarda **o que foi oferecido** — é
+isso que impede o sistema de mover pra um horário que a cliente nunca viu.
+
+⚠️ **A garantia que manda:** entre o primeiro toque e o da Karol, a agenda
+não se move. A cliente **escolhe**, a Karol **decide**. Há um teste que lê o
+arquivo e prova que `remarcarAgendamento` só é chamado dentro de
+`decisaoDaKarol`.
+
+E foi preciso separar as mensagens **da Karol**: ela responde no mesmo número
+e o webhook é um só. Sem isso, um toque dela viraria
+`proximoAgendamentoDe(número da Karol)` e o robô responderia o horário DELA.
+
+#### O painel era mudo
+
+Só a criação pelo SITE avisava. Tudo que a Karol fazia pelo painel não
+mandava nada: marcar na mão, **remarcar** e cancelar. O de remarcar era o
+pior — a agenda dela passava a dizer uma coisa e a cliente continuava sabendo
+outra.
+
+Dois eventos novos, `remarcado` e `cancelado`, **sem interruptor** em
+`NOTIFICACOES` de propósito: não avisar não é uma opção que valha oferecer.
+
+#### O código do agendamento
+
+Existe, é derivado do UUID (`lib/codigo.ts`), e **não aparece em lugar
+nenhum**. O Kainã pediu isso três vezes — nas duas primeiras eu tirei de um
+lugar e deixei em outro. Hoje um teste lê todos os `.tsx` e recusa qualquer
+tela que importe `codigoDoAgendamento`.
+
+Ele serve pra uma coisa só: a chave do `?q=` no link que a Karol recebe. A
+busca do painel aceita ele calada, mas oferece "nome ou telefone".
+
+#### Outras coisas do dia
+
+- **O curso saiu do `/agendar`.** São 130 min numa janela de 240: come mais
+  da metade da manhã e some assim que existe qualquer outro atendimento.
+  Continua no site inteiro; a conversa começa no WhatsApp dela.
+- **O painel mentia**: dizia "as mensagens são montadas mas não saem"
+  enquanto elas saíam — olhava só o webhook antigo, nunca o `META_TOKEN`.
+- **Rolagem lateral no celular**, duas vezes: a foto de abertura (`scale`
+  sem `overflow-hidden`) e o cabeçalho do painel (cinco itens sem
+  `flex-wrap`).
+- **`lerPeriodo` estourava** com linha sem período; o mock do banco devolvia
+  `[]` no `maybeSingle` e escondia isso.
+- **Auditoria da agenda** em `agenda-auditoria.test.ts`, respondendo pela
+  terceira vez a dúvida dele sobre horários sumindo "pra trás" — com prova
+  em vez de explicação.
 
 ### Etapa 16 — o fluxo do WhatsApp
 
@@ -601,61 +757,109 @@ identificador em inglês do projeto → `data-revelando`.
 
 ## 8. O que falta
 
-### 8.1 Bloqueantes para o site existir de verdade
+> Atualizado em 07/09/2026, depois de a automação de WhatsApp entrar no ar.
+> **Leia esta seção inteira antes de mexer em qualquer coisa.**
 
-Nenhum é código.
+### 8.1 ⚠️ A ARMADILHA MAIS PERIGOSA DO PROJETO
 
-1. **Criar o projeto no Supabase** e rodar `supabase/schema.sql` uma vez no SQL
-   Editor.
-2. **Preencher as variáveis** — copiar `.env.example` para `.env.local`
-   (ver tabela no README). Sem elas o site institucional funciona, mas
-   `/agendar` mostra "a agenda online está sendo ligada" e `/painel` explica o
-   que falta configurar.
-3. **Deploy na Vercel** — importar o repositório e configurar as variáveis.
-   **Não tente definir `TZ`**: o nome é reservado lá e a Vercel recusa. O fuso
-   está resolvido no código — ver 6.3.
+**`KAROL_WHATSAPP` está preenchida na Vercel com o número do Kainã
+(`5516991557552`).**
 
-### 8.2 Pendências de negócio (dependem da Karol)
+Enquanto ela existir, **a Karol NÃO recebe aviso de agendamento nenhum** —
+tudo cai no telefone dele. Foi assim que o fluxo inteiro foi testado sem
+incomodar ela, e está certo pro momento do teste.
 
-Marcadas `A_CONFIRMAR` no código.
+**Apague essa variável na Vercel antes de a Karol usar o site.** Sem ela, o
+código volta sozinho pro número real (`NEGOCIO.whatsapp.numero`).
+
+O painel avisa: `/painel/notificacoes` mostra um aviso vermelho enquanto o
+desvio estiver ativo. Mas ninguém abre painel todo dia — por isso está aqui
+também.
+
+### 8.2 Templates da Meta — o único bloqueio real que sobrou
+
+Hoje as mensagens automáticas **só chegam se a cliente tiver escrito nas
+últimas 24 h**. Fora dessa janela a Meta recusa com `131047`, e é esperado.
+
+Na prática isso significa que **a confirmação do agendamento não chega** pra
+quem acabou de marcar pelo site e nunca falou com o número.
+
+A saída é template aprovado. Os três textos estão escritos campo a campo em
+[`TEMPLATES-WHATSAPP.md`](./TEMPLATES-WHATSAPP.md), prontos pra colar. Falta
+alguém criar na Meta e esperar a aprovação (minutos a horas).
+
+Quando os três estiverem aprovados, falta escrever no código o disparo de
+template — hoje `enviarEvento` só manda texto livre e interativo.
+
+| Template | Pra quê |
+|---|---|
+| `confirmacao_agendamento` | a mensagem que abre a janela de 24 h |
+| `lembrete_vespera` | cai fora da janela quase sempre |
+| `aviso_karol_novo_agendamento` | a janela da Karol vive fechada |
+
+### 8.3 Aviso 30 minutos antes — precisa de decisão, não de código
+
+O Kainã pediu. Esbarra num limite que não é nosso: **o plano Hobby da Vercel
+só roda cron 1×/dia**. Um aviso de 30 min antes precisa de alguém batendo em
+`/api/lembretes` a cada 15 min.
+
+| Saída | Custo |
+|---|---|
+| Cron externo (cron-job.org) apontando pro endpoint | R$ 0 |
+| Vercel Pro | ~US$ 20/mês |
+
+O endpoint já é protegido por `CRON_SECRET`, então um cron externo só precisa
+mandar o cabeçalho. **Ele mandou deixar isso pra depois** — não comece sem
+confirmar.
+
+Quando for feito, vai precisar de marcação de "já avisei" (coluna nova ou
+reaproveitar `remarcacoes`), senão um cron de 15 min manda cinco vezes.
+
+### 8.4 Pendências de negócio (dependem da Karol)
 
 | Pendência | Onde | Impacto |
 |---|---|---|
-| ~~Domingo~~ | — | **fechada:** ela não atende. `DOMINGO_PENDENTE` era código morto e saiu |
-| ~~Endereço em Bandeirantes~~ | `CIDADES.bandeirantes.local = null` | **fechada:** publicar só a cidade; o local entra quando ela passar |
-| **O que ela quis dizer com "sinal"** | `REGRAS.sinal` | ver seção 3 — divergência aberta |
-| **Aprovação manual** | `REGRAS.aprovacaoManual = false` | ela pediu, mas está desligado. Colide com o sinal: se a cliente paga e a Karol recusa, alguém estorna. Recomendação registrada: deixar o sinal fazer o filtro e oferecer o botão de aprovação manual no painel |
-| **Descrições dos serviços** | `servicos.ts` | são rascunho; precisam do aval dela |
-| **Qual serviço ela mais quer vender** | — | ficou em branco no formulário |
+| **O que ela quis dizer com "sinal"** | `REGRAS.sinal` | ver seção 3 — divergência aberta. **Não construa pagamento antes disto** |
+| **Aprovação manual** | `REGRAS.aprovacaoManual = false` | ela pediu, está desligado. Colide com o sinal |
+| **Descrições dos serviços** | `servicos.ts` | são rascunho meu; precisam do aval dela |
+| **Qual capa** | `CAPA` em `fotos.ts` | branca ou laranja. A que ela NÃO escolher fica na `/sobre` |
+| **Local em Bandeirantes** | `CIDADES.bandeirantes.local` | publica só a cidade até ela passar |
+| **Verificação da empresa na Meta** | — | pede CNPJ, ela não tem. Sem isso o WhatsApp mostra o número em vez de "Studio Karol Carvalho". O caminho real seria abrir MEI |
 | **Autorização foto a foto** | `public/fotos/` | são rostos de clientes reais |
 
-### 8.3 Técnico pendente
+### 8.5 Técnico pendente
 
-- **Vídeos** dela no site (pedido dele, nunca feito)
-- **Pix de sinal** — depende de resolver a divergência acima
-- Freio por IP sério (Upstash Ratelimit ou o próprio Supabase) se virar problema
-- Teste de integração do fluxo completo de agendamento
+- **Ela ABRIR um dia** em que normalmente não atende (inverso do bloqueio).
+  Mexe no motor, que hoje deriva o expediente de `EXPEDIENTE` e não tem
+  conceito de exceção pra mais.
+- **Ver as conversas do WhatsApp no painel.** Hoje `conversas` guarda só a
+  última mensagem de cada número. O Kainã perguntou por isso.
+- **Vídeos** dela no site (pedido antigo, nunca feito).
+- Freio por IP sério (Upstash ou o próprio Supabase) se virar problema. O
+  atual é `Map` em memória — some no deploy e não é compartilhado.
 
-### 8.4 Revisão de segurança — parcial
+### 8.6 Revisão de segurança
 
-Foi iniciada e **não terminada**. O que já foi verificado e está bom:
+Verificado e bom:
 
-- Nenhum segredo no código ou no histórico; tudo por env var, sem fallback fixo
-- `.env.example` com valores vazios; `.gitignore` bloqueia `.env*`
-- Sessão: HMAC-SHA256, comparação em tempo constante, flags de cookie corretas
-- Toda Server Action reconfere `sessaoAtiva()` — o proxy não é tratado como
-  fronteira de segurança
-- As três páginas do painel também conferem
+- Nenhum segredo no código ou no histórico; tudo por env var
+- `.gitignore` bloqueia `.env*`; conferido que `.env.local` está fora do Git
+- Sessão: HMAC-SHA256, comparação em tempo constante, cookie com as flags
+- Toda Server Action reconfere `sessaoAtiva()` — o proxy não é fronteira
+- RLS ligado nas quatro tabelas, com ZERO policies (só a chave de serviço passa)
 - IDs validados por regex antes de ir ao banco
+- **Webhook da Meta**: assinatura HMAC conferida sobre os bytes crus, em tempo
+  constante, e **falha fechado** sem `META_APP_SECRET`. Coberto por teste,
+  inclusive o caso do corpo adulterado depois de assinado.
 
-Dois pontos levantados e **não avaliados até o fim**:
+Aberto:
 
 1. **`/agendar/confirmado?ag=<id>`** mostra nome e detalhes sem sessão,
-   protegido só pelo UUID aleatório. É o padrão de página de confirmação, mas o
-   link vaza por histórico e prévia de link. Não expõe o WhatsApp da cliente.
-2. ~~**Freio por IP** lê o *primeiro* valor de `x-forwarded-for`~~ —
-   **corrigido na Etapa 11.** `ipDoPedido()` usa `x-real-ip` e, na falta
-   dele, o último item da cadeia. Coberto por teste.
+   protegido só pelo UUID. É o padrão de página de confirmação, mas o link
+   vaza por histórico. Não expõe o WhatsApp da cliente.
+2. **O token da Meta apareceu num print** que o Kainã mandou em 06/09/2026.
+   Ficou recomendado regenerar antes de produção; **não confirmado se foi
+   feito**.
 
 ---
 
