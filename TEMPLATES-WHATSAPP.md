@@ -3,8 +3,8 @@
 > **Pra que serve:** template é a única forma de mandar mensagem pra uma
 > cliente que **não escreveu primeiro**. Sem ele, a Meta recusa com `131047`.
 >
-> **Onde criar:** business.facebook.com → **WhatsApp Manager** → **Modelos de
-> mensagem** → **Criar modelo**.
+> **Onde criar** (link direto):
+> `https://business.facebook.com/wa/manage/message-templates/?waba_id=958269250650095`
 >
 > **Quanto custa:** categoria *utility* no Brasil fica em torno de
 > **R$ 0,05–0,08 por mensagem entregue**. No volume da Karol (~4 clientes por
@@ -48,22 +48,24 @@ que abre a janela.
 Tipo: **Texto**
 
 ```
-Horário reservado ✨
+Seu horário está guardado ✨
 ```
 
 ### Corpo
 
 ```
-Oi, {{1}}! Seu horário no Studio Karol Carvalho está reservado. 💛
+Oi, {{1}}! Aqui é a Karol. 💛
+
+Já guardei esse horário no seu nome:
 
 💄 *{{2}}*
-📅 {{3}}
+🗓️ {{3}}
 📍 {{4}}
-💰 {{5}}
+💵 {{5}}
 
-Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa. 🤍
+Só dois pedidinhos: venha sem maquiagem, e se trouxer acompanhante, que seja no máximo uma. 🤍
 
-É só tocar num botão aqui embaixo pra falar comigo.
+Te espero! Se precisar de qualquer coisa, é só tocar num botão aqui embaixo. 👇
 ```
 
 ### Rodapé
@@ -108,21 +110,21 @@ dias e não escreveu nada desde então. Por isso precisa de template.
 Tipo: **Texto**
 
 ```
-Seu horário é amanhã 💛
+É amanhã! 💛
 ```
 
 ### Corpo
 
 ```
-Oi, {{1}}! Passando pra lembrar do seu horário amanhã. ✨
+Oi, {{1}}! Passando só pra lembrar que é amanhã. ✨
 
 💄 *{{2}}*
-📅 {{3}}
+🗓️ {{3}}
 📍 {{4}}
 
-Lembrando: venha sem maquiagem. 🤍
+Não esquece de vir sem maquiagem, tá? 🤍
 
-Se precisar mudar alguma coisa, me avisa hoje ainda — dá tempo de encaixar outra pessoa.
+Se surgiu alguma coisa e você não vai conseguir, me avisa hoje — assim dá tempo de encaixar outra pessoa nesse horário. 🙏
 ```
 
 ### Rodapé
@@ -167,21 +169,20 @@ inteiro, então a janela dela vive fechada.
 Tipo: **Texto**
 
 ```
-Novo agendamento 📅
+Agendamento novo 🗓️
 ```
 
 ### Corpo
 
 ```
-Chegou agendamento novo pelo site, Karol! ✨
+Karol, entrou agendamento novo pelo site! ✨
 
-💄 *{{1}}* — {{2}}
-📅 {{3}}
-📍 {{4}}
+👤 *{{1}}*
+💄 {{2}} — {{3}}
+🗓️ {{4}}
+📍 {{5}}
 
-👤 {{5}}
-
-Toque no botão pra abrir no painel e confirmar, remarcar ou cancelar.
+Toque no botão pra abrir no painel: de lá você confirma, remarca, cancela ou chama a cliente no WhatsApp.
 ```
 
 ### Rodapé
@@ -209,11 +210,11 @@ Tipo: **Ir para o site** (URL dinâmica)
 
 | Variável | Exemplo |
 |---|---|
-| `{{1}}` | `Design com henna` |
-| `{{2}}` | `R$ 30,00` |
-| `{{3}}` | `quarta-feira, 9 de setembro às 07:15` |
-| `{{4}}` | `Pereira Barreto` |
-| `{{5}}` | `Maria Silva · (18) 99999-8888` |
+| `{{1}}` | `Maria Silva · (18) 99999-8888` |
+| `{{2}}` | `Design com henna` |
+| `{{3}}` | `R$ 30,00` |
+| `{{4}}` | `quarta-feira, 9 de setembro às 07:15` |
+| `{{5}}` | `Pereira Barreto` |
 
 ---
 
@@ -221,8 +222,13 @@ Tipo: **Ir para o site** (URL dinâmica)
 
 Hoje a cliente vê só um número. Dá pra arrumar boa parte disso:
 
-**business.facebook.com** → **WhatsApp Manager** → **Números de telefone** →
-o número **+55 (16) 92008-8473** → aba **Perfil**.
+**Link direto** (já com o WABA da Karol):
+
+```
+https://business.facebook.com/wa/manage/phone-numbers/?waba_id=958269250650095
+```
+
+Clica no número **+55 (16) 92008-8473** → aba **Perfil**.
 
 Lá dá pra preencher, e tudo isso aparece pra quem abre a conversa:
 
