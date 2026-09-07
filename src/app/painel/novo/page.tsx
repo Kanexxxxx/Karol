@@ -16,14 +16,14 @@ export default async function Novo() {
       <header className="border-b border-linha bg-papel">
         <div className="mx-auto flex max-w-[720px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4">
           <div>
-            <p className="font-titulo text-xl uppercase tracking-[0.14em]">Marcar horário</p>
+            <h1 className="font-titulo text-xl uppercase tracking-[0.14em]">Marcar horário</h1>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3">
               você mesma
             </p>
           </div>
           <Link
             href="/painel"
-            className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+            className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
           >
             ← Agenda
           </Link>

@@ -33,7 +33,7 @@ export function Remarcar({
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="min-h-[34px] border border-linha px-3 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
+        className="inline-flex min-h-[44px] items-center border border-linha px-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
       >
         Remarcar
       </button>

@@ -62,7 +62,7 @@ export function Lembrete({
         <button
           type="submit"
           disabled={ocupado}
-          className="border border-linha px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center border border-linha px-3.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro disabled:opacity-50"
         >
           {ocupado ? "Enviando…" : jaSaiu ? "Mandar de novo" : "Lembrar agora"}
         </button>

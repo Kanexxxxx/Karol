@@ -10,9 +10,9 @@ export default function Login() {
   return (
     <main className="grid min-h-dvh place-items-center bg-osso px-6 py-16">
       <div className="w-full max-w-[380px]">
-        <p className="text-center font-titulo text-2xl uppercase tracking-[0.16em] text-tinta">
+        <h1 className="text-center font-titulo text-2xl uppercase tracking-[0.16em] text-tinta">
           Karol Carvalho
-        </p>
+        </h1>
         <p className="mt-1 mb-8 text-center text-[10px] font-bold uppercase tracking-[0.28em] text-ouro">
           Painel
         </p>

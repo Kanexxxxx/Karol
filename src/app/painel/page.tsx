@@ -38,7 +38,7 @@ export default async function Painel({
       <header className="border-b border-linha bg-papel">
         <div className="mx-auto flex max-w-[900px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4">
           <div>
-            <p className="font-titulo text-xl uppercase tracking-[0.14em]">Painel</p>
+            <h1 className="font-titulo text-xl uppercase tracking-[0.14em]">Painel</h1>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3">
               {ativos.length} na agenda
               {aguardando > 0 && ` · ${aguardando} aguardando`}
@@ -53,32 +53,32 @@ export default async function Painel({
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link
               href="/painel/novo"
-              className="inline-flex min-h-[34px] items-center bg-ouro px-3.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-90"
+              className="inline-flex min-h-[44px] items-center bg-ouro px-4 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-90"
             >
               + Marcar
             </Link>
             <Link
               href="/painel/relatorio"
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+              className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
             >
               Relatório
             </Link>
             <Link
               href="/painel/bloqueios"
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+              className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
             >
               Bloqueios
             </Link>
             <Link
               href="/painel/notificacoes"
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+              className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
             >
               Mensagens
             </Link>
             <form action={sair}>
               <button
                 type="submit"
-                className="border border-linha px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
+                className="inline-flex min-h-[44px] items-center border border-linha px-3.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
               >
                 Sair
               </button>

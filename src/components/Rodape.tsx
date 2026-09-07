@@ -18,7 +18,7 @@ export function Rodape() {
             </p>
             <Link
               href="/sobre"
-              className="mt-3.5 inline-flex min-h-[38px] items-center text-[11px] font-bold uppercase tracking-[0.2em] text-ouro transition-opacity hover:opacity-70"
+              className="mt-3.5 inline-flex min-h-[44px] items-center text-[11px] font-bold uppercase tracking-[0.2em] text-ouro transition-opacity hover:opacity-70"
             >
               Conhecer a Karol →
             </Link>
@@ -85,7 +85,10 @@ export function Rodape() {
           <p>
             {NEGOCIO.nome} · {NEGOCIO.atuacaoCidades}
           </p>
-          <Link href="/privacidade" className="transition-colors hover:text-ouro">
+          <Link
+            href="/privacidade"
+            className="inline-flex min-h-[44px] items-center transition-colors hover:text-ouro"
+          >
             Política de privacidade
           </Link>
         </div>

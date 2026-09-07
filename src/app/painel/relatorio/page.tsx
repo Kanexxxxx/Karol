@@ -63,14 +63,14 @@ export default async function Relatorio({
       <header className="border-b border-linha bg-papel">
         <div className="mx-auto flex max-w-[900px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4">
           <div>
-            <p className="font-titulo text-xl uppercase tracking-[0.14em]">Relatório</p>
+            <h1 className="font-titulo text-xl uppercase tracking-[0.14em]">Relatório</h1>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 first-letter:uppercase">
               {MES_POR_EXTENSO.format(atual)}
             </p>
           </div>
           <Link
             href="/painel"
-            className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+            className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
           >
             ← Agenda
           </Link>
@@ -85,7 +85,7 @@ export default async function Relatorio({
               key={m.chave}
               href={`/painel/relatorio?mes=${m.chave}`}
               aria-current={m.atual ? "page" : undefined}
-              className={`border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors first-letter:uppercase ${
+              className={`inline-flex min-h-[44px] items-center border px-3.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors first-letter:uppercase ${
                 m.atual
                   ? "border-ouro bg-ouro text-white"
                   : "border-linha bg-papel text-tinta-2 hover:border-ouro-claro hover:text-ouro"
@@ -215,7 +215,7 @@ function QuemFaltou({ faltas }: { faltas: ItemRelatorio[] }) {
               href={`https://wa.me/${f.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-[38px] shrink-0 items-center border border-linha px-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
+              className="inline-flex min-h-[44px] shrink-0 items-center border border-linha px-4 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
             >
               Chamar
             </a>

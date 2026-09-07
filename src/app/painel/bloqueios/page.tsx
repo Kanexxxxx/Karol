@@ -20,10 +20,10 @@ export default async function Bloqueios() {
     <main className="min-h-dvh bg-osso">
       <header className="border-b border-linha bg-papel">
         <div className="mx-auto flex max-w-[720px] items-center justify-between gap-4 px-5 py-4">
-          <p className="font-titulo text-xl uppercase tracking-[0.14em]">Bloqueios</p>
+          <h1 className="font-titulo text-xl uppercase tracking-[0.14em]">Bloqueios</h1>
           <Link
             href="/painel"
-            className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+            className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
           >
             ← Agenda
           </Link>

@@ -60,10 +60,10 @@ export default async function Notificacoes() {
     <main className="min-h-dvh bg-osso">
       <header className="border-b border-linha bg-papel">
         <div className="mx-auto flex max-w-[720px] items-center justify-between gap-4 px-5 py-4">
-          <p className="font-titulo text-xl uppercase tracking-[0.14em]">Mensagens</p>
+          <h1 className="font-titulo text-xl uppercase tracking-[0.14em]">Mensagens</h1>
           <Link
             href="/painel"
-            className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
+            className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
           >
             ← Agenda
           </Link>
@@ -168,7 +168,7 @@ function ConversasAbertas({ conversas }: { conversas: Conversa[] }) {
                 href={`https://wa.me/${c.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[38px] shrink-0 items-center border border-linha px-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
+                className="inline-flex min-h-[44px] shrink-0 items-center border border-linha px-4 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
               >
                 Responder
               </a>

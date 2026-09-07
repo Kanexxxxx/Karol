@@ -60,7 +60,7 @@ export function AcoesAgendamento({
           name="situacao"
           value={b.valor}
           disabled={ocupado}
-          className={`border px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] transition-colors disabled:opacity-50 ${TOM[b.tom]}`}
+          className={`inline-flex min-h-[44px] items-center border px-3.5 text-[10.5px] font-bold uppercase tracking-[0.14em] transition-colors disabled:opacity-50 ${TOM[b.tom]}`}
         >
           {b.rotulo}
         </button>
