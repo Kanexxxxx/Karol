@@ -157,6 +157,20 @@ export type DiaDoMes = {
   atende: boolean;
   /** cedo demais: hoje ou antes da antecedência mínima */
   cedoDemais: boolean;
+  /**
+   * O dia já ficou pra trás.
+   *
+   * ⚠️ Existe separado de `cedoDemais` porque o calendário precisa DIZER
+   * coisas diferentes. Os dois pintavam a mesma célula cinza com a legenda
+   * "não atende" — e aí, numa segunda-feira, o dia de hoje aparecia como
+   * dia em que ela não trabalha, sendo que segunda é dia útil dela. Quem
+   * abria o site na segunda via a primeira semana inteira apagada e
+   * concluía que a agenda estava fechada.
+   *
+   * `passou` = acabou. `cedoDemais && !passou` = ainda é hoje, mas ela só
+   * marca a partir de amanhã.
+   */
+  passou: boolean;
   vagas: number;
   total: number;
 };
@@ -173,6 +187,12 @@ export async function mesDeVagas(
   const ocupados = await ocupadosNoPeriodo(primeiro, depoisDoUltimo);
   const limite = primeiroDiaDisponivel();
 
+  // Meia-noite de hoje. Comparar com `new Date()` cru faria o dia de hoje
+  // "passar" ao longo da manhã, e o calendário mudaria de significado
+  // sozinho entre uma visita e outra.
+  const agora = new Date();
+  const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+
   const dias: DiaDoMes[] = [];
   for (let d = new Date(primeiro); d < depoisDoUltimo; d.setDate(d.getDate() + 1)) {
     const data = new Date(d);
@@ -180,6 +200,7 @@ export async function mesDeVagas(
     const expediente = expedienteDoDia(data);
     const atende = expediente?.cidade === cidade;
     const cedoDemais = data < limite;
+    const passou = data < hoje;
 
     const grade =
       atende && !cedoDemais
@@ -192,6 +213,7 @@ export async function mesDeVagas(
       numero: data.getDate(),
       atende,
       cedoDemais,
+      passou,
       vagas: grade.filter((v) => v.livre).length,
       total: grade.length,
     });

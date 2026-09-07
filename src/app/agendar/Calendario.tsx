@@ -111,20 +111,51 @@ export function Calendario({
   );
 }
 
+/**
+ * Uma célula do calendário.
+ *
+ * ⚠️ São QUATRO estados, não três. O quarto — "já passou" — foi o defeito:
+ * dia vencido e dia em que ela não trabalha caíam na mesma célula cinza,
+ * com a mesma legenda "não atende".
+ *
+ * O estrago aparecia justo na segunda-feira. Segunda é dia útil dela em
+ * Pereira Barreto, mas o dia de hoje nunca é agendável (ela pediu
+ * antecedência de um dia), então o calendário dizia "não atende" num dia
+ * em que ela atende. Quem abrisse o site numa segunda via a primeira
+ * semana inteira apagada, com a legenda afirmando que ela não trabalha
+ * naqueles dias, e concluía que a agenda estava fechada.
+ *
+ * O risco de dizer errado aqui é maior do que parece: é a única tela onde
+ * o site fala sobre a disponibilidade dela, e uma cliente que conclui
+ * "ela não atende" fecha a aba.
+ */
 function Dia({ dia, base }: { dia: DiaDoMes; base: string }) {
   const esgotado = dia.atende && !dia.cedoDemais && dia.total > 0 && dia.vagas === 0;
   const livre = dia.vagas > 0;
 
   if (!livre) {
+    // "Cedo demais" num dia que ela ATENDE é hoje (ou dentro da
+    // antecedência). Num dia que ela não atende, o que manda é o "não
+    // atende" — dizer "cedo demais" sobre um domingo não ajudaria ninguém.
+    const vencido = dia.passou || (dia.cedoDemais && dia.atende);
+
     return (
       <span
         aria-label={
           esgotado
             ? `Dia ${dia.numero}, esgotado`
-            : `Dia ${dia.numero}, sem atendimento`
+            : dia.passou
+              ? `Dia ${dia.numero}, já passou`
+              : vencido
+                ? `Dia ${dia.numero}, cedo demais — ela marca a partir de amanhã`
+                : `Dia ${dia.numero}, ela não atende nesse dia`
         }
         className={`flex aspect-square flex-col items-center justify-center gap-0.5 border border-linha/60 text-[15px] ${
-          esgotado ? "bg-creme/50 text-tinta-3" : "text-tinta-3/45"
+          esgotado
+            ? "bg-creme/50 text-tinta-3"
+            : vencido
+              ? "text-tinta-3/40 [background:linear-gradient(to_top_right,transparent_calc(50%-0.5px),var(--color-linha)_calc(50%-0.5px),var(--color-linha)_calc(50%+0.5px),transparent_calc(50%+0.5px))]"
+              : "text-tinta-3/45"
         }`}
       >
         <span className={esgotado ? "line-through decoration-tinta-3/60" : ""}>
@@ -158,6 +189,13 @@ function Legenda() {
       <li className="flex items-center gap-1.5">
         <span aria-hidden="true" className="size-2.5 border border-linha bg-creme/50" />
         cheio
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span
+          aria-hidden="true"
+          className="size-2.5 border border-linha [background:linear-gradient(to_top_right,transparent_calc(50%-0.5px),var(--color-linha)_calc(50%-0.5px),var(--color-linha)_calc(50%+0.5px),transparent_calc(50%+0.5px))]"
+        />
+        já passou
       </li>
       <li className="flex items-center gap-1.5">
         <span aria-hidden="true" className="size-2.5 border border-linha bg-papel opacity-45" />

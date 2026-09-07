@@ -10,6 +10,7 @@ vi.mock("./banco", () => ({
 import { banco } from "./banco";
 import {
   buscarAgendamento,
+  mesDeVagas,
   criarAgendamento,
   criarAgendamentoNoPainel,
   horaEmMinutos,
@@ -599,3 +600,99 @@ function linhaFalsa(id: string, nome: string) {
     observacao: null,
   };
 }
+
+/**
+ * O calendário do `/agendar`.
+ *
+ * O bug que este bloco existe pra impedir apareceu em produção no dia
+ * 07/09/2026, uma segunda-feira: quem abriu o site viu a primeira semana
+ * inteira apagada, com a legenda dizendo "não atende" — e concluiu que a
+ * agenda estava fechada.
+ *
+ * Segunda é dia útil dela em Pereira Barreto. O que estava errado não era
+ * a disponibilidade, era a FRASE: dia vencido e dia em que ela não
+ * trabalha caíam na mesma célula cinza, com o mesmo rótulo.
+ */
+describe("mesDeVagas: o que o calendário tem que saber dizer", () => {
+  const hoje = new Date();
+
+  function usarBancoVazio() {
+    usarBanco({ select: () => ({ data: [] }) });
+  }
+
+  /** O dia de hoje, dentro do mês de hoje. */
+  async function diasDesteMes(cidade: "pereira-barreto" | "bandeirantes") {
+    usarBancoVazio();
+    const servico = buscarServicoDeTeste();
+    return mesDeVagas(servico, cidade, hoje.getFullYear(), hoje.getMonth());
+  }
+
+  function buscarServicoDeTeste() {
+    return {
+      id: "design-simples",
+      nome: "Design de sobrancelha",
+      preco: 25,
+      duracaoMinMin: 30,
+      duracaoMaxMin: 40,
+      descricao: "",
+      categoria: "sobrancelha" as const,
+      agendavel: true,
+    };
+  }
+
+  it("marca o que já passou como passou, não como dia sem atendimento", async () => {
+    const dias = await diasDesteMes("pereira-barreto");
+    const ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1);
+
+    // só vale se ontem caiu no mesmo mês
+    if (ontem.getMonth() !== hoje.getMonth()) return;
+
+    const d = dias.find((x) => x.numero === ontem.getDate())!;
+    expect(d.passou).toBe(true);
+  });
+
+  it("hoje NÃO é 'passou' — é cedo demais, que é outra coisa", async () => {
+    const dias = await diasDesteMes("pereira-barreto");
+    const d = dias.find((x) => x.numero === hoje.getDate())!;
+
+    expect(d.passou).toBe(false);
+    // ela pediu antecedência de 1 dia: hoje nunca é agendável
+    expect(d.cedoDemais).toBe(true);
+  });
+
+  /**
+   * O coração do bug. Num dia de semana, `atende` tem que continuar
+   * verdadeiro mesmo com o dia vencido — é isso que permite a tela dizer
+   * "já passou" em vez de "ela não atende".
+   */
+  it("num dia de semana, 'atende' continua verdadeiro mesmo já tendo passado", async () => {
+    const dias = await diasDesteMes("pereira-barreto");
+
+    const diaUtilVencido = dias.find(
+      (d) => (d.passou || d.cedoDemais) && d.data.getDay() >= 1 && d.data.getDay() <= 5,
+    );
+    if (!diaUtilVencido) return; // mês que começou no fim de semana
+
+    expect(diaUtilVencido.atende).toBe(true);
+  });
+
+  it("domingo continua sendo dia que ela não atende, em qualquer cidade", async () => {
+    for (const cidade of ["pereira-barreto", "bandeirantes"] as const) {
+      const dias = await diasDesteMes(cidade);
+      const domingos = dias.filter((d) => d.data.getDay() === 0);
+      expect(domingos.length).toBeGreaterThan(0);
+      expect(domingos.every((d) => d.atende === false)).toBe(true);
+    }
+  });
+
+  it("sábado atende em Bandeirantes e não em Pereira Barreto", async () => {
+    const pb = await diasDesteMes("pereira-barreto");
+    const bd = await diasDesteMes("bandeirantes");
+
+    const sabadoPB = pb.filter((d) => d.data.getDay() === 6);
+    const sabadoBD = bd.filter((d) => d.data.getDay() === 6);
+
+    expect(sabadoPB.every((d) => d.atende === false)).toBe(true);
+    expect(sabadoBD.every((d) => d.atende === true)).toBe(true);
+  });
+});
