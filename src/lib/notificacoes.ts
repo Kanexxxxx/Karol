@@ -33,6 +33,18 @@ export type DadosAgendamento = {
   /** início do atendimento, ISO */
   inicioISO: string;
   valorCentavos: number;
+  /**
+   * O recado que a cliente escreveu no fim do agendamento.
+   *
+   * ⚠️ Isto passou o projeto inteiro sendo gravado no banco, aparecendo
+   * no painel, e NÃO CHEGANDO NA KAROL. O campo existe no site desde o
+   * começo e o aviso de novo agendamento nunca o carregou.
+   *
+   * O estrago é do tipo silencioso: a cliente escreve "estou grávida,
+   * cuidado com a henna" ou "tenho alergia a X", a mensagem entra no
+   * banco, e a Karol só descobre se abrir o painel antes de atender.
+   */
+  observacao?: string | null;
 };
 
 export type Evento =
@@ -88,6 +100,13 @@ export function textoParaKarol(a: DadosAgendamento): string {
     `🗓️ ${quando(a.inicioISO)}`,
     `📍 ${a.cidade}`,
     "",
+    // ⚠️ O RECADO vem antes do link, e não depois. É a única informação da
+    // mensagem que ela não consegue adivinhar sozinha, e pode mudar o que
+    // ela separa antes de a cliente chegar.
+    // ⚠️ a linha em branco que separa este bloco do próximo vai DENTRO do
+    // ternário. Fora dele, ela soma com a de cima e abre um buraco no meio
+    // da mensagem sempre que não há recado.
+    ...(a.observacao ? ["📝 Recado da cliente:", `"${a.observacao}"`, ""] : []),
     `Chamar no WhatsApp: https://wa.me/${a.whatsappCliente}`,
     "",
     // Ela toca e cai no painel já filtrado nesta cliente. Sem código, sem

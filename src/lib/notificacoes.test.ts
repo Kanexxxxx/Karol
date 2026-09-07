@@ -254,3 +254,43 @@ describe("o endereço do site nas mensagens", () => {
     expect(SITE_URL).toMatch(/^https:\/\/[^/]+$/);
   });
 });
+
+/**
+ * O recado da cliente.
+ *
+ * ⚠️ Este defeito viveu o projeto inteiro sem ninguém ver: o campo "algum
+ * recado?" existe no último passo do agendamento desde a primeira etapa,
+ * era gravado no banco, aparecia no cartão do painel — e NÃO ia na
+ * mensagem que chega pra Karol.
+ *
+ * O jeito de errar aqui é o pior possível. Uma cliente escreve "estou
+ * grávida, cuidado com a henna" ou "sou alérgica", a mensagem entra no
+ * banco, a Karol recebe o aviso do agendamento sem uma palavra sobre
+ * isso, e só descobre se abrir o painel antes de atender.
+ */
+describe("o recado da cliente chega na Karol", () => {
+  const comRecado = {
+    ...AG,
+    observacao: "Sou alérgica a henna, pode ser só o design?",
+  };
+
+  it("aparece na mensagem quando existe", () => {
+    const t = textoParaKarol(comRecado);
+    expect(t).toContain("Sou alérgica a henna");
+    expect(t).toMatch(/recado/i);
+  });
+
+  it("vem ANTES do link do painel", () => {
+    // Ela lê a prévia da notificação sem abrir o WhatsApp. Se o recado
+    // ficar depois do link, some da prévia justamente quando importa.
+    const t = textoParaKarol(comRecado);
+    expect(t.indexOf("alérgica")).toBeLessThan(t.indexOf("/painel?q="));
+  });
+
+  it("não deixa buraco na mensagem quando não existe", () => {
+    const t = textoParaKarol({ ...AG, observacao: null });
+    expect(t).not.toMatch(/recado/i);
+    // três quebras seguidas seriam um espaço vazio no meio da mensagem
+    expect(t).not.toContain("\n\n\n");
+  });
+});

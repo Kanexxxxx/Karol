@@ -36,6 +36,7 @@ export function paraDados(a: Agendamento): DadosAgendamento {
     cidade: a.cidade,
     inicioISO: a.inicio.toISOString(),
     valorCentavos: a.servicoPreco,
+    observacao: a.observacao,
   };
 }
 

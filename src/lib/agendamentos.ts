@@ -320,6 +320,9 @@ export async function criarAgendamento(dados: {
     cidade: CIDADES[cidade].nome,
     inicioISO: inicio.toISOString(),
     valorCentavos: servico.preco * 100,
+    // ⚠️ o recado da cliente. Ficava só no banco e no painel — a Karol
+    // nunca via antes de atender. Ver `DadosAgendamento.observacao`.
+    observacao: dados.observacao?.trim() || null,
   };
   await Promise.all([
     enviarEvento("novo-agendamento", notif),

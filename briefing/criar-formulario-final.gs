@@ -2,29 +2,21 @@
  * BRIEFING FINAL — KAROL CARVALHO
  * ===============================
  *
- * O formulario que encerra o projeto. Junta os tres anteriores num so, JA
- * PREENCHIDO com tudo que ela respondeu em 29/08/2026, e acrescenta o que
- * falta pra fechar.
+ * O formulario que encerra o projeto. Junta tudo que ja foi perguntado,
+ * JA PREENCHIDO com o que ela respondeu em 29/08/2026, e acrescenta todas
+ * as pecas que faltam pra fechar.
  *
  * ---------------------------------------------------------------------
- * O QUE FAZ ESTE DIFERENTE DOS OUTROS
+ * A IDEIA
  * ---------------------------------------------------------------------
  *
- * O briefing 2 tinha 12 secoes, prometia 10 minutos e pedia decisao em
- * quase todas. Nunca foi respondido.
+ * Ele e GRANDE de proposito. O objetivo nao e ser rapido de responder —
+ * e nao sobrar pergunta nenhuma depois. Quem torna isso possivel e o
+ * PRE-PREENCHIMENTO: metade do formulario ja vem com a resposta dela de
+ * agosto marcada, entao o que ela realmente responde e so o que ninguem
+ * sabe ainda.
  *
- * A saida nao e encurtar de novo — o Kaina precisa de TODAS as respostas
- * pra encerrar. A saida e **ela nao ter que responder de novo o que ja
- * respondeu**.
- *
- * Este script gera um LINK PRE-PREENCHIDO (`toPrefilledUrl`). A Karol abre
- * e encontra as respostas dela de agosto ja marcadas: precos, horarios,
- * fotos, visual, avisos. Ela desce conferindo, muda o que mudou, e para de
- * verdade so nas perguntas novas — que sao as que ninguem sabe.
- *
- * Um formulario grande que ja vem respondido e MUITO mais rapido de fechar
- * do que um formulario pequeno em branco. E o que ela le e "o Kaina
- * anotou tudo que eu falei", nao "tenho que fazer isso de novo".
+ * As perguntas novas estao marcadas com 🆕. Nenhuma e obrigatoria.
  *
  * ---------------------------------------------------------------------
  * COMO USAR
@@ -39,22 +31,21 @@
  *       - o link de edicao, pra voce ver as respostas
  *       - a mensagem pronta pra colar no WhatsApp
  *
- * ⚠️ MANDE O LINK PRE-PREENCHIDO, nao o link normal. O normal abre tudo em
- * branco e joga fora a razao de ser deste formulario.
+ * ⚠️ MANDE O LINK PRE-PREENCHIDO, nao o link normal. O normal abre tudo
+ * em branco e joga fora a razao de ser deste formulario.
  *
  * ⚠️ ESTE ARQUIVO TEM ACENTO no que a Karol le. O editor do Apps Script e
  * UTF-8 e aguenta; cole direto, sem passar por bloco de notas.
  */
 
-/** Pra onde os links apontam. */
 var SITE = 'https://karol-zeta.vercel.app';
 
 /**
  * O que ela ja respondeu em 29/08/2026.
  *
- * Cada valor aqui tem que ser IGUAL a uma das opcoes da pergunta, senao o
- * Apps Script recusa o pre-preenchimento. Se voce mudar um texto de opcao
- * la embaixo, mude aqui tambem.
+ * Cada valor tem que ser IGUAL a uma das opcoes da pergunta, senao o Apps
+ * Script recusa o pre-preenchimento. Mudou um texto de opcao la embaixo?
+ * Mude aqui tambem.
  */
 var JA_RESPONDIDO = {
   precos: 'Mostrar todos os preços no site',
@@ -65,56 +56,46 @@ var JA_RESPONDIDO = {
   cancelamento: 'Não. Ela tem que me chamar no WhatsApp',
   avisoNovo: 'Sim, quero ser avisada no WhatsApp',
   aprovacao: 'Sim, quero aprovar cada uma antes de valer',
+  desmarcam: 'De 1 a 2 por semana',
+  sinalQuis: 'Sim, quero desde já',
   mensagens: [
     'Confirmação na hora que ela marca',
     'Lembrete um dia antes',
     'Agradecimento depois do atendimento',
   ],
-  desmarcam: 'De 1 a 2 por semana',
-  sinalQuis: 'Sim, quero desde já',
 };
 
 function criarFormularioFinal() {
-  var form = FormApp.create('Karol — as últimas decisões do site');
+  var form = FormApp.create('Karol — fechando o site');
 
   form.setDescription(
-    'Oi, Karol! O site está no ar e funcionando: a agenda, os preços, a sua ' +
-    'página e o WhatsApp que já responde as clientes sozinho.\n\n' +
-    '⚠️ IMPORTANTE: as suas respostas de agosto já estão marcadas aqui. ' +
-    'Você não precisa responder de novo — só conferir se continua certo e ' +
-    'mudar o que mudou.\n\n' +
-    'As perguntas NOVAS estão marcadas com 🆕. São essas que eu preciso pra ' +
-    'terminar. Nenhuma é obrigatória: responde as que der e manda assim ' +
-    'mesmo. 💛'
+    'Oi, Karol! Que bom que você voltou. 💛\n\n' +
+    'O site está no ar e funcionando: a agenda, os preços, a sua página, e ' +
+    'o WhatsApp já responde as clientes sozinho.\n\n' +
+    'Esse é o último formulário — depois dele eu fecho tudo.\n\n' +
+    '⚠️ Ele parece grande, mas metade JÁ ESTÁ RESPONDIDA: coloquei tudo que ' +
+    'você me falou em agosto já marcado. Você só confere e muda o que mudou.\n\n' +
+    'O que eu preciso mesmo são as perguntas com 🆕. Nada é obrigatório — ' +
+    'responde o que der e manda assim mesmo.'
   );
   form.setCollectEmail(false);
   form.setAllowResponseEdits(true);
   form.setProgressBar(true);
   form.setConfirmationMessage(
-    'Obrigado, Karol! Com isso eu fecho o que falta. ' +
-    'Qualquer coisa que você lembrar depois, é só me chamar no WhatsApp. 💛'
+    'Pronto, Karol! Agora eu fecho o resto. Obrigado pela paciência. 💛'
   );
 
-  // guarda as referencias dos itens que vao ser pre-preenchidos
   var itens = {};
 
   /* ==================================================================
-     1. O SINAL — a pergunta que trava tudo, e por isso vem primeiro
-     ==================================================================
-     No briefing 1 ela marcou "sim, quero desde ja" pra um PIX de sinal, e
-     depois escreveu que a UNICA coisa que gostaria de resolver era "a
-     questao do agendamento com sinal". As duas respostas parecem falar da
-     mesma coisa, mas o Kaina leu como "aviso/notificacao".
-
-     Enquanto isso nao sair da boca dela, nao da pra construir pagamento
-     nenhum: e a diferenca entre uma tela de PIX e um aviso de WhatsApp.
+     1. A TAXA / O SINAL — a unica coisa que trava trabalho
      ================================================================== */
   form.addPageBreakItem()
-    .setTitle('1. O sinal 🆕')
+    .setTitle('1. A taxa pra segurar o horário 🆕')
     .setHelpText(
-      'Essa é a parte mais importante do formulário inteiro. Em agosto você ' +
-      'escreveu que a coisa que mais queria resolver era "a questão do ' +
-      'agendamento com sinal" — e eu não quero construir a errada.'
+      'Essa é a parte mais importante do formulário. Em agosto você escreveu ' +
+      'que a coisa que mais queria resolver era "a questão do agendamento ' +
+      'com sinal" — e eu não quero construir a coisa errada.'
     );
 
   itens.sinalQuis = form.addMultipleChoiceItem()
@@ -128,9 +109,6 @@ function criarFormularioFinal() {
 
   form.addMultipleChoiceItem()
     .setTitle('🆕 Quando você fala "sinal", você quer dizer…')
-    .setHelpText(
-      'As duas coisas são bem diferentes de fazer, e eu preciso saber qual é.'
-    )
     .setChoiceValues([
       'DINHEIRO. A cliente paga um PIX adiantado, e só depois disso o horário é dela.',
       'AVISO. Eu quero ser avisada no WhatsApp quando alguém marca. (isso já funciona)',
@@ -141,26 +119,25 @@ function criarFormularioFinal() {
     .setRequired(false);
 
   form.addSectionHeaderItem()
-    .setTitle('Se for dinheiro, como eu imaginei que funcionaria')
+    .setTitle('Como eu pretendo fazer, se for dinheiro')
     .setHelpText(
       'A cliente marca pelo site → recebe no WhatsApp o horário e a sua ' +
-      'chave PIX → paga → manda o comprovante ali mesmo → o comprovante cai ' +
-      'no SEU WhatsApp → você confere com o olho e aperta "confirmar".\n\n' +
+      'chave PIX → paga → manda o comprovante ali mesmo na conversa → o ' +
+      'comprovante cai no SEU WhatsApp → você olha e aperta "confirmar".\n\n' +
       'Enquanto ela não pagar, o horário fica segurado por um tempinho e ' +
       'depois volta a ficar livre pra outra pessoa.\n\n' +
-      'As perguntas abaixo são pra eu montar exatamente isso.'
+      '⚠️ Importante saber: eu não tenho como conferir se o comprovante é ' +
+      'verdadeiro — quem confere é você, com o olho, igual você já faz hoje. ' +
+      'O site só entrega ele na sua mão.'
     );
 
   form.addTextItem()
-    .setTitle('🆕 Quanto você cobraria de sinal?')
-    .setHelpText(
-      'Pode ser um valor só pra tudo ("R$ 10 em qualquer serviço") ou ' +
-      'diferente por serviço. Escreve do seu jeito.'
-    )
+    .setTitle('🆕 Quanto você cobraria de taxa?')
+    .setHelpText('Pode ser um valor só ("R$ 10 em tudo") ou diferente por serviço.')
     .setRequired(false);
 
   form.addMultipleChoiceItem()
-    .setTitle('🆕 Se a cliente desmarcar, o sinal volta pra ela?')
+    .setTitle('🆕 Se a cliente desmarcar, a taxa volta pra ela?')
     .setChoiceValues([
       'Volta, se ela avisar com um dia de antecedência',
       'Volta sempre',
@@ -172,40 +149,183 @@ function criarFormularioFinal() {
   form.addMultipleChoiceItem()
     .setTitle('🆕 Quanto tempo eu seguro o horário esperando o pagamento?')
     .setHelpText(
-      'Passado esse tempo sem o comprovante, o horário volta pra agenda e ' +
-      'outra pessoa pode pegar. Sem isso, alguém marca, some, e o horário ' +
-      'fica travado à toa.'
+      'Passado esse tempo sem o comprovante, o horário volta pra agenda. Sem ' +
+      'isso, alguém marca, some, e o horário fica travado à toa.'
     )
-    .setChoiceValues([
-      '30 minutos',
-      '1 hora',
-      '2 horas',
-      'Até o fim do dia',
-      'Escolhe você',
-    ])
+    .setChoiceValues(['30 minutos', '1 hora', '2 horas', 'Até o fim do dia', 'Escolhe você'])
     .setRequired(false);
 
   form.addTextItem()
     .setTitle('🆕 Qual é a sua chave PIX, e em nome de quem?')
     .setHelpText(
-      '⚠️ Essa chave vai aparecer pra cliente no WhatsApp na hora de pagar. ' +
-      'Pode ser CPF, telefone, e-mail ou aleatória — me diz qual você prefere ' +
-      'que apareça. Se preferir não escrever aqui, me manda no WhatsApp.'
+      '⚠️ Ela vai aparecer pra cliente no WhatsApp na hora de pagar. Pode ser ' +
+      'CPF, telefone, e-mail ou aleatória. Se preferir não escrever aqui, me ' +
+      'manda no WhatsApp.'
+    )
+    .setRequired(false);
+
+  form.addMultipleChoiceItem()
+    .setTitle('🆕 Vale pra todo serviço, ou só pros mais caros?')
+    .setChoiceValues([
+      'Todos os serviços',
+      'Só os de R$ 80 ou mais (brow lamination, maquiagem, curso)',
+      'Só o curso',
+      'Escolhe você',
+    ])
+    .setRequired(false);
+
+  /* ==================================================================
+     2. AS FOTOS — inclui os certificados
+     ================================================================== */
+  form.addPageBreakItem()
+    .setTitle('2. As fotos do site')
+    .setHelpText('Dá uma passada em ' + SITE + ' antes de responder essa parte.');
+
+  itens.fotos = form.addMultipleChoiceItem()
+    .setTitle('As fotos das clientes podem continuar no site?')
+    .setChoiceValues([
+      'Pode usar todas',
+      'Pode, mas tem umas que eu quero tirar (falo no WhatsApp)',
+      'Prefiro tirar as fotos de cliente',
+    ])
+    .setRequired(false);
+
+  form.addMultipleChoiceItem()
+    .setTitle('🆕 As fotos das alunas com o certificado: pode aparecer o certificado?')
+    .setHelpText(
+      'Hoje eu apaguei a parte do certificado onde fica o nome escrito à mão, ' +
+      'pra não expor as meninas. Ficou feio, e o Kainã quer que apareça.\n\n' +
+      '⚠️ Antes de eu tirar o borrão, preciso que você confirme: essas alunas ' +
+      'sabem e deixam a foto delas COM O NOME aparecer num site público? ' +
+      'Se você não tiver certeza, é melhor perguntar pra elas primeiro — ' +
+      'depois que sobe, qualquer pessoa vê.'
+    )
+    .setChoiceValues([
+      'Pode aparecer o certificado inteiro, elas autorizaram',
+      'Pode aparecer o certificado, mas sem o nome delas',
+      'Vou perguntar pra elas e te falo',
+      'Prefiro deixar como está',
+    ])
+    .setRequired(false);
+
+  form.addMultipleChoiceItem()
+    .setTitle('🆕 Tem alguma foto no site que você não gostou?')
+    .setHelpText(
+      'O Kainã apontou algumas que ficaram esquisitas. Se você concordar, ' +
+      'me diz quais — ou melhor ainda, me manda outras no WhatsApp pra ' +
+      'trocar.'
+    )
+    .setChoiceValues([
+      'Tem sim, vou mandar outras no WhatsApp',
+      'Tem, mas não sei quais mandar no lugar',
+      'Achei todas boas',
+    ])
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('🆕 Quais fotos você quer trocar?')
+    .setHelpText('Pode descrever do seu jeito: "aquela da moça de amarelo", por exemplo.')
+    .setRequired(false);
+
+  form.addMultipleChoiceItem()
+    .setTitle('🆕 Quer trocar a foto que abre o site?')
+    .setHelpText(
+      'Hoje é a sua foto do ensaio, de blazer branco. Se quiser outra, manda ' +
+      'no meu WhatsApp — direto da galeria, na melhor qualidade que tiver, ' +
+      'e não printada. Print perde metade da qualidade.'
+    )
+    .setChoiceValues([
+      'Pode deixar a que está',
+      'Quero trocar — mando a foto no seu WhatsApp',
+    ])
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('🆕 Você tem mais fotos boas do seu trabalho pra me mandar?')
+    .setHelpText(
+      'Principalmente: antes e depois, você atendendo, e fotos do studio. ' +
+      'Quanto mais eu tiver, menos foto repetida fica no site. Pode mandar ' +
+      'tudo no WhatsApp — só me avisa aqui que vem.'
     )
     .setRequired(false);
 
   /* ==================================================================
-     2. CONFERINDO O QUE VOCE JA ME DISSE
+     3. SOBRE VOCE — o conteudo da pagina dela
+     ==================================================================
+     A pagina /sobre e a que ela vai abrir pra decidir se fecha contrato, e
+     hoje ela tem tres frases porque nao existe mais material. Nada aqui
+     pode ser inventado: e a pagina que leva o nome dela.
      ================================================================== */
   form.addPageBreakItem()
-    .setTitle('2. Conferindo o que você já me disse')
+    .setTitle('3. Sobre você 🆕')
     .setHelpText(
-      'Tudo aqui já está marcado com a sua resposta de agosto. É só passar ' +
-      'o olho e mudar o que mudou. Se estiver tudo certo, desce direto.'
+      'O site tem uma página só sua, mas ela está curtinha — porque tudo que ' +
+      'está escrito lá saiu da sua boca, e eu não invento nada sobre você.\n\n' +
+      'Responde o que quiser dessas. Cada uma vira um pedaço da sua página. ' +
+      'Pode escrever pouco, do jeito que você fala.'
     );
 
+  form.addTextItem()
+    .setTitle('Em que ano você começou a trabalhar com isso?')
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('Como você começou?')
+    .setHelpText(
+      'Você me contou que fez o curso de design sem saber onde ia dar. Me ' +
+      'conta um pouco mais: o que você fazia antes, por que resolveu fazer o ' +
+      'curso, como foi o primeiro atendimento.'
+    )
+    .setRequired(false);
+
+  form.addTextItem()
+    .setTitle('Mais ou menos quantas alunas você já formou?')
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('Você fez algum curso, formação ou especialização?')
+    .setHelpText('Quais, e com quem. Isso pesa muito pra quem está decidindo se marca.')
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('O que você faz que as outras da região não fazem?')
+    .setHelpText(
+      'Pode ser bobagem na sua cabeça e ser justo o que te diferencia: uma ' +
+      'marca específica de produto, uma técnica, o jeito de atender, o tempo ' +
+      'que você dedica.'
+    )
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('Qual foi o atendimento que você mais lembra?')
+    .setHelpText(
+      'Alguém que chegou de um jeito e saiu de outro. Sem nome, se preferir. ' +
+      'História vende mais que qualquer texto meu.'
+    )
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('Você usa alguma marca de produto que faz questão?')
+    .setRequired(false);
+
+  form.addTextItem()
+    .setTitle('Você tem alguma frase que é a sua cara?')
+    .setHelpText(
+      'Já uso duas dos seus reels: "nem de humanas, nem de exatas, eu sou da ' +
+      'autoestima" e "um dia decidi fazer curso de design e hoje isso paga as ' +
+      'minhas contas". Tem outra?'
+    )
+    .setRequired(false);
+
+  /* ==================================================================
+     4. CONFERINDO O QUE VOCE JA ME DISSE
+     ================================================================== */
+  form.addPageBreakItem()
+    .setTitle('4. Conferindo o que você já me disse')
+    .setHelpText('Tudo aqui já vem marcado. Passa o olho e muda só o que mudou.');
+
   form.addSectionHeaderItem()
-    .setTitle('Seus serviços e preços, do jeito que estão no site hoje')
+    .setTitle('Seus serviços e preços, do jeito que estão no site')
     .setHelpText(
       'Design de sobrancelha — R$ 25 (30 a 40 min)\n' +
       'Design com henna — R$ 30 (40 min a 1h)\n' +
@@ -217,7 +337,12 @@ function criarFormularioFinal() {
 
   form.addParagraphTextItem()
     .setTitle('Algum preço, tempo ou serviço mudou?')
-    .setHelpText('Se estiver tudo certo, deixa em branco.')
+    .setHelpText('Tudo certo? Deixa em branco.')
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('🆕 Tem serviço que você faz e não está nessa lista?')
+    .setHelpText('Cílios, limpeza de pele, penteado, o que for.')
     .setRequired(false);
 
   itens.precos = form.addMultipleChoiceItem()
@@ -230,18 +355,17 @@ function criarFormularioFinal() {
     .setRequired(false);
 
   form.addSectionHeaderItem()
-    .setTitle('Seus horários, do jeito que estão no site hoje')
+    .setTitle('Seus horários, do jeito que estão no site')
     .setHelpText(
       'Segunda a sexta — Pereira Barreto, das 7h às 11h\n' +
       'Sábado — Bandeirantes D\'Oeste, das 11h às 22h\n' +
       'Domingo — você não atende\n\n' +
-      'Uma cliente por vez, 10 minutos de intervalo entre uma e outra, e ' +
-      'agendamento só a partir do dia seguinte.'
+      'Uma cliente por vez, 10 minutos entre uma e outra, e agendamento só a ' +
+      'partir do dia seguinte.'
     );
 
   form.addParagraphTextItem()
     .setTitle('Algum horário mudou?')
-    .setHelpText('Se estiver tudo certo, deixa em branco.')
     .setRequired(false);
 
   itens.domingo = form.addMultipleChoiceItem()
@@ -252,27 +376,24 @@ function criarFormularioFinal() {
     ])
     .setRequired(false);
 
+  form.addMultipleChoiceItem()
+    .setTitle('🆕 Tem algum dia ou período que você já sabe que vai fechar?')
+    .setHelpText('Férias, viagem, feriado. Eu já bloqueio na agenda pra ninguém marcar.')
+    .setChoiceValues(['Não, por enquanto não', 'Tenho sim (escrevo abaixo)'])
+    .setRequired(false);
+
+  form.addTextItem()
+    .setTitle('Quais dias?')
+    .setRequired(false);
+
   itens.desmarcam = form.addMultipleChoiceItem()
     .setTitle('Quantas clientes desmarcam em cima da hora, hoje?')
-    .setHelpText('Em agosto você me disse de 1 a 2 por semana. Melhorou, piorou?')
+    .setHelpText('Em agosto você me disse de 1 a 2 por semana.')
     .setChoiceValues([
       'Nenhuma, isso parou',
       'De 1 a 2 por semana',
       'De 3 a 5 por semana',
       'Mais que isso',
-    ])
-    .setRequired(false);
-
-  itens.fotos = form.addMultipleChoiceItem()
-    .setTitle('As fotos das clientes e das alunas podem continuar no site?')
-    .setHelpText(
-      'São fotos do seu Instagram. Os certificados das alunas estão com o ' +
-      'nome apagado, pra não expor ninguém.'
-    )
-    .setChoiceValues([
-      'Pode usar todas',
-      'Pode, mas tem umas que eu quero tirar (falo no WhatsApp)',
-      'Prefiro tirar as fotos de cliente',
     ])
     .setRequired(false);
 
@@ -285,38 +406,13 @@ function criarFormularioFinal() {
     .setRequired(false);
 
   /* ==================================================================
-     3. A CAPA
-     ==================================================================
-     O Kaina disse que ela ja escolheu e que pode ficar a que esta. Entao a
-     pergunta nao e "escolhe entre A e B" — e "quer trocar?".
+     5. AS MENSAGENS AUTOMATICAS
      ================================================================== */
-  form.addPageBreakItem().setTitle('3. A foto que abre o site');
-
-  form.addMultipleChoiceItem()
-    .setTitle('🆕 Quer trocar a foto da abertura?')
-    .setHelpText(
-      'Hoje é a sua foto do ensaio, de blazer branco. Dá uma olhada em ' +
-      SITE + ' e me diz.\n\n' +
-      'Se você quiser outra, é só mandar a foto no meu WhatsApp — de ' +
-      'preferência na melhor qualidade que você tiver, direto da galeria e ' +
-      'não printada.'
-    )
-    .setChoiceValues([
-      'Pode deixar a que está',
-      'Quero trocar — mando a foto no seu WhatsApp',
-    ])
-    .setRequired(false);
-
-  /* ==================================================================
-     4. AS MENSAGENS AUTOMATICAS
-     ================================================================== */
-  form.addPageBreakItem()
-    .setTitle('4. As mensagens automáticas')
-    .setHelpText('O que sai sozinho pelo WhatsApp, sem você fazer nada.');
+  form.addPageBreakItem().setTitle('5. As mensagens automáticas');
 
   itens.mensagens = form.addCheckboxItem()
     .setTitle('O que a cliente recebe sozinho')
-    .setHelpText('Já está marcado o que você pediu em agosto. Pode marcar ou desmarcar.')
+    .setHelpText('Já marcado o que você pediu em agosto.')
     .setChoiceValues([
       'Confirmação na hora que ela marca',
       'Lembrete um dia antes',
@@ -328,15 +424,10 @@ function criarFormularioFinal() {
     .setTitle('🆕 Posso mandar um "seu horário é daqui a pouco" meia hora antes?')
     .setHelpText(
       'Em agosto você disse que não queria lembrete de horas antes, e eu ' +
-      'respeitei. Esse é diferente: é meia hora antes, quando ainda dá tempo ' +
-      'de a pessoa sair de casa. É o que costuma evitar as que somem em cima ' +
-      'da hora.\n\nO de um dia antes continua existindo do mesmo jeito.'
+      'respeitei. Esse é diferente: meia hora antes, quando ainda dá tempo de ' +
+      'sair de casa. É o que costuma evitar as que somem em cima da hora.'
     )
-    .setChoiceValues([
-      'Pode mandar',
-      'Não, só o de um dia antes',
-      'Escolhe você',
-    ])
+    .setChoiceValues(['Pode mandar', 'Não, só o de um dia antes', 'Escolhe você'])
     .setRequired(false);
 
   itens.avisoNovo = form.addMultipleChoiceItem()
@@ -359,11 +450,11 @@ function criarFormularioFinal() {
     .setTitle('Quando alguém marca pelo site, já vale na hora?')
     .setHelpText(
       '⚠️ Em agosto você pediu pra aprovar cada uma na mão, e hoje está ' +
-      'valendo na hora. Eu deixei assim de propósito e quero seu ok: se você ' +
-      'tiver que aprovar cada uma, a cliente fica esperando sua resposta pra ' +
-      'saber se o horário é dela — e se você demorar, ela desiste.\n\n' +
-      'Se a gente colocar o sinal, a aprovação manual vira quase a mesma ' +
-      'coisa: você confere o comprovante e confirma.'
+      'valendo na hora. Deixei assim de propósito e quero seu ok: se você ' +
+      'tiver que aprovar cada uma, a cliente fica esperando pra saber se o ' +
+      'horário é dela — e se você demorar, ela desiste.\n\n' +
+      'Se entrar a taxa, a aprovação vira quase a mesma coisa: você confere o ' +
+      'comprovante e confirma.'
     )
     .setChoiceValues([
       'Sim, quero aprovar cada uma antes de valer',
@@ -372,10 +463,18 @@ function criarFormularioFinal() {
     ])
     .setRequired(false);
 
+  form.addParagraphTextItem()
+    .setTitle('🆕 Tem alguma coisa que você repete toda hora no WhatsApp?')
+    .setHelpText(
+      'Tipo "não pode vir de maquiagem", "chega 5 minutos antes", "não atendo ' +
+      'sem agendar". Se você repete, eu automatizo e você para de digitar.'
+    )
+    .setRequired(false);
+
   /* ==================================================================
-     5. O ASSISTENTE
+     6. O ASSISTENTE
      ================================================================== */
-  form.addPageBreakItem().setTitle('5. Uma coisa nova 🆕');
+  form.addPageBreakItem().setTitle('6. Uma coisa nova 🆕');
 
   form.addMultipleChoiceItem()
     .setTitle('🆕 Quer controlar sua agenda conversando no WhatsApp?')
@@ -396,10 +495,15 @@ function criarFormularioFinal() {
     ])
     .setRequired(false);
 
+  form.addParagraphTextItem()
+    .setTitle('🆕 O que você mais queria poder resolver sem abrir o painel?')
+    .setHelpText('Se ele pudesse fazer uma coisa por você no WhatsApp, qual seria?')
+    .setRequired(false);
+
   /* ==================================================================
-     6. OS DETALHES QUE FALTAM
+     7. OS DETALHES QUE FALTAM
      ================================================================== */
-  form.addPageBreakItem().setTitle('6. Detalhes que faltam');
+  form.addPageBreakItem().setTitle('7. Detalhes que faltam');
 
   form.addTextItem()
     .setTitle('🆕 Em Bandeirantes D\'Oeste, você atende onde?')
@@ -410,12 +514,16 @@ function criarFormularioFinal() {
     )
     .setRequired(false);
 
+  form.addTextItem()
+    .setTitle('🆕 E em Pereira Barreto, qual é o endereço?')
+    .setHelpText('Mesma coisa: só vai pro WhatsApp de quem marcou.')
+    .setRequired(false);
+
   form.addMultipleChoiceItem()
     .setTitle('🆕 Os textinhos que descrevem seus serviços')
     .setHelpText(
       'Aqueles textos embaixo de cada serviço fui eu que escrevi, chutando. ' +
-      'Eles falam do SEU trabalho, e eu não quero deixar no ar nada que você ' +
-      'não assinaria. Dá uma olhada em ' + SITE + '/#servicos'
+      'Eles falam do SEU trabalho. Olha em ' + SITE + '/#servicos'
     )
     .setChoiceValues([
       'Olhei e está tudo certo',
@@ -454,19 +562,23 @@ function criarFormularioFinal() {
       'Hoje é ' + SITE + '. Um endereço tipo studiokarolcarvalho.com.br custa ' +
       'uns R$ 40 por ano. Não é obrigatório — o site funciona igual.'
     )
-    .setChoiceValues([
-      'Quero sim',
-      'Por enquanto não',
-      'Me explica melhor',
-    ])
+    .setChoiceValues(['Quero sim', 'Por enquanto não', 'Me explica melhor'])
+    .setRequired(false);
+
+  form.addParagraphTextItem()
+    .setTitle('🆕 Tem alguma pergunta que suas clientes fazem toda hora?')
+    .setHelpText(
+      'Se elas perguntam, é porque o site não respondeu. Me diz quais e eu ' +
+      'ponho a resposta lá.'
+    )
     .setRequired(false);
 
   /* ==================================================================
-     7. A PARTE CHATA
+     8. A PARTE CHATA
      ================================================================== */
   form.addPageBreakItem()
-    .setTitle('7. Agora a parte chata')
-    .setHelpText('Prometo que é rápido, e é a que mais me ajuda.');
+    .setTitle('8. Agora a parte chata')
+    .setHelpText('É a que mais me ajuda. Pode ser bem direta.');
 
   form.addScaleItem()
     .setTitle('🆕 De 0 a 10, o quanto o site tem a sua cara?')
@@ -477,27 +589,23 @@ function criarFormularioFinal() {
   form.addParagraphTextItem()
     .setTitle('🆕 O que você NÃO gostou?')
     .setHelpText(
-      'Pode ser direta, sério. Alguma foto, alguma palavra, alguma cor, ' +
-      'alguma coisa que ficou faltando. Eu prefiro ouvir agora do que ' +
-      'descobrir depois.'
+      'Sério, pode falar. Alguma foto, alguma palavra, alguma cor, alguma ' +
+      'coisa que faltou. Eu prefiro ouvir agora do que descobrir depois.'
     )
     .setRequired(false);
 
   form.addParagraphTextItem()
     .setTitle('🆕 O site já te ajudou em alguma coisa?')
     .setHelpText(
-      'Tipo: alguma cliente marcou sozinha, alguém perguntou menos preço no ' +
-      'direct, você trabalhou menos no WhatsApp. Ou nada mudou ainda — isso ' +
-      'também é resposta.'
+      'Alguma cliente marcou sozinha, alguém perguntou menos preço no direct, ' +
+      'você trabalhou menos no WhatsApp. Ou nada mudou ainda — isso também é ' +
+      'resposta.'
     )
     .setRequired(false);
 
   form.addMultipleChoiceItem()
     .setTitle('🆕 Passado o mês de teste, você quer continuar com o site?')
-    .setHelpText(
-      'Sem compromisso nenhum nessa resposta — é só pra eu saber se continuo ' +
-      'melhorando ou se paro por aqui.'
-    )
+    .setHelpText('Sem compromisso na resposta — é pra eu saber se continuo melhorando.')
     .setChoiceValues([
       'Quero continuar',
       'Quero, mas preciso entender o valor primeiro',
@@ -510,9 +618,7 @@ function criarFormularioFinal() {
     .setTitle('Quer falar mais alguma coisa?')
     .setRequired(false);
 
-  /* ==================================================================
-     O pre-preenchimento
-     ================================================================== */
+  /* ================================================================== */
   var url = linkPrePreenchido(form, itens);
 
   Logger.log('');
@@ -524,7 +630,7 @@ function criarFormularioFinal() {
   Logger.log('link em branco (NAO mande este):');
   Logger.log(form.getPublishedUrl());
   Logger.log('');
-  Logger.log('pra ver as respostas / editar o formulario:');
+  Logger.log('pra ver as respostas / editar:');
   Logger.log(form.getEditUrl());
   Logger.log('');
   Logger.log('--------------------------------------------------------------');
@@ -538,10 +644,10 @@ function criarFormularioFinal() {
 /**
  * Monta a resposta com o que ela ja disse e devolve a URL pre-preenchida.
  *
- * ⚠️ `createResponse` RECUSA valor que nao esteja entre as opcoes da
- * pergunta, e ai o script inteiro para. Como um texto de opcao pode mudar
- * sem ninguem lembrar de mudar `JA_RESPONDIDO`, cada item vai dentro de um
- * try/catch: se um nao casar, os outros continuam e o log diz qual falhou.
+ * ⚠️ `createResponse` RECUSA valor que nao esteja entre as opcoes, e ai o
+ * script inteiro para. Como um texto de opcao pode mudar sem ninguem
+ * lembrar de mudar `JA_RESPONDIDO`, cada item vai dentro de try/catch: se
+ * um nao casar, os outros continuam e o log diz qual falhou.
  *
  * Um campo sem pre-preenchimento e um incomodo pequeno. Um script que para
  * no meio nao entrega link nenhum.
@@ -586,28 +692,34 @@ function linkPrePreenchido(form, itens) {
 /**
  * A mensagem que vai junto com o link.
  *
- * ⚠️ Isto importa tanto quanto o formulario. O briefing 2 provavelmente nao
- * foi respondido menos pelo conteudo e mais por como chegou: link seco, sem
- * tamanho, sem dizer o que acontece depois. Fica facil deixar pra amanha
- * pra sempre.
+ * ⚠️ Importa tanto quanto o formulario. A Karol ficou fora e acabou de
+ * voltar, entao a mensagem abre acolhendo isso — e nao cospe uma cobranca
+ * na cara de quem chegou de viagem.
  *
- * Esta diz as tres coisas que tiram o peso: que ja vem preenchido, que da
- * pra responder pela metade, e qual e a pergunta que realmente importa.
+ * Depois ela tira o peso do tamanho ("metade ja esta respondida") e diz
+ * qual e a unica pergunta que realmente importa, pra ela poder responder
+ * so aquela se estiver sem tempo.
  */
 function mensagemDoWhatsapp(url) {
   return [
-    'Karol! O site tá no ar 💛',
+    'Oi Karol, que bom que você voltou! Espero que a viagem tenha sido boa 💛',
     '',
-    'Dá uma olhada quando puder: ' + SITE,
+    'Enquanto isso o site ficou pronto: ' + SITE,
     '',
-    'Montei um formulário pra fechar os últimos detalhes. Ele já vem com ' +
-      'TUDO que você me respondeu em agosto preenchido — você só confere e ' +
-      'muda o que mudou. As perguntas novas estão marcadas com 🆕.',
+    'A agenda já funciona, os preços estão lá, você tem uma página só sua, e ' +
+      'o WhatsApp já responde as clientes sozinho.',
+    '',
+    'Montei o último formulário pra fechar tudo. Ele parece grande, mas ' +
+      'METADE JÁ ESTÁ RESPONDIDA — coloquei tudo que você me falou em agosto ' +
+      'já marcado, você só confere. As perguntas novas estão com 🆕.',
     '',
     url,
     '',
-    'Não precisa responder tudo. Se der, responde pelo menos a primeira: é ' +
-      'sobre o sinal, aquilo que você falou que mais queria resolver. Eu ' +
-      'preciso saber se você quis dizer o PIX adiantado ou só o aviso.',
+    'Se você estiver sem tempo, responde pelo menos a primeira página: é ' +
+      'sobre a taxa pra segurar o horário, aquilo que você falou que mais ' +
+      'queria resolver. Eu preciso saber se você quis dizer o PIX adiantado ' +
+      'ou só o aviso — é a única coisa que está me travando.',
+    '',
+    'Sem pressa, e obrigado! 🤍',
   ].join('\n');
 }
