@@ -67,7 +67,9 @@ export function Cabecalho({ sobreHero = false }: { sobreHero?: boolean }) {
 /** Barra fixa no rodapé do celular. Some no computador. */
 export function BarraMobile() {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-linha bg-osso/95 px-4 py-[10px] pb-[calc(10px+env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden">
+    /* vidro de verdade: o conteúdo passa por baixo desfocado em vez de
+       sumir atrás de um bloco quase opaco. Ver `.vidro` no globals.css. */
+    <div className="vidro fixed inset-x-0 bottom-0 z-50 border-t border-linha/70 px-4 py-[10px] pb-[calc(10px+env(safe-area-inset-bottom))] lg:hidden">
       <Botao href="/agendar" className="w-full">
         Agendar meu horário
       </Botao>

@@ -81,6 +81,63 @@ body {
   }
 }
 
+/* ---------- vidro ---------- */
+
+/*
+   O efeito de vidro fosco do iOS, pedido pelo Kainã.
+
+   Duas camadas fazem o efeito, e faltar uma quebra tudo:
+
+   1. `backdrop-filter: blur()` desfoca O QUE ESTÁ ATRÁS. Sozinho ele
+      deixa o vidro transparente demais e o texto por cima some.
+   2. Um fundo SEMITRANSPARENTE por cima do desfoque. É ele que dá corpo e
+      devolve contraste pro texto.
+
+   O `saturate(160%)` é o detalhe que separa vidro de "fundo embaçado": o
+   desfoque lava a cor do que passa por trás, e a saturação devolve. É o
+   que a Apple faz nos materiais do iOS.
+
+   ⚠️ `backdrop-filter` cria contexto de empilhamento próprio. Elemento
+   com vidro que precise ficar ACIMA de outro precisa de `z-index`
+   explícito — não dá pra contar com a ordem do documento.
+
+   O `@supports` existe porque sem suporte a `backdrop-filter` o fundo
+   semitransparente sozinho deixa o texto ilegível sobre foto. Nesse caso
+   a gente desiste do vidro e usa cor sólida, que é feio e legível — nunca
+   o contrário.
+*/
+/*
+   ⚠️ A classe cuida do MATERIAL (fundo + desfoque) e nada mais. Borda,
+   raio e sombra ficam com quem usa.
+
+   Não é preciosismo: CSS escrito fora de `@layer` vence as utilitárias do
+   Tailwind, então uma `border` aqui ganharia de um `border-b-0` no
+   `className` e a borda apareceria onde ninguém pediu.
+*/
+.vidro {
+  background-color: color-mix(in srgb, var(--color-osso) 92%, transparent);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .vidro {
+    background-color: color-mix(in srgb, var(--color-osso) 62%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+  }
+}
+
+/* Sobre foto ou fundo dourado: mesmo material, corpo claro. */
+.vidro-claro {
+  background-color: color-mix(in srgb, white 22%, transparent);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .vidro-claro {
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+  }
+}
+
 /* ---------- a página da Karol ---------- */
 
 /*
@@ -136,75 +193,100 @@ body {
   }
 }
 
-/* ---------- barra de carregamento ---------- */
-/* Ver components/BarraCarregando.tsx. O avanço é daqui, não do JS. */
+/* ---------- carregando ---------- */
 
 /*
-   O ritmo importa mais que a barra existir.
+   A ESPERA, e por que ela deixou de ser uma barra no topo.
 
-   A versão anterior corria em 9 s com aceleração suave: em meio segundo de
-   navegação — que é o caso comum — ela tinha andado 7 % da tela. Barra que
-   não anda comunica travamento, que é o contrário do que ela existe pra
-   fazer.
+   A versão anterior era o fio de 3 px que todo site tem. O Kainã reclamou
+   duas vezes: da primeira porque ela mal se movia, da segunda porque
+   mesmo consertada continuava sendo a barra genérica de sempre.
 
-   Agora o avanço é DESPROPORCIONAL de propósito: 45 % nos primeiros 300 ms,
-   e daí em diante cada vez mais devagar, sem nunca chegar ao fim. É a mesma
-   curva que o YouTube e o GitHub usam, e ela funciona porque o começo da
-   espera é onde a pessoa duvida que o toque pegou. O resto da espera ela já
-   sabe que está carregando.
+   Esta é outra coisa, e é dela: **uma sobrancelha sendo desenhada**. Um
+   arco dourado que se traça sozinho, no meio da tela, sobre um vidro
+   fosco. Ninguém mais tem essa espera porque ela só faz sentido no site
+   de uma designer de sobrancelhas.
 
-   O tempo total continua longo (8 s) pra barra nunca "terminar" antes da
-   página chegar. Quem termina é o `.barra-carregando-fim`.
+   A técnica é a dos `loaders` do uiverse.io: `stroke-dasharray` do
+   tamanho do traço e `stroke-dashoffset` animado de cheio até zero. Lá é
+   um círculo girando; aqui é um arco que aparece da esquerda pra direita,
+   que é a direção em que se desenha uma sobrancelha.
 
-   `linear` porque a curva já está nas porcentagens abaixo — deixar as duas
-   coisas curvando ao mesmo tempo é o que fazia o começo ficar lento.
+   Fica no MEIO da tela de propósito. No topo, num celular, o indicador
+   nasce colado na barra de endereço do navegador — que é justamente onde
+   ninguém está olhando depois de tocar em alguma coisa.
 */
-@keyframes avanca {
-  0%    { width: 0%;  opacity: 0; }
-  0.5%  { opacity: 1; }
-  3.75% { width: 45%; }  /* 300 ms */
-  12.5% { width: 68%; }  /* 1 s    */
-  37.5% { width: 85%; }  /* 3 s    */
-  100%  { width: 96%; }
-}
 
-.barra-carregando,
-.barra-carregando-fim {
-  height: 100%;
-  width: 0;
-  background-color: var(--color-ouro);
-  opacity: 0;
-  /* O brilho na ponta é o que faz 3 px de dourado existirem sobre o creme
-     do site. Sem ele a barra some no fundo claro, ainda mais no celular,
-     onde ela nasce colada na barra de endereço do navegador. */
-  box-shadow:
-    0 0 8px 1px color-mix(in srgb, var(--color-ouro) 55%, transparent),
-    0 1px 3px color-mix(in srgb, var(--color-ouro) 30%, transparent);
-}
-
-/* O atraso de 140 ms é o que impede a barra de piscar em página já
-   guardada em cache, que abre praticamente na hora. */
-.barra-carregando {
-  animation: avanca 8s linear 140ms forwards;
-}
-
-.barra-carregando-fim {
-  width: 100%;
-  opacity: 0;
-  transition:
-    width 0.18s ease-out,
-    opacity 0.28s ease-in 0.12s;
-}
-
-/* Quem pediu menos movimento continua vendo o progresso — só sem a corrida. */
-@media (prefers-reduced-motion: reduce) {
-  .barra-carregando {
-    animation: none;
-    width: 60%;
+@keyframes traca-sobrancelha {
+  0% {
+    stroke-dashoffset: 132;
+    opacity: 0;
+  }
+  12% {
     opacity: 1;
   }
-  .barra-carregando-fim {
-    transition: opacity 0.2s linear;
-    width: 100%;
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  /* some e recomeça: a pausa no fim é o que faz parecer um traço
+     repetido, e não uma animação em loop sem descanso */
+  92% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 132;
+    opacity: 0;
   }
 }
+
+/*
+   O atraso de 180 ms impede o vidro de piscar em página já guardada em
+   cache, que abre praticamente na hora. Abaixo disso a espera aparece e
+   some no mesmo quadro, e o efeito é de defeito, não de carregamento.
+*/
+@keyframes revela-espera {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.espera {
+  animation: revela-espera 0.28s ease-out 180ms both;
+}
+
+.espera__traco {
+  fill: none;
+  stroke: var(--color-ouro);
+  stroke-width: 5;
+  stroke-linecap: round;
+  /* 132 é o comprimento aproximado do caminho. Maior que o real não faz
+     mal — o traço só começa a aparecer um pouco depois. Menor cortaria o
+     começo da sobrancelha, que é o pior lugar pra cortar. */
+  stroke-dasharray: 132;
+  animation: traca-sobrancelha 1.7s var(--ease-marca) infinite;
+}
+
+/* O traço fininho de baixo, que dá a forma de sobrancelha em vez de arco
+   solto. Entra depois e é mais apagado: é o contorno, não o desenho. */
+.espera__traco--fino {
+  stroke-width: 2.5;
+  stroke: var(--color-ouro-claro);
+  stroke-dasharray: 96;
+  animation: traca-sobrancelha 1.7s var(--ease-marca) 0.16s infinite;
+}
+
+/* Quem pediu menos movimento vê o desenho parado e completo, com um
+   pulsar lento — continua dizendo "estou carregando", sem o traço. */
+@media (prefers-reduced-motion: reduce) {
+  .espera__traco,
+  .espera__traco--fino {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  .espera {
+    animation: revela-espera 0.2s linear both;
+  }
+}
+

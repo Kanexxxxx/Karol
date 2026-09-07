@@ -3,7 +3,7 @@ import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import { NEGOCIO, SITE_URL } from "@/data/negocio";
 import { Revelar } from "@/components/Revelar";
-import { BarraCarregando } from "@/components/BarraCarregando";
+import { Carregando } from "@/components/Carregando";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -44,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${cormorant.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <BarraCarregando />
+        <Carregando />
         {children}
         <Revelar />
       </body>
