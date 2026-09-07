@@ -48,24 +48,22 @@ que abre a janela.
 Tipo: **Texto**
 
 ```
-Seu horário está guardado ✨
+Horário reservado ✨
 ```
 
 ### Corpo
 
 ```
-Oi, {{1}}! Aqui é a Karol. 💛
-
-Já guardei esse horário no seu nome:
+Oi, {{1}}! Seu horário no Studio Karol Carvalho está reservado. 💛
 
 💄 *{{2}}*
-🗓️ {{3}}
+📅 {{3}}
 📍 {{4}}
-💵 {{5}}
+💰 {{5}}
 
-Só dois pedidinhos: venha sem maquiagem, e se trouxer acompanhante, que seja no máximo uma. 🤍
+Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa. 🤍
 
-Te espero! Se precisar de qualquer coisa, é só tocar num botão aqui embaixo. 👇
+É só tocar num botão aqui embaixo pra falar comigo.
 ```
 
 ### Rodapé
@@ -110,19 +108,19 @@ dias e não escreveu nada desde então. Por isso precisa de template.
 Tipo: **Texto**
 
 ```
-É amanhã! 💛
+Seu horário é amanhã 💛
 ```
 
 ### Corpo
 
 ```
-Oi, {{1}}! Passando só pra lembrar que é amanhã. ✨
+Oi, {{1}}! Passando pra lembrar do seu horário amanhã. ✨
 
 💄 *{{2}}*
-🗓️ {{3}}
+📅 {{3}}
 📍 {{4}}
 
-Não esquece de vir sem maquiagem, tá? 🤍
+Lembrando: venha sem maquiagem. 🤍
 
 Se surgiu alguma coisa e você não vai conseguir, me avisa hoje — assim dá tempo de encaixar outra pessoa nesse horário. 🙏
 ```
@@ -169,20 +167,21 @@ inteiro, então a janela dela vive fechada.
 Tipo: **Texto**
 
 ```
-Agendamento novo 🗓️
+Novo agendamento 📅
 ```
 
 ### Corpo
 
 ```
-Karol, entrou agendamento novo pelo site! ✨
+Chegou agendamento novo pelo site, Karol! ✨
 
-👤 *{{1}}*
-💄 {{2}} — {{3}}
-🗓️ {{4}}
-📍 {{5}}
+💄 *{{1}}* — {{2}}
+📅 {{3}}
+📍 {{4}}
 
-Toque no botão pra abrir no painel: de lá você confirma, remarca, cancela ou chama a cliente no WhatsApp.
+👤 {{5}}
+
+Toque no botão pra abrir no painel e confirmar, remarcar ou cancelar.
 ```
 
 ### Rodapé
@@ -210,11 +209,11 @@ Tipo: **Ir para o site** (URL dinâmica)
 
 | Variável | Exemplo |
 |---|---|
-| `{{1}}` | `Maria Silva · (18) 99999-8888` |
-| `{{2}}` | `Design com henna` |
-| `{{3}}` | `R$ 30,00` |
-| `{{4}}` | `quarta-feira, 9 de setembro às 07:15` |
-| `{{5}}` | `Pereira Barreto` |
+| `{{1}}` | `Design com henna` |
+| `{{2}}` | `R$ 30,00` |
+| `{{3}}` | `quarta-feira, 9 de setembro às 07:15` |
+| `{{4}}` | `Pereira Barreto` |
+| `{{5}}` | `Maria Silva · (18) 99999-8888` |
 
 ---
 
