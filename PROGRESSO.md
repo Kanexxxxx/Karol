@@ -721,6 +721,49 @@ verdade — pararia de existir sem nenhum teste reclamar.
 **Custo:** zero de Meta, porque a janela dela nunca fecha (ela é sempre quem
 escreve primeiro). No DeepSeek, R$ 1 a 3 por mês no volume dela.
 
+#### O calendário dizia "não atende" num dia em que ela atende
+
+Achado no dia 07/09/2026, uma segunda: o Kainã abriu o site e viu a agenda
+fechada. **A agenda não estava fechada** — o fluxo inteiro foi conferido no
+ar, com horários livres em todos os dias úteis. O que estava errado era o
+que o calendário DIZIA.
+
+Segunda ela atende em Pereira Barreto, 7h às 11h. Mas o dia de hoje nunca é
+agendável, porque ela pediu antecedência de um dia. O calendário tinha três
+estados, e "já passou" caía no mesmo balde de "não atende" — mesma célula
+cinza, mesma legenda. Abrindo numa segunda, a primeira fileira inteira
+(1 a 7) aparecia morta, com a legenda afirmando que ela não trabalha
+naqueles dias. Quatro deles eram dias úteis.
+
+Agora são quatro estados. `passou` entrou separado de `cedoDemais` porque a
+tela precisa dizer coisas diferentes: **"já passou"**, **"cedo demais, ela
+marca a partir de amanhã"** e **"não atende"** (só domingo e a cidade errada
+no dia errado). Os vencidos ganharam uma diagonal fina — é como calendário
+de papel risca dia vencido.
+
+⚠️ **O risco aqui é maior do que parece:** é a única tela em que o site fala
+sobre a disponibilidade dela, e uma cliente que conclui "ela não atende"
+fecha a aba sem perguntar nada a ninguém.
+
+#### A `/sobre` reformada
+
+Feita depois dos protótipos, com a direção A (Revista) de base e a fita e os
+tijolos da direção B. Ver o cabeçalho de `app/sobre/page.tsx` — as três
+coisas que estavam erradas estão escritas lá, pra não voltarem.
+
+Resumo: as fotos aparecem **na proporção do arquivo** (a da paleta é 3:2 e
+era forçada em 4:3, o que comia a paleta); a faixa de números trivial saiu e
+deu lugar a onde ela está em cada dia, tirado do motor da agenda; e o ritmo
+passou de "rótulo → título → parágrafo seis vezes" pra quatro andamentos
+diferentes.
+
+**A linguagem visual veio das três referências que o Kainã mandou** —
+uiverse.io, 21st.dev e reactbits.dev — **reescrita em CSS na mão**. Nenhuma
+biblioteca entrou: as três servem componente React que traz `framer-motion`
+ou `gsap` junto, e isso são centenas de KB no celular de uma cliente pra
+fazer uma palavra subir na tela. O projeto tinha quatro dependências e
+continua com quatro.
+
 #### Protótipos da `/sobre`
 
 Duas direções publicadas como Artifact, com as fotos reais embutidas:
@@ -736,7 +779,8 @@ O que estava errado na página de hoje, e que as duas corrigem:
   genérico. Saiu nas duas direções.
 - **O ritmo**: seis seções repetindo "rótulo → título → parágrafo".
 
-Falta ele escolher. **Nenhuma das duas foi para o código ainda.**
+Ele mandou seguir sem escolher entre as duas. Foi pro código a A como
+esqueleto, com a fita e os tijolos da B — ver acima.
 
 ### Etapa 16 — o fluxo do WhatsApp
 
@@ -963,15 +1007,32 @@ ela tocar, a janela abre e cobre o horário do dia seguinte inteiro. Aí o de
 
 ### 8.4 Pendências de negócio (dependem da Karol)
 
+**Todas as marcadas com 📋 estão no formulário 3**
+([`briefing/criar-formulario-3.gs`](./briefing/criar-formulario-3.gs)).
+
+⚠️ **O briefing 2 foi mandado e nunca respondido.** Ele tinha 12 seções,
+prometia 10 minutos e pedia decisão em quase todas — inclusive sobre
+dinheiro. O 3 foi escrito contra esse motivo: uma página só, 7 perguntas
+quase todas de um toque, **nada obrigatório**, e toda pergunta com saída
+("escolhe você" é resposta válida). A do sinal vem primeiro de propósito —
+se ela responder só aquela e fechar, já valeu.
+
+O script imprime, junto com o link, **a mensagem pronta pra colar no
+WhatsApp dela**. Isso não é enfeite: link seco de formulário, sem dizer o
+tamanho nem o que acontece depois, é o que faz virar "amanhã eu respondo"
+pra sempre.
+
 | Pendência | Onde | Impacto |
 |---|---|---|
-| **O que ela quis dizer com "sinal"** | `REGRAS.sinal` | ver seção 3 — divergência aberta. **Não construa pagamento antes disto** |
-| **Aprovação manual** | `REGRAS.aprovacaoManual = false` | ela pediu, está desligado. Colide com o sinal |
-| **Descrições dos serviços** | `servicos.ts` | são rascunho meu; precisam do aval dela |
-| **Qual capa** | `CAPA` em `fotos.ts` | branca ou laranja. A que ela NÃO escolher fica na `/sobre` |
-| **Local em Bandeirantes** | `CIDADES.bandeirantes.local` | publica só a cidade até ela passar |
+| 📋 **O que ela quis dizer com "sinal"** | `REGRAS.sinal` | ver seção 3 — divergência aberta. **Não construa pagamento antes disto** |
+| 📋 **Aprovação manual** | `REGRAS.aprovacaoManual = false` | ela pediu, está desligado. Colide com o sinal |
+| 📋 **Descrições dos serviços** | `servicos.ts` | são rascunho meu; precisam do aval dela |
+| 📋 **Qual capa** | `CAPA` em `fotos.ts` | branca ou laranja. A que ela NÃO escolher fica na `/sobre` |
+| 📋 **Local em Bandeirantes** | `CIDADES.bandeirantes.local` | publica só a cidade até ela passar |
 | **Verificação da empresa na Meta** | — | pede CNPJ, ela não tem. Sem isso o WhatsApp mostra o número em vez de "Studio Karol Carvalho". O caminho real seria abrir MEI |
-| **Autorização foto a foto** | `public/fotos/` | são rostos de clientes reais |
+| **Autorização foto a foto** | `public/fotos/` | são rostos de clientes reais. **Não cabe em formulário** — é olhar foto por foto com ela |
+| 📋 **O lembrete de 30 min** | `NOTIFICACOES.lembrete30MinAntes` | ela disse NÃO pra "lembrete de horas antes" no briefing 1; este é outro e está ligado |
+| 📋 **O assistente no WhatsApp** | `ASSISTENTE.md` | é uma IA lendo a agenda dela. Ela tem que saber antes de ligar, não depois |
 
 ### 8.5 Técnico pendente
 
