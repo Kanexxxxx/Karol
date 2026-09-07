@@ -143,14 +143,28 @@ function Capa() {
  * leva palavra dela, não decoração.
  *
  * O trilho é duplicado e anda até -50%: é o que faz o laço não ter emenda
- * visível. `aria-hidden` porque a mesma frase é lida logo abaixo, e um
- * leitor de tela repetindo texto em loop é ruído.
+ * visível.
+ *
+ * ⚠️ Por isso a frase aparece QUATRO vezes no HTML, e por isso o trilho é
+ * `aria-hidden`: leitor de tela repetindo a mesma frase em loop é ruído,
+ * não ênfase.
+ *
+ * Só que esconder tudo criou outro buraco — a frase de assinatura dela
+ * passava a não existir pra quem usa leitor de tela, já que a seção antiga
+ * que a trazia como citação saiu nesta reforma. A `blockquote` invisível
+ * abaixo devolve isso: uma vez só, atribuída a ela, na ordem certa da
+ * página.
  */
 function Fita() {
   const frase = NEGOCIO.lema;
 
   return (
     <section className="overflow-hidden bg-ouro py-4 lg:py-5">
+      <blockquote className="sr-only">
+        <p>{frase}</p>
+        <cite>{NEGOCIO.profissional}</cite>
+      </blockquote>
+
       <div
         aria-hidden="true"
         className="flex w-max motion-safe:animate-[desliza_38s_linear_infinite]"
