@@ -3,6 +3,7 @@ import { paraChave } from "@/lib/agenda";
 import type { Agendamento } from "@/lib/agendamentos";
 import { codigoDoAgendamento } from "@/lib/codigo";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
+import { formatarWhatsapp } from "@/lib/telefone";
 import { AcoesAgendamento } from "./AcoesAgendamento";
 import { Remarcar } from "./Remarcar";
 
@@ -85,7 +86,3 @@ export function Cartao({
   );
 }
 
-export function formatarWhatsapp(numero: string): string {
-  const m = numero.match(/^(\d{2})(\d{2})(\d{4,5})(\d{4})$/);
-  return m ? `(${m[2]}) ${m[3]}-${m[4]}` : numero;
-}

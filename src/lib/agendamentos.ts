@@ -17,6 +17,7 @@ import {
 import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
 import { faixaDoCodigo, normalizarCodigo } from "./codigo";
+import { normalizarWhatsapp } from "./telefone";
 import { buscarServico, type Servico } from "@/data/servicos";
 import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
 
@@ -538,8 +539,11 @@ export async function criarAgendamentoNoPainel(dados: {
     return { ok: false, erro: "Escreva o nome (2 a 120 letras)." };
   }
 
-  const whatsapp = dados.whatsapp.replace(/\D/g, "");
-  if (whatsapp && !/^\d{10,13}$/.test(whatsapp)) {
+  // Vazio é permitido aqui (encaixe da família, sem WhatsApp). Preenchido,
+  // tem que sair com DDI — ver a explicação em lib/telefone.ts.
+  const bruto = dados.whatsapp.trim();
+  const whatsapp = bruto ? normalizarWhatsapp(bruto) : "";
+  if (bruto && !whatsapp) {
     return { ok: false, erro: "WhatsApp com DDD, só números." };
   }
 

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { criarAgendamento } from "@/lib/agendamentos";
 import { dentroDoLimite, ipDoPedido } from "@/lib/limite";
+import { normalizarWhatsapp } from "@/lib/telefone";
 
 /**
  * Estado do formulário de agendamento, lido pelo `useActionState`.
@@ -67,10 +68,14 @@ export async function agendar(
     };
   }
 
-  const soDigitos = whatsapp.replace(/\D/g, "");
+  // ⚠️ Com DDI, sempre. Antes gravava do jeito que a pessoa digitou, e um
+  // número sem o 55 quebrava o webhook (a Meta manda o remetente COM DDI, e
+  // a busca por igualdade não casava) e o botão "Chamar" do painel, que
+  // virava um número dos Estados Unidos. Ver lib/telefone.ts.
+  const numero = normalizarWhatsapp(whatsapp);
   const campos: NonNullable<EstadoAgendar["campos"]> = {};
   if (nome.length < 2 || nome.length > 120) campos.nome = "Escreva seu nome completo.";
-  if (!/^\d{10,13}$/.test(soDigitos)) campos.whatsapp = "WhatsApp com DDD, só números.";
+  if (!numero) campos.whatsapp = "WhatsApp com DDD, só números.";
   if (observacao.length > 500) campos.observacao = "Mensagem longa demais (máx. 500 caracteres).";
 
   if (Object.keys(campos).length > 0) return { campos, valores };
@@ -80,7 +85,7 @@ export async function agendar(
     chaveDia,
     inicioMin,
     nome,
-    whatsapp: soDigitos,
+    whatsapp: numero!,
     observacao: observacao || undefined,
   });
 

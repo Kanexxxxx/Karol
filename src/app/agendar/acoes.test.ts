@@ -102,10 +102,31 @@ describe("agendar — caminho feliz", () => {
         servicoId: "design-simples",
         inicioMin: 420,
         nome: "Fulana",
-        whatsapp: "18999998888",
+        // ⚠️ COM o 55. Este teste esperava "18999998888" e por isso não
+        // pegou o defeito: o primeiro agendamento de verdade gravou o
+        // número sem DDI, e o webhook do WhatsApp não achava o
+        // agendamento de quem respondia — a Meta manda o remetente COM
+        // DDI. Ver lib/telefone.ts.
+        whatsapp: "5518999998888",
       }),
     );
     expect(irPara).toHaveBeenCalledWith("/agendar/confirmado?ag=ag-9");
+  });
+
+  it("o número gravado é o mesmo formato que a Meta manda no webhook", async () => {
+    // é esta igualdade que faz `proximoAgendamentoDe` achar o agendamento
+    // de quem responde no WhatsApp
+    for (const digitado of ["(18) 99999-8888", "18 99999 8888", "+55 18 99999-8888"]) {
+      criar.mockClear();
+      await agendar({}, form({ whatsapp: digitado }));
+      expect(criar.mock.calls[0][0].whatsapp).toBe("5518999998888");
+    }
+  });
+
+  it("recusa número curto demais pra ser telefone", async () => {
+    const r = await agendar({}, form({ whatsapp: "99998888" }));
+    expect(r.campos?.whatsapp).toBeTruthy();
+    expect(criar).not.toHaveBeenCalled();
   });
 
   it("repassa o erro do banco sem redirecionar", async () => {
