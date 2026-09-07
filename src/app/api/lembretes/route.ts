@@ -1,12 +1,23 @@
 import type { NextRequest } from "next/server";
-import { rodarLembretes } from "@/lib/lembretes";
+import { rodarLembretes, rodarLembretesCurtos } from "@/lib/lembretes";
 
 /**
- * Dispara lembretes e agradecimentos do dia.
+ * Dispara os lembretes. Duas varreduras diferentes, escolhidas por `?tipo=`.
  *
- * Chamada 1x/dia pelo cron da Vercel (ver vercel.json), que manda
- * `Authorization: Bearer $CRON_SECRET` sozinho quando `CRON_SECRET` existe
- * no ambiente. Sem o segredo configurado, a rota fica fechada.
+ * | chamada                        | o que faz                      | quem bate            |
+ * |--------------------------------|--------------------------------|----------------------|
+ * | `/api/lembretes`               | véspera + agradecimento        | cron da Vercel, 1x/dia |
+ * | `/api/lembretes?tipo=curto`    | o de ~30 min antes             | cron externo, 10 em 10 min |
+ *
+ * ⚠️ O `?tipo=curto` NÃO é enfeite. Sem ele, o cron de 10 minutos rodaria
+ * também a varredura da véspera — e cada cliente com horário amanhã
+ * receberia o lembrete umas 140 vezes ao longo do dia. Separar as duas
+ * varreduras é o que torna seguro bater aqui de minuto em minuto.
+ *
+ * Autenticação: `Authorization: Bearer $CRON_SECRET`. O cron da Vercel
+ * manda esse cabeçalho sozinho quando `CRON_SECRET` existe no ambiente; no
+ * cron externo você cola o mesmo valor à mão. Sem o segredo configurado, a
+ * rota fica fechada — ela dispara mensagem paga pra cliente de verdade.
  */
 
 export const dynamic = "force-dynamic";
@@ -21,8 +32,12 @@ async function handler(req: NextRequest) {
   if (!autorizado(req)) {
     return Response.json({ ok: false, erro: "não autorizado" }, { status: 401 });
   }
-  const r = await rodarLembretes();
-  return Response.json({ ok: true, ...r });
+
+  if (req.nextUrl.searchParams.get("tipo") === "curto") {
+    return Response.json({ ok: true, ...(await rodarLembretesCurtos()) });
+  }
+
+  return Response.json({ ok: true, ...(await rodarLembretes()) });
 }
 
 export const GET = handler;

@@ -33,6 +33,14 @@ export type Agendamento = {
   fim: Date;
   situacao: "pendente" | "confirmado" | "cancelado" | "concluido" | "faltou";
   observacao: string | null;
+  /**
+   * Quando o lembrete de 30 min antes saiu. `null` = ainda não saiu.
+   *
+   * Está no tipo porque o painel MOSTRA isso no cartão: sem ver o estado,
+   * a Karol não sabe se pode tocar em "Lembrar agora" ou se vai mandar a
+   * mesma mensagem duas vezes pra cliente. Ver migracao-04.
+   */
+  avisado30minEm: Date | null;
 };
 
 /** Converte minutos do dia numa data completa, no fuso local do servidor. */
@@ -57,6 +65,10 @@ function linhaParaAgendamento(r: Record<string, unknown>): Agendamento {
     fim: p?.fim ?? new Date(),
     situacao: r.situacao as Agendamento["situacao"],
     observacao: (r.observacao as string | null) ?? null,
+    // A coluna é nova (migracao-04). Em banco que ainda não migrou ela vem
+    // `undefined`, e o `??` faz isso virar `null` — o painel mostra "não
+    // avisado" em vez de quebrar.
+    avisado30minEm: r.avisado_30min_em ? new Date(r.avisado_30min_em as string) : null,
   };
 }
 
@@ -314,6 +326,102 @@ export async function agendamentosDeAmanha(): Promise<Agendamento[]> {
     .order("periodo", { ascending: true });
 
   return (data ?? []).map(linhaParaAgendamento);
+}
+
+/**
+ * Quanto tempo antes do horário o lembrete curto sai.
+ *
+ * ⚠️ Não é o intervalo do cron, é a JANELA de varredura — e a diferença
+ * decide quanto aviso a cliente recebe de verdade.
+ *
+ * O cron externo bate aqui de tempos em tempos e leva quem começa dentro
+ * desta janela. Com janela de 35 min e cron de 10 em 10 min, a cliente é
+ * avisada entre 25 e 35 minutos antes. Se o cron for de 15 em 15, vira
+ * 20 a 35. Nunca é exatamente 30 — não dá pra ser, a não ser rodando de
+ * minuto em minuto, o que não vale o gasto.
+ *
+ * Ver WHATSAPP.md pra configurar o cron.
+ */
+export const JANELA_LEMBRETE_MIN = 35;
+
+/**
+ * Confirmados que começam já — base do lembrete de 30 min antes.
+ *
+ * Devolve só quem AINDA NÃO foi avisado. Sem esse filtro, um cron de 10 em
+ * 10 minutos manda a mesma mensagem três ou quatro vezes pra mesma pessoa.
+ *
+ * A consulta pega uma janela larga no banco e afina em JS de propósito: o
+ * `overlaps` do PostgREST casa período que CRUZA a janela, e isso incluiria
+ * um atendimento longo que começou faz uma hora e ainda está rolando. Quem
+ * decide é o INÍCIO, e o início a gente só tem depois de ler o range. São
+ * poucas linhas — a janela inteira do dia da Karol tem 4 horas.
+ */
+export async function agendamentosParaLembrar(
+  janelaMin = JANELA_LEMBRETE_MIN,
+): Promise<Agendamento[]> {
+  const bd = banco();
+  if (!bd) return [];
+
+  const agora = new Date();
+  const ate = new Date(agora.getTime() + janelaMin * 60_000);
+
+  // 4 h pra trás cobre o atendimento mais longo em andamento (o curso, 130
+  // min) com folga. Eles entram na consulta e saem no filtro abaixo.
+  const de = new Date(agora.getTime() - 4 * 60 * 60_000);
+
+  const { data } = await bd
+    .from("agendamentos")
+    .select("*")
+    .eq("situacao", "confirmado")
+    .is("avisado_30min_em", null)
+    .overlaps("periodo", montarPeriodo(de, ate))
+    .order("periodo", { ascending: true });
+
+  return (data ?? [])
+    .map(linhaParaAgendamento)
+    .filter((a) => a.inicio > agora && a.inicio <= ate);
+}
+
+/**
+ * Marca que o lembrete curto saiu.
+ *
+ * ⚠️ Quem chama marca ANTES de mandar, não depois. Parece errado e não é:
+ * entre o envio e a marcação cabe a próxima batida do cron, e aí a cliente
+ * recebe duas mensagens iguais. Marcar primeiro troca o pior defeito
+ * (mandar demais, que a cliente vê) pelo menos pior (não mandar, que a
+ * Karol resolve tocando em "Lembrar agora" no cartão).
+ *
+ * Devolve `false` quando a linha não foi marcada — inclusive quando outra
+ * execução do cron marcou primeiro. Quem chama usa isso pra desistir.
+ */
+export async function marcarLembreteEnviado(id: string): Promise<boolean> {
+  const bd = banco();
+  if (!bd) return false;
+  if (!/^[0-9a-f-]{32,36}$/i.test(id)) return false;
+
+  // `is("avisado_30min_em", null)` no UPDATE é o que torna a marcação uma
+  // CORRIDA que só um vence: duas execuções simultâneas do cron mandam o
+  // mesmo update, e a segunda não acha mais linha nenhuma pra atualizar.
+  const { data, error } = await bd
+    .from("agendamentos")
+    .update({ avisado_30min_em: new Date().toISOString() })
+    .eq("id", id)
+    .is("avisado_30min_em", null)
+    .select("id");
+
+  if (error) {
+    console.error("não consegui marcar o lembrete:", error.message);
+    return false;
+  }
+  return (data ?? []).length > 0;
+}
+
+/** Apaga a marca, pra Karol poder mandar de novo pelo painel. */
+export async function limparLembreteEnviado(id: string): Promise<void> {
+  const bd = banco();
+  if (!bd) return;
+  if (!/^[0-9a-f-]{32,36}$/i.test(id)) return;
+  await bd.from("agendamentos").update({ avisado_30min_em: null }).eq("id", id);
 }
 
 /** Atendimentos marcados como concluídos ontem — base do agradecimento. */

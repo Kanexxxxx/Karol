@@ -4,6 +4,7 @@ import type { Agendamento } from "@/lib/agendamentos";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
 import { formatarWhatsapp } from "@/lib/telefone";
 import { AcoesAgendamento } from "./AcoesAgendamento";
+import { Lembrete } from "./Lembrete";
 import { Remarcar } from "./Remarcar";
 
 /**
@@ -79,6 +80,26 @@ export function Cartao({
       <div className="mt-3 flex flex-wrap items-start gap-2">
         <AcoesAgendamento id={ag.id} situacao={ag.situacao} />
         <Remarcar id={ag.id} diaAtual={paraChave(ag.inicio)} horaAtual={HORA.format(ag.inicio)} />
+      </div>
+
+      {/*
+        O lembrete fica numa linha própria, separado por uma divisória: os
+        botões de cima MUDAM o agendamento, este só manda uma mensagem. Ter
+        "Cancelar" e "Lembrar agora" colados, do mesmo tamanho e da mesma
+        cor, é convite pra toque errado no celular.
+
+        `podeEnviar` é decidido AQUI, no servidor, e não dentro do
+        componente de cliente. Comparar com `new Date()` no navegador daria
+        resultado diferente do servidor na primeira renderização — é o
+        clássico erro de hidratação — e ainda usaria o fuso do celular dela
+        em vez do FUSO do negócio.
+      */}
+      <div className="mt-2.5 border-t border-linha pt-2.5">
+        <Lembrete
+          id={ag.id}
+          enviadoAs={ag.avisado30minEm ? HORA.format(ag.avisado30minEm) : null}
+          podeEnviar={ag.situacao === "confirmado" && ag.inicio.getTime() > Date.now()}
+        />
       </div>
     </li>
   );

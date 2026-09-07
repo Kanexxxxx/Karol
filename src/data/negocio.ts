@@ -189,4 +189,19 @@ export const NOTIFICACOES = {
   lembreteHorasAntes: false,
   avisoEndereco: false,
   avisaKarolNoWhatsapp: true,
+
+  /**
+   * O lembrete curto, ~30 min antes — "está na hora de sair".
+   *
+   * ⚠️ TENSÃO COM O BRIEFING, e é de propósito. Na pergunta sobre avisos a
+   * Karol marcou que NÃO queria "lembrete de horas antes". Este foi pedido
+   * pelo Kainã depois, e é outra coisa na prática: horas antes é redundante
+   * com o da véspera, meia hora antes é o empurrão pra pessoa sair de casa
+   * — que é justamente o que evita a falta em cima da hora, o problema que
+   * ela relatou (1 a 2 por semana).
+   *
+   * Fica aqui como interruptor porque, se ela reclamar, desligar é UMA
+   * linha e não uma cirurgia. Ver `agendamentosParaLembrar`.
+   */
+  lembrete30MinAntes: true,
 } as const;

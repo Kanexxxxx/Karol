@@ -75,6 +75,11 @@ export function mockBanco(handlers: Handlers = {}) {
       upsert: (v: Record<string, unknown>) => ((op = "upsert"), (valores = v), builder),
       delete: () => ((op = "delete"), builder),
       eq: anota("eq"),
+      // `is` é o filtro de NULL do PostgREST. Entrou com o lembrete de 30
+      // min: a varredura procura `avisado_30min_em is null`, e sem gravar
+      // esse filtro o teste não conseguiria provar que a consulta exclui
+      // quem já foi avisado.
+      is: anota("is"),
       in: anota("in"),
       overlaps: anota("overlaps"),
       order: anota("order"),

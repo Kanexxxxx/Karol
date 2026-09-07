@@ -2,7 +2,7 @@ import "server-only";
 
 import { NEGOCIO, NOTIFICACOES, SITE_URL } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
-import { DIA_HORA_POR_EXTENSO } from "./datas";
+import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import { codigoDoAgendamento } from "./codigo";
 
 /**
@@ -42,6 +42,7 @@ export type Evento =
   | "remarcado"
   | "cancelado"
   | "lembrete"
+  | "lembrete-curto"
   | "agradecimento";
 
 function quando(iso: string): string {
@@ -130,6 +131,27 @@ export function textoLembrete(a: DadosAgendamento): string {
   ].join("\n");
 }
 
+/**
+ * O lembrete curto, ~30 min antes. É o empurrão pra sair de casa.
+ *
+ * Deliberadamente MAIS CURTO que o da véspera: quem recebe isto está se
+ * arrumando, provavelmente lendo a prévia da notificação sem abrir o
+ * WhatsApp. Serviço, hora e cidade cabem na prévia; o resto não seria lido.
+ *
+ * Não repete o "venha sem maquiagem" — a essa altura ou ela já tirou, ou
+ * não dá mais tempo, e o aviso só faria a pessoa se sentir mal na saída.
+ */
+export function textoLembreteCurto(a: DadosAgendamento): string {
+  return [
+    `Oi, ${primeiroNome(a.cliente)}! Seu horário é daqui a pouco. ⏰`,
+    "",
+    `💄 ${a.servico}`,
+    `🕐 ${HORA.format(new Date(a.inicioISO))} — ${a.cidade}`,
+    "",
+    "Te espero! 💛",
+  ].join("\n");
+}
+
 export function textoAgradecimento(a: DadosAgendamento): string {
   return [
     `Foi ótimo te atender, ${primeiroNome(a.cliente)}! 🥰`,
@@ -177,6 +199,7 @@ const TEXTO: Record<Evento, (a: DadosAgendamento) => string> = {
   remarcado: textoRemarcado,
   cancelado: textoCancelado,
   lembrete: textoLembrete,
+  "lembrete-curto": textoLembreteCurto,
   agradecimento: textoAgradecimento,
 };
 
@@ -470,6 +493,8 @@ function ligado(evento: Evento): boolean {
       return true;
     case "lembrete":
       return NOTIFICACOES.lembreteUmDiaAntes;
+    case "lembrete-curto":
+      return NOTIFICACOES.lembrete30MinAntes;
     case "agradecimento":
       return NOTIFICACOES.agradecimentoDepois;
   }
