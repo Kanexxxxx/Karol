@@ -231,33 +231,34 @@ function Curva() {
   );
 }
 
-/** Os três momentos da história dela. Texto dela primeiro, sempre. */
+/** Os três momentos da história dela. Palavras e respostas dela no formulário de fechamento (08/09/2026). */
 const CAPITULOS = [
   {
     rotulo: "O começo",
-    titulo: "Ela começou como aluna",
+    titulo: "Começou com um empurrão da mãe",
     texto: [
-      "Fez o curso de design de sobrancelha sem saber direito onde aquilo ia dar. Hoje é ela quem assina o certificado no fim.",
+      "Em 2021 a Karol já atendia com maquiagem e ministrava cursos quando sua mãe deu o conselho certeiro: juntar maquiagem com sobrancelhas para complementar o trabalho e aumentar a renda.",
+      "No início dava medo de errar — maquiagem, se a cliente não gostar, é só lavar o rosto; sobrancelha é diferente. Ela criou coragem, fez o curso e treinou em 6 amigas voluntárias até se sentir 100% segura para cobrar a primeira cliente. Pegou confiança e segue na área até hoje.",
     ],
     citacao: NEGOCIO.lemaCurso,
     fundo: "bg-papel",
   },
   {
-    rotulo: "O que ela vende",
-    titulo: "Não é sobrancelha",
+    rotulo: "A técnica e o cuidado",
+    titulo: "Atenção a cada detalhe e acolhimento",
     texto: [
-      "Sobrancelha e maquiagem são o que ela faz com as mãos. O que sai da cadeira é outra coisa: a pessoa se olhando no espelho de um jeito diferente do que entrou.",
-      "É por isso que ela atende de forma exclusiva, com hora marcada e atenção dedicada — e não porque não daria conta de duas.",
+      "Depois do primeiro curso presencial em Pereira Barreto, vieram mais três especializações em maquiagem e o aperfeiçoamento contínuo em design. Na henna, a queridinha de confiança é a Lá & Benig.",
+      "Mas o que mais marca quem passa pelo studio é a escuta e o atendimento. Teve cliente que desabafou sobre a vida durante o atendimento, chorou de emoção por ser ouvida com carinho e saiu renovada no espelho e na alma.",
     ],
     citacao: NEGOCIO.lema,
     fundo: "bg-creme",
   },
   {
     rotulo: "Pra quem",
-    titulo: "Mulheres e homens",
+    titulo: "Disponibilidade e dedicação individual",
     texto: [
-      "O design masculino tem lugar próprio na tabela dela, com preço próprio. Não é adaptação de outra coisa nem favor de fim de expediente.",
-      "E o curso é individual: uma aluna por vez, do zero até a pessoa conseguir se maquiar sozinha em casa.",
+      "O atendimento é exclusivo, com horário reservado e atenção dedicada a uma cliente por vez — em Pereira Barreto durante a semana e aos domingos, e em Bandeirantes D'Oeste aos sábados.",
+      "O design masculino tem seu espaço próprio na tabela com preço próprio. E no curso de automaquiagem, a aluna aprende no próprio ritmo, da preparação da pele ao acabamento, com atenção individual do início ao fim.",
     ],
     citacao: null,
     fundo: "bg-ouro-fundo",

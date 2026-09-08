@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env, Rotulo } from "@/components/ui";
-import { ANTES_DE_VIR, NEGOCIO } from "@/data/negocio";
+import { ANTES_DE_VIR, NEGOCIO, REGRAS } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
 import { buscarAgendamento } from "@/lib/agendamentos";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
+import { CopiarPix } from "./CopiarPix";
 
 export const metadata: Metadata = { title: "Horário confirmado", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -46,27 +47,13 @@ function Sucesso({
   const pendente = agendamento.situacao === "pendente";
   const dia = DIA_POR_EXTENSO.format(agendamento.inicio);
   const hora = HORA.format(agendamento.inicio);
+  const valorSinal = formatarPreco((agendamento.servicoPreco * (REGRAS.sinal.porcentagem / 100)) / 100);
 
-  /*
-    Este toque é a peça central do WhatsApp automático, e por dois motivos:
+  const mensagemWhatsapp = pendente && REGRAS.sinal.ativo
+    ? `Oi Karol! Acabei de agendar pelo site: ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}. Estou enviando o comprovante do sinal de 50%!`
+    : `Oi Karol! Acabei de agendar pelo site. ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}.`;
 
-    1. avisa a Karol na hora, com o nome e o horário — ela acha a cliente
-       no painel pelo nome ou pelo telefone;
-    2. abre a **janela de 24 h** da Meta. Mensagem que a empresa manda sem a
-       cliente ter falado primeiro é template pago e precisa de aprovação.
-       Depois deste toque, tudo o que sair nas 24 h seguintes é texto livre
-       e de graça. Ver WHATSAPP.md, seção 2.
-
-    Por isso a mensagem sai escrita da cliente PRA Karol, e não o contrário.
-
-    ⚠️ SEM o código. A Karol acha a pessoa pelo nome ou pelo telefone, que é
-    o que ela já tem na conversa — decisão do Kainã, e ele tem razão: código
-    escrito não combina com studio de beleza, e obriga a cliente a guardar
-    uma coisa que não significa nada pra ela.
-  */
-  const recado = linkWhatsapp(
-    `Oi Karol! Acabei de agendar pelo site. ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}.`,
-  );
+  const recado = linkWhatsapp(mensagemWhatsapp);
 
   return (
     <div className="mx-auto max-w-[620px]">
@@ -75,7 +62,9 @@ function Sucesso({
         {pendente ? "Seu pedido chegou pra Karol" : "Horário confirmado"}
       </h1>
       <p className="mb-8 text-tinta-2">
-        {pendente
+        {pendente && REGRAS.sinal.ativo
+          ? "Para segurar o seu horário na agenda, faça o PIX do sinal de 50% e envie o comprovante para a Karol no WhatsApp. Assim que ela conferir, seu agendamento é aprovado!"
+          : pendente
           ? "Ela confirma com você pelo WhatsApp em breve. Enquanto isso, o horário está segurado no seu nome."
           : "O horário já está reservado no seu nome. Anote os detalhes:"}
       </p>
@@ -85,8 +74,36 @@ function Sucesso({
         <Linha rotulo="Dia" valor={dia} capitalizar />
         <Linha rotulo="Hora" valor={hora} />
         <Linha rotulo="Onde" valor={agendamento.cidade} />
-        <Linha rotulo="Valor" valor={formatarPreco(agendamento.servicoPreco / 100)} destaque />
+        <Linha rotulo="Valor total" valor={formatarPreco(agendamento.servicoPreco / 100)} />
+        {REGRAS.sinal.ativo && (
+          <Linha rotulo={`Sinal (${REGRAS.sinal.porcentagem}%)`} valor={valorSinal} destaque />
+        )}
       </dl>
+
+      {pendente && REGRAS.sinal.ativo && (
+        <div className="mt-7 border border-ouro/40 bg-ouro-fundo/40 p-5 sm:p-6">
+          <div className="flex flex-col gap-2">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">
+              Dados para pagamento do sinal
+            </span>
+            <p className="text-[14px] text-tinta-2">
+              Chave PIX ({REGRAS.sinal.tipoChave}): <strong className="font-mono text-tinta font-semibold">{REGRAS.sinal.chavePix}</strong>
+            </p>
+            <p className="text-[13px] text-tinta-3">
+              Banco: <strong className="text-tinta-2">{REGRAS.sinal.banco}</strong> · Favorecido: <strong className="text-tinta-2">{REGRAS.sinal.favorecido}</strong>
+            </p>
+            <div className="mt-2 flex items-center gap-3">
+              <CopiarPix chave={REGRAS.sinal.chavePix} />
+              <span className="text-[12px] text-tinta-3">
+                ou digite {REGRAS.sinal.chavePix} no seu app do banco
+              </span>
+            </div>
+            <p className="mt-3 border-t border-ouro/20 pt-3 text-[12px] text-tinta-3">
+              💡 <em>O sinal é devolvido caso você precise desmarcar com pelo menos 24 horas de antecedência.</em>
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-7 border-t border-linha pt-6">
         <h2 className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.22em] text-ouro">
@@ -109,7 +126,9 @@ function Sucesso({
           rel="noopener noreferrer"
           className="inline-flex min-h-[50px] items-center justify-center bg-ouro px-7 py-4 text-[11.5px] font-bold uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-90"
         >
-          Avisar a Karol no WhatsApp
+          {pendente && REGRAS.sinal.ativo
+            ? "Enviar comprovante no WhatsApp"
+            : "Avisar a Karol no WhatsApp"}
         </a>
         <Link
           href="/"

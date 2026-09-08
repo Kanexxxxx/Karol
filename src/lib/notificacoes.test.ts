@@ -46,6 +46,30 @@ describe("templates", () => {
     expect(textoLembrete(AG)).toMatch(/amanhã/i);
     expect(textoAgradecimento(AG)).toContain("Maria");
   });
+
+  it("confirmação inclui endereço completo da cidade", () => {
+    const msgPb = textoConfirmacao(AG);
+    expect(msgPb).toContain("Condomínio da Praia");
+    expect(msgPb).toContain("portão da academia");
+
+    const msgBand = textoConfirmacao({ ...AG, cidade: "Bandeirantes D'Oeste" });
+    expect(msgBand).toContain("Rua 2 de Fevereiro, 274");
+  });
+
+  it("quando pendente com sinal, mensagem pra cliente inclui PIX e 50%", () => {
+    const pendente = textoConfirmacao({ ...AG, situacao: "pendente" });
+    expect(pendente).toContain("Sinal para segurar o horário (50%)");
+    expect(pendente).toContain("18997525291");
+    expect(pendente).toContain("Nubank");
+    expect(pendente).toMatch(/R\$\s?15/);
+  });
+
+  it("aviso pra Karol inclui sinal quando pendente", () => {
+    const t = textoParaKarol({ ...AG, situacao: "pendente" });
+    expect(t).toContain("aguardando sinal PIX");
+    expect(t).toContain("Sinal a receber (50%)");
+    expect(t).toMatch(/R\$\s?15/);
+  });
 });
 
 describe("whatsappDaKarol", () => {

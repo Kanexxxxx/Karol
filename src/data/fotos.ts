@@ -169,7 +169,7 @@ export const GALERIA: Foto[] = [
   trabalho(2, "Design de sobrancelha"),
   trabalho(3, "Maquiagem social"),
   trabalho(4, "Brow lamination"),
-  trabalho(5, "Maquiagem social"),
+  // trab-05 saiu: moça de trança com make escura de trend de challenge
   trabalho(6, "Design de sobrancelha"),
   trabalho(7, "Brow lamination"),
   trabalho(8, "Design de sobrancelha"),
@@ -245,5 +245,5 @@ export const INSTAGRAM = {
 export const ESTEIRA: Foto[] = [
   "trab-01.jpg", "trab-03.jpg", "trab-06.jpg", "trab-11.jpg",
   "trab-09.jpg", "trab-13.jpg", "trab-16.jpg", "trab-20.jpg",
-  "trab-02.jpg", "trab-05.jpg",
+  "trab-02.jpg", "trab-17.jpg",
 ].map(naGaleria);

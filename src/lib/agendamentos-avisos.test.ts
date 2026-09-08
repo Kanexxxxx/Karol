@@ -195,4 +195,14 @@ describe("Karol muda a situação", () => {
     expect(r.ok).toBe(false);
     expect(eventos()).toEqual([]);
   });
+
+  it("aprovar agendamento que estava PENDENTE manda confirmação pra cliente", async () => {
+    usarBanco({
+      select: () => ({ data: linha(daquiATresDias(), "pendente"), error: null }),
+      update: () => ({ error: null }),
+    });
+    const r = await mudarSituacao(id, "confirmado");
+    expect(r.ok).toBe(true);
+    expect(eventos()).toEqual(["confirmacao"]);
+  });
 });

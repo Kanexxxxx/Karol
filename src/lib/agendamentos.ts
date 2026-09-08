@@ -19,7 +19,7 @@ import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
 import { normalizarWhatsapp } from "./telefone";
 import { buscarServico, buscarServicoAgendavel, type Servico } from "@/data/servicos";
-import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
+import { CIDADES, NEGOCIO, REGRAS, type CidadeId } from "@/data/negocio";
 
 export type Agendamento = {
   id: string;
@@ -288,6 +288,8 @@ export async function criarAgendamento(dados: {
   const fim = emData(dia, bloco.fim);
   const cidade = livres.find((h) => h.inicio === dados.inicioMin)!.cidade;
 
+  const situacao = REGRAS.sinal.ativo || REGRAS.aprovacaoManual ? "pendente" : "confirmado";
+
   const { data, error } = await bd
     .from("agendamentos")
     .insert({
@@ -299,6 +301,7 @@ export async function criarAgendamento(dados: {
       cidade: CIDADES[cidade].nome,
       periodo: montarPeriodo(inicio, fim),
       observacao: dados.observacao?.trim() || null,
+      situacao,
     })
     .select("id")
     .single();
@@ -321,6 +324,7 @@ export async function criarAgendamento(dados: {
     cidade: CIDADES[cidade].nome,
     inicioISO: inicio.toISOString(),
     valorCentavos: servico.preco * 100,
+    situacao,
     // ⚠️ o recado da cliente. Ficava só no banco e no painel — a Karol
     // nunca via antes de atender. Ver `DadosAgendamento.observacao`.
     observacao: dados.observacao?.trim() || null,
@@ -642,6 +646,29 @@ export async function mudarSituacao(
       cidade: antes.cidade,
       inicioISO: antes.inicio.toISOString(),
       valorCentavos: antes.servicoPreco,
+    });
+  }
+
+  /*
+    Quando a Karol aprova um agendamento que estava pendente (após conferir
+    o PIX de sinal), a cliente recebe a mensagem oficial de confirmação.
+  */
+  if (
+    situacao === "confirmado" &&
+    antes &&
+    antes.situacao === "pendente" &&
+    antes.inicio.getTime() > Date.now()
+  ) {
+    await enviarEvento("confirmacao", {
+      id,
+      cliente: antes.clienteNome,
+      whatsappCliente: antes.clienteWhatsapp,
+      servico: antes.servicoNome,
+      cidade: antes.cidade,
+      inicioISO: antes.inicio.toISOString(),
+      valorCentavos: antes.servicoPreco,
+      observacao: antes.observacao,
+      situacao: "confirmado",
     });
   }
 

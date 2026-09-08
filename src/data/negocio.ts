@@ -85,17 +85,17 @@ export type CidadeId = "pereira-barreto" | "bandeirantes";
  */
 export const CIDADES: Record<
   CidadeId,
-  { nome: string; local: string | null }
+  { nome: string; local: string | null; enderecoCompleto: string }
 > = {
   "pereira-barreto": {
     nome: "Pereira Barreto",
     local: "Studio Karol Carvalho",
+    enderecoCompleto: "Rua Atlântico, 884 (Condomínio da Praia) — esperar no portão da academia",
   },
   bandeirantes: {
     nome: "Bandeirantes D'Oeste",
-    // Ela ainda não passou o local; combinado é publicar só a cidade e
-    // acrescentar depois. `local: null` some do site sem deixar buraco.
     local: null,
+    enderecoCompleto: "Rua 2 de Fevereiro, 274 (casa da mãe)",
   },
 };
 
@@ -154,28 +154,27 @@ export const REGRAS = {
   pausaAlmoco: null,
 
   /**
-   * A_CONFIRMAR — o que ela quis dizer com "sinal".
-   *
-   * No formulário ela respondeu "sim, quero desde já" pra pergunta sobre
-   * PIX DE SINAL (entrada pra segurar o horário), e depois escreveu
-   * "a questão do agendamento com sinal" como a única coisa que gostaria
-   * de resolver. As duas respostas parecem se referir à mesma coisa.
-   *
-   * Não construir nada aqui antes de confirmar com ela em palavras dela.
+   * Resposta do formulário final (08/09/2026):
+   * - "se for o sinal eu cobro 50% do valor do procedimento"
+   * - Chave PIX: 18997525291 (Telefone / Nubank / Karolaine)
+   * - Devolução se desmarcar: "Volta, se ela avisar com um dia de antecedência" (24h)
+   * - Karol confere o comprovante no WhatsApp e aprova no painel.
    */
   sinal: {
-    ativo: false,
-    valorPorServico: null,
+    ativo: true,
+    porcentagem: 50,
+    chavePix: "18997525291",
+    tipoChave: "Telefone",
+    banco: "Nubank",
+    favorecido: "Karolaine Carvalho",
     prazoDevolucaoHoras: 24,
-    chavePix: null,
   },
 
   /**
-   * Ela pediu pra aprovar cada agendamento na mão. Ver seção 04 do briefing:
-   * a recomendação é deixar desligado e o sinal fazer o filtro, com este
-   * botão disponível no painel caso ela prefira.
+   * Com o sinal ativo, o agendamento pelo site entra como "pendente" até a
+   * Karol conferir o comprovante e confirmar pelo painel ou WhatsApp.
    */
-  aprovacaoManual: false,
+  aprovacaoManual: true,
 
   /** Ela não quer que a cliente desmarque sozinha pelo site. */
   clientePodeCancelar: false,

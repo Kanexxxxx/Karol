@@ -1,6 +1,6 @@
 import "server-only";
 
-import { NEGOCIO, NOTIFICACOES, SITE_URL } from "@/data/negocio";
+import { CIDADES, NEGOCIO, NOTIFICACOES, REGRAS, SITE_URL } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import { formatarWhatsapp } from "./telefone";
@@ -34,6 +34,7 @@ export type DadosAgendamento = {
   /** início do atendimento, ISO */
   inicioISO: string;
   valorCentavos: number;
+  situacao?: string;
   /**
    * O recado que a cliente escreveu no fim do agendamento.
    *
@@ -92,12 +93,28 @@ export function avisosDesviadosPara(): string | null {
   return configurado === dela ? null : configurado;
 }
 
+function enderecoPorCidade(cidadeNome: string): string {
+  const norm = (cidadeNome || "").toLowerCase();
+  if (norm.includes("bandeirantes")) {
+    return CIDADES.bandeirantes.enderecoCompleto;
+  }
+  return CIDADES["pereira-barreto"].enderecoCompleto;
+}
+
 export function textoParaKarol(a: DadosAgendamento): string {
+  const pendenteSinal = REGRAS.sinal.ativo && a.situacao === "pendente";
+  const valorSinal = formatarPreco((a.valorCentavos * (REGRAS.sinal.porcentagem / 100)) / 100);
+
   return [
-    "📅 Novo agendamento pelo site",
+    pendenteSinal
+      ? "📅 Novo pedido pelo site (aguardando sinal PIX)"
+      : "📅 Novo agendamento pelo site",
     "",
     `👤 *${a.cliente}*`,
     `💄 ${a.servico} — ${formatarPreco(a.valorCentavos / 100)}`,
+    ...(pendenteSinal
+      ? [`🔑 Sinal a receber (${REGRAS.sinal.porcentagem}%): *${valorSinal}*`]
+      : []),
     `🗓️ ${quando(a.inicioISO)}`,
     `📍 ${a.cidade}`,
     "",
@@ -135,12 +152,35 @@ export function linkDoPainel(whatsappCliente: string): string {
 }
 
 export function textoConfirmacao(a: DadosAgendamento): string {
+  const endereco = enderecoPorCidade(a.cidade);
+  const pendenteSinal = REGRAS.sinal.ativo && a.situacao === "pendente";
+
+  if (pendenteSinal) {
+    const valorSinal = formatarPreco((a.valorCentavos * (REGRAS.sinal.porcentagem / 100)) / 100);
+    return [
+      `Oi, ${primeiroNome(a.cliente)}! Seu pedido de agendamento no ${NEGOCIO.nome} foi recebido. ✨`,
+      "",
+      `💄 ${a.servico}`,
+      `🗓️ ${quando(a.inicioISO)}`,
+      `📍 ${a.cidade} — ${endereco}`,
+      `💵 Valor total: ${formatarPreco(a.valorCentavos / 100)}`,
+      `🔑 *Sinal para segurar o horário (${REGRAS.sinal.porcentagem}%): ${valorSinal}*`,
+      "",
+      `*Chave PIX (${REGRAS.sinal.tipoChave}):* \`${REGRAS.sinal.chavePix}\``,
+      `Banco: ${REGRAS.sinal.banco} — Favorecido: ${REGRAS.sinal.favorecido}`,
+      "",
+      "⚠️ *Para garantir o seu horário:* faça o PIX do sinal e envie o comprovante por aqui. A Karol vai conferir e confirmar seu agendamento! 💛",
+      "",
+      "Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa. 🤍",
+    ].join("\n");
+  }
+
   return [
     `Oi, ${primeiroNome(a.cliente)}! Seu horário está confirmado no ${NEGOCIO.nome}. ✨`,
     "",
     `💄 ${a.servico}`,
     `🗓️ ${quando(a.inicioISO)}`,
-    `📍 ${a.cidade}`,
+    `📍 ${a.cidade} — ${endereco}`,
     `💵 ${formatarPreco(a.valorCentavos / 100)}`,
     "",
     "Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa. 🤍",
@@ -148,12 +188,13 @@ export function textoConfirmacao(a: DadosAgendamento): string {
 }
 
 export function textoLembrete(a: DadosAgendamento): string {
+  const endereco = enderecoPorCidade(a.cidade);
   return [
     `Oi, ${primeiroNome(a.cliente)}! Passando pra lembrar do seu horário amanhã. 💛`,
     "",
     `💄 ${a.servico}`,
     `🗓️ ${quando(a.inicioISO)}`,
-    `📍 ${a.cidade}`,
+    `📍 ${a.cidade} — ${endereco}`,
     "",
     "Não esquece de vir sem maquiagem. 🤍",
     "",
@@ -172,11 +213,13 @@ export function textoLembrete(a: DadosAgendamento): string {
  * não dá mais tempo, e o aviso só faria a pessoa se sentir mal na saída.
  */
 export function textoLembreteCurto(a: DadosAgendamento): string {
+  const endereco = enderecoPorCidade(a.cidade);
   return [
     `Oi, ${primeiroNome(a.cliente)}! Seu horário é daqui a pouco. ⏰`,
     "",
     `💄 ${a.servico}`,
     `🕐 ${HORA.format(new Date(a.inicioISO))} — ${a.cidade}`,
+    `📍 ${endereco}`,
     "",
     "Te espero! 💛",
   ].join("\n");
