@@ -35,8 +35,8 @@ export function Sobre() {
             Quem vai te atender
           </h2>
           <p className="mb-6 text-tinta-2">
-            Ela começou como aluna. Hoje é ela quem assina o certificado — e
-            atende sozinha, em duas cidades, uma cliente por vez.
+            Ela começou como aluna. Hoje é ela quem assina o certificado — com
+            atendimento próprio e personalizado em duas cidades.
           </p>
           <Link
             href="/sobre"

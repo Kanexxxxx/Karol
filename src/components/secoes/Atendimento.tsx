@@ -21,12 +21,12 @@ export function Atendimento() {
         <Revela>
           <Rotulo>O atendimento</Rotulo>
           <h2 className="mt-2.5 mb-[18px] font-titulo text-[clamp(32px,5.8vw,52px)] leading-[1.02] font-light text-balance">
-            Uma cliente por vez, do começo ao fim
+            Cuidado dedicado e sem pressa
           </h2>
           <p className="text-tinta-2">
-            Você chega, senta e o tempo é seu. Dá pra conversar, ver o desenho
-            no espelho e ajustar antes de fechar — ninguém está esperando na
-            porta pra entrar depois de você.
+            Cada rosto tem uma proporção própria. O desenho é feito com calma,
+            respeitando a sua anatomia e o seu estilo — você acompanha cada
+            traço no espelho e aprova o resultado antes de finalizar.
           </p>
 
           <div className="mt-7 border-t border-linha pt-6">

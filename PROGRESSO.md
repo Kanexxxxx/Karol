@@ -632,7 +632,39 @@ busca do painel aceita ele calada, mas oferece "nome ou telefone".
   `[]` no `maybeSingle` e escondia isso.
 - **Auditoria da agenda** em `agenda-auditoria.test.ts`, respondendo pela
   terceira vez a dúvida dele sobre horários sumindo "pra trás" — com prova
-  em vez de explicação.
+### Etapa 19 — expansão de turnos, limpeza de repetições e blindagem de segurança
+
+Ajustes vindos diretamente dos retornos em áudio da Karol (07/09/2026), remoção de repetições visuais e de texto apontadas pelo Kainã, correção do corte de foto em `/sobre`, e auditoria de segurança rigorosa.
+
+#### 1. Expansão de horários e múltiplos turnos
+
+A Karol explicou em áudio como divide seu atendimento entre as duas cidades:
+- **Pereira Barreto**: Segunda a sexta em dois turnos — manhã (07:00 às 11:00) e noite (18:30 às 22:00). Domingo o dia todo (08:00 às 18:00).
+- **Bandeirantes D'Oeste**: Sábado das 11:00 às 22:00.
+
+Mudanças estruturais:
+- `EXPEDIENTE` em `data/negocio.ts` agora suporta múltiplos registros por dia da semana (`DiaSemana`).
+- `agenda.ts`: introduzida `expedientesDoDia(data: Date): Expediente[]`. A `gradeDoDia` varre todos os turnos abertos para o dia e a cidade, garantindo que nenhum horário seja gerado no intervalo de fechamento da tarde (11:00 às 18:30).
+- Em `/agendar`, a seleção de horários agrupa as vagas por turno ("Manhã", "Tarde", "Noite") quando há mais de um turno no dia, deixando a navegação clara.
+
+#### 2. Limpeza da frase repetitiva "uma cliente por vez"
+
+A frase aparecia três vezes em seções seguidas do site. Foi substituída:
+- Em `Abertura.tsx`: badge trocado para "Com hora marcada".
+- Em `Atendimento.tsx`: título e texto reescritos para "Cuidado dedicado e sem pressa", destacando a harmonia com o rosto da cliente e acompanhamento no espelho.
+- Em `Sobre.tsx` e `/sobre`: copy refinada para destacar o atendimento personalizado nas duas cidades.
+
+#### 3. Correção do corte da foto da Karol na `/sobre`
+
+A seção de abertura de `/sobre` possui `overflow-hidden` para sangria controlada. O contêiner pai usava `items-center`, que centralizava verticalmente a imagem em relação à coluna de texto. Como a foto da Karol é mais alta, o topo da cabeça era empurrado para fora da borda superior e cortado.
+Solução: mudança para `items-end pt-10 pb-0 lg:pt-14`, ancorando a foto na linha de base e mantendo a cabeça e o enquadramento 100% visíveis.
+
+#### 4. Auditoria de segurança e correções (skills `security-review` e `find-bugs`)
+
+- **Controle de acesso em `decisaoDaKarol` (`atendente.ts`):** os botões de confirmação/recusa de remarcação (`k:ok:...` e `k:no:...`) não validavam o remetente da mensagem. Se uma cliente enviasse esse payload de botão, poderia autoaprovar sua remarcação. Agora exige explicitamente que `m.de` corresponda ao número oficial da Karol. Coberto com teste em `remarcacao-fluxo.test.ts`.
+- **Prevenção de Timing Attack na rota de cron (`/api/lembretes`):** a validação do cabeçalho `Authorization: Bearer <CRON_SECRET>` usava igualdade estrita de strings (`===`), suscetível a ataques de canal lateral por tempo. Atualizada para comparação em tempo constante (`timingSafeEqual` via SHA-256).
+
+Todos os 275 testes passando e `next build` compilando com sucesso com checagem estrita de tipos no Next.js 16.
 
 ### Etapa 18 — o dia do carregamento, do lembrete e do assistente
 

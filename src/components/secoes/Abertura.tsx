@@ -105,7 +105,7 @@ export function Faixa() {
         ))}
         <div className="flex items-baseline justify-center gap-2.5 border-t border-white/20 px-5 py-4 text-center md:flex-col md:items-center md:gap-1.5 md:border-t-0 md:border-l md:px-4 md:py-5">
           <b className="text-[10.5px] font-bold uppercase tracking-[0.2em]">Atendimento</b>
-          <span className="text-[12.5px] text-[#F6E9CE]">Uma cliente por vez</span>
+          <span className="text-[12.5px] text-[#F6E9CE]">Com hora marcada</span>
         </div>
       </Env>
     </div>

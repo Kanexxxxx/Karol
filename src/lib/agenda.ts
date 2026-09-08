@@ -13,7 +13,7 @@
  * dentro. Quem lida com data é quem chama.
  */
 
-import { EXPEDIENTE, REGRAS, type CidadeId, type DiaSemana } from "@/data/negocio";
+import { EXPEDIENTE, REGRAS, type CidadeId, type DiaSemana, type Expediente } from "@/data/negocio";
 import { blocoNaAgenda, type Servico } from "@/data/servicos";
 
 export type Intervalo = { inicio: number; fim: number };
@@ -52,10 +52,18 @@ export function deChave(chave: string): Date {
   return new Date(a, m - 1, d);
 }
 
-/** A janela de trabalho daquele dia, ou null se ela não atende. */
-export function expedienteDoDia(data: Date) {
+/** As janelas de trabalho daquele dia (pode ter mais de uma, ex: manhã e noite). */
+export function expedientesDoDia(data: Date): Expediente[] {
   const dia = diaDaSemana(data);
-  return EXPEDIENTE.find((e) => e.dia === dia) ?? null;
+  return EXPEDIENTE.filter((e) => e.dia === dia);
+}
+
+/**
+ * Primeira janela de trabalho do dia, mantida para compatibilidade.
+ * @deprecated Prefira `expedientesDoDia(data)` para contemplar todos os turnos.
+ */
+export function expedienteDoDia(data: Date): Expediente | null {
+  return expedientesDoDia(data)[0] ?? null;
 }
 
 /** Primeiro dia que aceita agendamento (hoje + antecedência mínima). */
@@ -86,14 +94,18 @@ export function gradeDoDia({
   servico,
   ocupados = [],
   agora = new Date(),
+  cidade,
 }: {
   data: Date;
   servico: Servico;
   ocupados?: Intervalo[];
   agora?: Date;
+  cidade?: CidadeId;
 }): VagaNaGrade[] {
-  const expediente = expedienteDoDia(data);
-  if (!expediente) return [];
+  const expedientes = expedientesDoDia(data).filter(
+    (e) => !cidade || e.cidade === cidade,
+  );
+  if (expedientes.length === 0) return [];
 
   // nunca no mesmo dia, nem antes
   const limite = primeiroDiaDisponivel(agora);
@@ -102,17 +114,19 @@ export function gradeDoDia({
   const bloco = blocoNaAgenda(servico);
   const grade: VagaNaGrade[] = [];
 
-  for (let inicio = expediente.inicio; inicio + bloco <= expediente.fim; inicio += PASSO_MIN) {
-    const candidato = { inicio, fim: inicio + bloco };
-    grade.push({
-      inicio,
-      rotulo: paraRotulo(inicio),
-      cidade: expediente.cidade,
-      livre: !ocupados.some((o) => seSobrepoe(candidato, o)),
-    });
+  for (const expediente of expedientes) {
+    for (let inicio = expediente.inicio; inicio + bloco <= expediente.fim; inicio += PASSO_MIN) {
+      const candidato = { inicio, fim: inicio + bloco };
+      grade.push({
+        inicio,
+        rotulo: paraRotulo(inicio),
+        cidade: expediente.cidade,
+        livre: !ocupados.some((o) => seSobrepoe(candidato, o)),
+      });
+    }
   }
 
-  return grade;
+  return grade.sort((a, b) => a.inicio - b.inicio);
 }
 
 /**
@@ -222,17 +236,30 @@ const maiuscula = (t: string) => t.replace(/^./, (c) => c.toUpperCase());
  * EXPEDIENTE que é a fonte da verdade.
  */
 export function faixaDeDias(cidade: CidadeId): string {
-  const dias = EXPEDIENTE.filter((e) => e.cidade === cidade)
-    .map((e) => e.dia)
-    .sort((a, b) => a - b);
+  const dias = Array.from(
+    new Set(EXPEDIENTE.filter((e) => e.cidade === cidade).map((e) => e.dia)),
+  ).sort((a, b) => a - b);
 
   if (dias.length === 0) return "";
   if (dias.length === 1) return maiuscula(NOMES_DIA[dias[0]]);
+
+  // Segunda a sexta (1..5) e domingo (0)
+  const temSegASex = [1, 2, 3, 4, 5].every((d) => dias.includes(d as DiaSemana));
+  if (temSegASex && dias.includes(0) && dias.length === 6) {
+    return "Segunda a sexta e domingo";
+  }
+  if (temSegASex && dias.length === 5) {
+    return "Segunda a sexta";
+  }
+
   return `${maiuscula(NOMES_DIA[dias[0]])} a ${NOMES_DIA[dias[dias.length - 1]]}`;
 }
 
-/** "das 07h às 11h" — a janela de atendimento daquela cidade. */
+/** "7h às 11h e 18h30 às 22h" — a janela de atendimento daquela cidade. */
 export function janelaDaCidade(cidade: CidadeId): string {
+  if (cidade === "pereira-barreto") {
+    return "7h às 11h e 18h30 às 22h · Dom: 8h às 18h";
+  }
   const janela = EXPEDIENTE.find((e) => e.cidade === cidade);
   if (!janela) return "";
   const hh = (m: number) =>

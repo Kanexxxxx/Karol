@@ -262,9 +262,10 @@ function instrucoes(): string {
     "",
     "COMO ELA TRABALHA",
     ...Object.entries(CIDADES).map(([, c]) => `- Atende em ${c.nome}.`),
-    "- Segunda a sexta em Pereira Barreto, das 7h às 11h.",
+    "- Segunda a sexta em Pereira Barreto, das 7h às 11h e das 18h30 às 22h.",
     "- Sábado em Bandeirantes D'Oeste, das 11h às 22h.",
-    "- Domingo não atende. Uma cliente por vez.",
+    "- Domingo em Pereira Barreto, das 8h às 18h.",
+    "- Atendimento individual com hora marcada.",
     "",
     "SERVIÇOS (use o id exato nas ferramentas)",
     ...SERVICOS.map(

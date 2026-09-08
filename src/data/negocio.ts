@@ -113,22 +113,31 @@ export type Expediente = {
 const h = (hora: number, min = 0) => hora * 60 + min;
 
 /**
- * CONFIRMADO por ela: segunda a sexta é de manhã mesmo, 7h às 11h.
- *
- * Consequência importante: a janela útil é de 240 min. Com o intervalo de
- * 10 min, cabem no máximo 2 brow laminations (100 min cada) ou 4 designs
- * simples (50 min cada) por dia de semana. O sábado em Bandeirantes é que
- * carrega o volume.
- *
- * DOMINGO ela não atende — confirmado por ela.
+ * Atualizado com as respostas e confirmações em áudio da Karol (07/09/2026):
+ * - Segunda a sexta em Pereira Barreto: das 7h às 11h e das 18h30 às 22h.
+ * - Sábado em Bandeirantes D'Oeste: das 11h às 22h.
+ * - Domingo em Pereira Barreto: dia inteiro (8h às 18h).
  */
 export const EXPEDIENTE: Expediente[] = [
+  // Pereira Barreto — Segunda a sexta (Manhã: 7h às 11h)
   { dia: 1, cidade: "pereira-barreto", inicio: h(7), fim: h(11) },
   { dia: 2, cidade: "pereira-barreto", inicio: h(7), fim: h(11) },
   { dia: 3, cidade: "pereira-barreto", inicio: h(7), fim: h(11) },
   { dia: 4, cidade: "pereira-barreto", inicio: h(7), fim: h(11) },
   { dia: 5, cidade: "pereira-barreto", inicio: h(7), fim: h(11) },
+
+  // Pereira Barreto — Segunda a sexta (Noite: 18h30 às 22h)
+  { dia: 1, cidade: "pereira-barreto", inicio: h(18, 30), fim: h(22) },
+  { dia: 2, cidade: "pereira-barreto", inicio: h(18, 30), fim: h(22) },
+  { dia: 3, cidade: "pereira-barreto", inicio: h(18, 30), fim: h(22) },
+  { dia: 4, cidade: "pereira-barreto", inicio: h(18, 30), fim: h(22) },
+  { dia: 5, cidade: "pereira-barreto", inicio: h(18, 30), fim: h(22) },
+
+  // Bandeirantes D'Oeste — Sábado (11h às 22h)
   { dia: 6, cidade: "bandeirantes", inicio: h(11), fim: h(22) },
+
+  // Pereira Barreto — Domingo (8h às 18h)
+  { dia: 0, cidade: "pereira-barreto", inicio: h(8), fim: h(18) },
 ];
 
 export const REGRAS = {

@@ -688,13 +688,17 @@ describe("mesDeVagas: o que o calendário tem que saber dizer", () => {
     expect(diaUtilVencido.atende).toBe(true);
   });
 
-  it("domingo continua sendo dia que ela não atende, em qualquer cidade", async () => {
-    for (const cidade of ["pereira-barreto", "bandeirantes"] as const) {
-      const dias = await diasDesteMes(cidade);
-      const domingos = dias.filter((d) => d.data.getDay() === 0);
-      expect(domingos.length).toBeGreaterThan(0);
-      expect(domingos.every((d) => d.atende === false)).toBe(true);
-    }
+  it("domingo atende em Pereira Barreto e não em Bandeirantes", async () => {
+    const pb = await diasDesteMes("pereira-barreto");
+    const bd = await diasDesteMes("bandeirantes");
+
+    const domingoPB = pb.filter((d) => d.data.getDay() === 0);
+    const domingoBD = bd.filter((d) => d.data.getDay() === 0);
+
+    expect(domingoPB.length).toBeGreaterThan(0);
+    expect(domingoBD.length).toBeGreaterThan(0);
+    expect(domingoPB.every((d) => d.atende === true)).toBe(true);
+    expect(domingoBD.every((d) => d.atende === false)).toBe(true);
   });
 
   it("sábado atende em Bandeirantes e não em Pereira Barreto", async () => {

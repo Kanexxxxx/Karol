@@ -97,9 +97,10 @@ export const FOTOS = {
     altura: 1058,
   },
   atendimento: {
-    arquivo: `${P}/processo.jpg`,
-    alt: "Karol modelando a sobrancelha de uma cliente durante o atendimento",
-    ...RETRATO,
+    arquivo: `${P}/processo-3.jpg`,
+    alt: "Cliente com resultado do design de sobrancelha no studio",
+    largura: 1400,
+    altura: 1867,
   },
 } as const;
 

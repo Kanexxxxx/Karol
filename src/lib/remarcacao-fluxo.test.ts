@@ -237,4 +237,13 @@ describe("3 e 4 — a Karol decide", () => {
     await atender(de(KAROL, `k:ok:${ID_PEDIDO}`));
     expect(achar).not.toHaveBeenCalled();
   });
+
+  it("cliente tentando acionar botão de decisão da Karol é ignorado", async () => {
+    vi.mocked(R.buscarPedido).mockResolvedValue(pedido("aguardando-karol", OPCOES[1].inicioISO));
+    vi.mocked(R.agendamentoDoPedido).mockResolvedValue(agendamento());
+
+    const r = await atender(de(CLIENTE, `k:ok:${ID_PEDIDO}`));
+    expect(mover).not.toHaveBeenCalled();
+    expect(r.fez).toBe("nada");
+  });
 });

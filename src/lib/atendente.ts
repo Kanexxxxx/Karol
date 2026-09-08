@@ -199,6 +199,11 @@ async function escolhaDaCliente(m: MensagemRecebida): Promise<Desfecho> {
  * cliente escolheu, não decidiu.
  */
 async function decisaoDaKarol(m: MensagemRecebida): Promise<Desfecho> {
+  const karol = whatsappDaKarol().replace(/\D/g, "");
+  if (!karol || m.de.replace(/\D/g, "") !== karol) {
+    return { fez: "nada", motivo: "conversa-de-verdade" };
+  }
+
   const [, acao, id] = m.botao!.split(":");
   const pedido = await buscarPedido(id ?? "");
   if (!pedido || pedido.situacao !== "aguardando-karol") {

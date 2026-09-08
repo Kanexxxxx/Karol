@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { rodarLembretes, rodarLembretesCurtos } from "@/lib/lembretes";
 
@@ -25,7 +26,11 @@ export const dynamic = "force-dynamic";
 function autorizado(req: NextRequest): boolean {
   const segredo = process.env.CRON_SECRET;
   if (!segredo) return false;
-  return req.headers.get("authorization") === `Bearer ${segredo}`;
+  const auth = req.headers.get("authorization") ?? "";
+  const esperado = `Bearer ${segredo}`;
+  const hAuth = createHash("sha256").update(auth, "utf8").digest();
+  const hEsp = createHash("sha256").update(esperado, "utf8").digest();
+  return timingSafeEqual(hAuth, hEsp);
 }
 
 async function handler(req: NextRequest) {

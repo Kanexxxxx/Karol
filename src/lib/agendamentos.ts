@@ -5,6 +5,7 @@ import {
   blocoDoAgendamento,
   deChave,
   expedienteDoDia,
+  expedientesDoDia,
   fatiarPorDia,
   gradeDoDia,
   horariosLivres,
@@ -196,14 +197,14 @@ export async function mesDeVagas(
   for (let d = new Date(primeiro); d < depoisDoUltimo; d.setDate(d.getDate() + 1)) {
     const data = new Date(d);
     const chave = paraChave(data);
-    const expediente = expedienteDoDia(data);
-    const atende = expediente?.cidade === cidade;
+    const expedientes = expedientesDoDia(data);
+    const atende = expedientes.some((e) => e.cidade === cidade);
     const cedoDemais = data < limite;
     const passou = data < hoje;
 
     const grade =
       atende && !cedoDemais
-        ? gradeDoDia({ data, servico, ocupados: ocupados[chave] ?? [] })
+        ? gradeDoDia({ data, servico, ocupados: ocupados[chave] ?? [], cidade })
         : [];
 
     dias.push({

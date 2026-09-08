@@ -269,31 +269,49 @@ async function EscolherHora({
           </Link>
         </p>
       ) : (
-        <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
-          {grade.map((v) =>
-            v.livre ? (
-              <li key={v.inicio}>
-                <Link
-                  href={`/agendar?${base}&dia=${dia}&hora=${v.inicio}`}
-                  className="block border border-linha bg-papel py-4 text-center font-titulo text-[21px] tabular-nums transition-colors hover:border-ouro-claro hover:text-ouro focus-visible:outline-2 focus-visible:outline-ouro"
-                >
-                  {v.rotulo}
-                </Link>
-              </li>
-            ) : (
-              // Ocupado aparece, não some: esconder faz a agenda parecer
-              // vazia justamente quando está cheia.
-              <li key={v.inicio}>
-                <span
-                  aria-label={`${v.rotulo}, já reservado`}
-                  className="block border border-linha/60 bg-creme/40 py-4 text-center font-titulo text-[21px] tabular-nums text-tinta-3/70 line-through decoration-tinta-3/50"
-                >
-                  {v.rotulo}
-                </span>
-              </li>
-            ),
-          )}
-        </ul>
+        <div className="flex flex-col gap-7">
+          {[
+            { nome: "Manhã", vagas: grade.filter((v) => v.inicio < 12 * 60) },
+            {
+              nome: "Tarde",
+              vagas: grade.filter((v) => v.inicio >= 12 * 60 && v.inicio < 18 * 60),
+            },
+            { nome: "Noite", vagas: grade.filter((v) => v.inicio >= 18 * 60) },
+          ]
+            .filter((t) => t.vagas.length > 0)
+            .map((t, idx, arr) => (
+              <div key={t.nome}>
+                {arr.length > 1 && (
+                  <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-ouro">
+                    {t.nome}
+                  </h2>
+                )}
+                <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
+                  {t.vagas.map((v) =>
+                    v.livre ? (
+                      <li key={v.inicio}>
+                        <Link
+                          href={`/agendar?${base}&dia=${dia}&hora=${v.inicio}`}
+                          className="block border border-linha bg-papel py-4 text-center font-titulo text-[21px] tabular-nums transition-colors hover:border-ouro-claro hover:text-ouro focus-visible:outline-2 focus-visible:outline-ouro"
+                        >
+                          {v.rotulo}
+                        </Link>
+                      </li>
+                    ) : (
+                      <li key={v.inicio}>
+                        <span
+                          aria-label={`${v.rotulo}, já reservado`}
+                          className="block border border-linha/60 bg-creme/40 py-4 text-center font-titulo text-[21px] tabular-nums text-tinta-3/70 line-through decoration-tinta-3/50"
+                        >
+                          {v.rotulo}
+                        </span>
+                      </li>
+                    ),
+                  )}
+                </ul>
+              </div>
+            ))}
+        </div>
       )}
     </Env>
   );

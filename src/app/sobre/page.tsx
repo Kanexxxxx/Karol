@@ -70,7 +70,7 @@ import { NEGOCIO } from "@/data/negocio";
 
 export const metadata: Metadata = {
   title: "A Karol",
-  description: `${NEGOCIO.profissional}, maquiadora e designer de sobrancelhas em ${NEGOCIO.atuacaoCidades}. Uma cliente por vez, do começo ao fim.`,
+  description: `${NEGOCIO.profissional}, maquiadora e designer de sobrancelhas em ${NEGOCIO.atuacaoCidades}. Atendimento personalizado e exclusivo.`,
   openGraph: {
     title: `A Karol · ${NEGOCIO.nome}`,
     description: NEGOCIO.frase,
@@ -114,8 +114,8 @@ function Retrato() {
 
   return (
     <section className="trama relative overflow-hidden border-b border-linha">
-      <Env className="grid items-center gap-9 py-12 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10 lg:py-0">
-        <div className="lg:py-20">
+      <Env className="grid items-end gap-9 pt-10 pb-0 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10 lg:pt-14">
+        <div className="py-8 lg:py-16">
           <Rotulo>Quem faz</Rotulo>
 
           <h1 className="mt-4 font-titulo text-[clamp(54px,12.5vw,116px)] leading-[0.86] font-light tracking-[-0.02em]">
@@ -247,7 +247,7 @@ const CAPITULOS = [
     titulo: "Não é sobrancelha",
     texto: [
       "Sobrancelha e maquiagem são o que ela faz com as mãos. O que sai da cadeira é outra coisa: a pessoa se olhando no espelho de um jeito diferente do que entrou.",
-      "É por isso que ela atende sozinha, uma cliente por vez, do começo ao fim — e não porque não daria conta de duas.",
+      "É por isso que ela atende de forma exclusiva, com hora marcada e atenção dedicada — e não porque não daria conta de duas.",
     ],
     citacao: NEGOCIO.lema,
     fundo: "bg-creme",

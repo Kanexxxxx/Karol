@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gradeDoDia } from "./agenda";
+import { expedientesDoDia, gradeDoDia } from "./agenda";
 import { blocoNaAgenda, buscarServico, SERVICOS } from "@/data/servicos";
 import { EXPEDIENTE, REGRAS } from "@/data/negocio";
 
@@ -77,18 +77,28 @@ describe("a dúvida das 07:00", () => {
 describe("varredura de todos os serviços, nos dois expedientes", () => {
   it("nenhum horário oferecido termina depois do expediente", () => {
     const estouros: string[] = [];
+    const diasParaTestar = [
+      { nome: "segunda", data: SEGUNDA },
+      { nome: "sábado", data: SABADO },
+      { nome: "domingo", data: new Date(2026, 8, 13) },
+    ];
 
-    for (const expediente of EXPEDIENTE) {
-      const data = expediente.dia === 6 ? SABADO : SEGUNDA;
-      if (expediente.dia !== 6 && expediente.dia !== 1) continue; // 1 dia útil basta
-
+    for (const { nome, data } of diasParaTestar) {
+      const turnos = expedientesDoDia(data);
       for (const servico of SERVICOS) {
         const grade = gradeDoDia({ data, servico, ocupados: [], agora: AGORA });
         for (const vaga of grade) {
           const fim = vaga.inicio + blocoNaAgenda(servico);
-          if (fim > expediente.fim) {
+          const turno = turnos.find(
+            (t) => vaga.inicio >= t.inicio && vaga.inicio < t.fim && vaga.cidade === t.cidade,
+          );
+          if (!turno) {
             estouros.push(
-              `${servico.nome} ${vaga.rotulo}→${hh(fim)} passa do fim (${hh(expediente.fim)})`,
+              `${nome} ${servico.nome} ${vaga.rotulo} não pertence a nenhum expediente`,
+            );
+          } else if (fim > turno.fim) {
+            estouros.push(
+              `${nome} ${servico.nome} ${vaga.rotulo}→${hh(fim)} passa do fim (${hh(turno.fim)})`,
             );
           }
         }
@@ -104,9 +114,26 @@ describe("varredura de todos os serviços, nos dois expedientes", () => {
     }
   });
 
-  it("domingo não oferece nada", () => {
+  it("domingo não oferece nada em Bandeirantes D'Oeste", () => {
     const domingo = new Date(2026, 8, 13);
-    expect(gradeDoDia({ data: domingo, servico: design, ocupados: [], agora: AGORA })).toEqual([]);
+    expect(
+      gradeDoDia({ data: domingo, servico: design, ocupados: [], agora: AGORA, cidade: "bandeirantes" }),
+    ).toEqual([]);
+  });
+
+  it("domingo oferece atendimento em Pereira Barreto (8h às 18h)", () => {
+    const domingo = new Date(2026, 8, 13);
+    const grade = gradeDoDia({
+      data: domingo,
+      servico: design,
+      ocupados: [],
+      agora: AGORA,
+      cidade: "pereira-barreto",
+    });
+    expect(grade.length).toBeGreaterThan(0);
+    expect(grade[0].rotulo).toBe("08:00");
+    const ultimo = grade[grade.length - 1];
+    expect(ultimo.inicio + blocoNaAgenda(design)).toBeLessThanOrEqual(18 * 60);
   });
 
   it("cada serviço cabe pelo menos uma vez no dia útil", () => {

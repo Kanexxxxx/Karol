@@ -3,6 +3,7 @@ import {
   blocoDoAgendamento,
   deChave,
   expedienteDoDia,
+  expedientesDoDia,
   horariosLivres,
   fatiarPorDia,
   MINUTOS_NO_DIA,
@@ -56,24 +57,25 @@ describe("paraChave / deChave", () => {
   });
 });
 
-describe("expedienteDoDia", () => {
-  it("segunda a sexta é em Pereira Barreto, 7h–11h", () => {
+describe("expedienteDoDia e expedientesDoDia", () => {
+  it("segunda a sexta tem dois turnos em Pereira Barreto (7h–11h e 18h30–22h)", () => {
     const seg = segundaDistante();
-    const e = expedienteDoDia(seg);
-    expect(e).not.toBeNull();
-    expect(e!.cidade).toBe("pereira-barreto");
-    expect(e!.inicio).toBe(7 * 60);
-    expect(e!.fim).toBe(11 * 60);
+    const exp = expedientesDoDia(seg);
+    expect(exp).toHaveLength(2);
+    expect(exp[0]).toMatchObject({ cidade: "pereira-barreto", inicio: 7 * 60, fim: 11 * 60 });
+    expect(exp[1]).toMatchObject({ cidade: "pereira-barreto", inicio: 18.5 * 60, fim: 22 * 60 });
   });
 
   it("sábado é em Bandeirantes", () => {
     expect(expedienteDoDia(sabadoDistante())!.cidade).toBe("bandeirantes");
   });
 
-  it("domingo não atende", () => {
+  it("domingo é em Pereira Barreto (8h–18h)", () => {
     const dom = new Date(2099, 5, 7);
     while (dom.getDay() !== 0) dom.setDate(dom.getDate() + 1);
-    expect(expedienteDoDia(dom)).toBeNull();
+    const exp = expedientesDoDia(dom);
+    expect(exp).toHaveLength(1);
+    expect(exp[0]).toMatchObject({ cidade: "pereira-barreto", inicio: 8 * 60, fim: 18 * 60 });
   });
 });
 
@@ -88,10 +90,21 @@ describe("primeiroDiaDisponivel", () => {
 });
 
 describe("horariosLivres", () => {
-  it("não oferece nada num dia que ela não atende", () => {
-    const dom = new Date(2099, 5, 7);
-    while (dom.getDay() !== 0) dom.setDate(dom.getDate() + 1);
-    expect(horariosLivres({ data: dom, servico: design })).toEqual([]);
+  it("não oferece nada num dia em que a cidade não tem atendimento", () => {
+    // Sábado em Pereira Barreto não tem atendimento (só em Bandeirantes)
+    expect(
+      horariosLivres({
+        data: sabadoDistante(),
+        servico: design,
+        cidade: "pereira-barreto",
+      }),
+    ).toEqual([]);
+  });
+
+  it("não oferece horários fora do expediente nem no intervalo entre turnos", () => {
+    const livres = horariosLivres({ data: segundaDistante(), servico: design });
+    // Nada no intervalo fechado da tarde (11h às 18h30)
+    expect(livres.some((h) => h.inicio >= 11 * 60 && h.inicio < 18.5 * 60)).toBe(false);
   });
 
   it("não oferece nada hoje nem no passado", () => {
@@ -100,14 +113,19 @@ describe("horariosLivres", () => {
     expect(horariosLivres({ data: hoje, servico: design, agora })).toEqual([]);
   });
 
-  it("num dia de semana livre, começa 07:00 e cabe o bloco inteiro antes das 11:00", () => {
+  it("num dia de semana livre, tem vagas de manhã (7h–11h) e à noite (18h30–22h)", () => {
     const livres = horariosLivres({ data: segundaDistante(), servico: design });
-    expect(livres[0]).toMatchObject({ inicio: 7 * 60, rotulo: "07:00", cidade: "pereira-barreto" });
-    // último começo + bloco (50) não passa das 11:00
-    const ultimo = livres.at(-1)!;
-    expect(ultimo.inicio + 50).toBeLessThanOrEqual(11 * 60);
+    const manha = livres.filter((h) => h.inicio < 12 * 60);
+    const noite = livres.filter((h) => h.inicio >= 18 * 60);
+
+    expect(manha[0]).toMatchObject({ inicio: 7 * 60, rotulo: "07:00", cidade: "pereira-barreto" });
+    expect(manha.at(-1)!.inicio + 50).toBeLessThanOrEqual(11 * 60);
+
+    expect(noite[0]).toMatchObject({ inicio: 18.5 * 60, rotulo: "18:30", cidade: "pereira-barreto" });
+    expect(noite.at(-1)!.inicio + 50).toBeLessThanOrEqual(22 * 60);
+
     // passo de 15 min
-    expect(livres[1].inicio - livres[0].inicio).toBe(15);
+    expect(manha[1].inicio - manha[0].inicio).toBe(15);
   });
 
   it("remove os horários que colidem com o que já está ocupado", () => {
@@ -132,12 +150,11 @@ describe("horariosLivres", () => {
 });
 
 describe("proximosDiasComVaga", () => {
-  it("pula domingo e devolve só dias com vaga", () => {
+  it("devolve os próximos dias com vaga", () => {
     const agora = new Date(2099, 5, 1);
-    const dias = proximosDiasComVaga({ servico: design, quantidade: 6, agora });
-    expect(dias.length).toBe(6);
+    const dias = proximosDiasComVaga({ servico: design, quantidade: 7, agora });
+    expect(dias.length).toBe(7);
     for (const d of dias) {
-      expect(d.data.getDay()).not.toBe(0);
       expect(d.vagas).toBeGreaterThan(0);
     }
   });
@@ -259,10 +276,15 @@ describe("serviços de durações diferentes não colidem", () => {
   });
 
   it("nenhum horário oferecido ultrapassa o fim do expediente", () => {
-    const segunda = segundaDistante(); // 07:00 às 11:00
+    const segunda = segundaDistante(); // 07:00 às 11:00 e 18:30 às 22:00
     for (const s of [design, lamination, curso]) {
       for (const h of horariosLivres({ data: segunda, servico: s })) {
-        expect(blocoDoAgendamento(h.inicio, s).fim).toBeLessThanOrEqual(11 * 60);
+        const fim = blocoDoAgendamento(h.inicio, s).fim;
+        if (h.inicio < 12 * 60) {
+          expect(fim).toBeLessThanOrEqual(11 * 60);
+        } else {
+          expect(fim).toBeLessThanOrEqual(22 * 60);
+        }
       }
     }
   });
