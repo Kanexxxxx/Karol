@@ -3,6 +3,7 @@ import "server-only";
 import { NEGOCIO, NOTIFICACOES, SITE_URL } from "@/data/negocio";
 import { formatarPreco } from "@/data/servicos";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
+import { formatarWhatsapp } from "./telefone";
 
 /**
  * Notificações.
@@ -272,6 +273,128 @@ async function enviarPelaMeta(para: string, texto: string): Promise<Response> {
   );
 }
 
+export type ComponenteTemplate =
+  | {
+      type: "body";
+      parameters: { type: "text"; text: string }[];
+    }
+  | {
+      type: "button";
+      sub_type: "url" | "quick_reply";
+      index: string;
+      parameters: { type: "text"; text: string }[];
+    };
+
+/**
+ * Manda mensagem usando TEMPLATE aprovado na Meta.
+ *
+ * Necessário quando a janela de 24 h da conversa está fechada (ex: cliente
+ * marcou pelo site e nunca conversou antes, ou lembrete de véspera).
+ *
+ * Ver TEMPLATES-WHATSAPP.md.
+ */
+export async function enviarTemplatePelaMeta(
+  para: string,
+  nomeTemplate: string,
+  componentes: ComponenteTemplate[],
+  idioma = "pt_BR",
+): Promise<Response> {
+  return fetch(
+    `https://graph.facebook.com/v23.0/${process.env.META_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${process.env.META_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: para,
+        type: "template",
+        template: {
+          name: nomeTemplate,
+          language: { code: idioma },
+          components: componentes,
+        },
+      }),
+      signal: AbortSignal.timeout(5000),
+    },
+  );
+}
+
+/**
+ * Monta os componentes do template correspondente ao evento, se houver um.
+ */
+export function templateDoEvento(
+  evento: Evento,
+  a: DadosAgendamento,
+): { nome: string; components: ComponenteTemplate[] } | null {
+  switch (evento) {
+    case "confirmacao":
+      return {
+        nome: "confirmacao_agendamento",
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: primeiroNome(a.cliente) },
+              { type: "text", text: a.servico },
+              { type: "text", text: quando(a.inicioISO) },
+              { type: "text", text: a.cidade },
+              { type: "text", text: formatarPreco(a.valorCentavos / 100) },
+            ],
+          },
+        ],
+      };
+
+    case "lembrete":
+      return {
+        nome: "lembrete_vespera",
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: primeiroNome(a.cliente) },
+              { type: "text", text: a.servico },
+              { type: "text", text: quando(a.inicioISO) },
+              { type: "text", text: a.cidade },
+            ],
+          },
+        ],
+      };
+
+    case "novo-agendamento":
+      return {
+        nome: "aviso_karol_novo_agendamento",
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: a.servico },
+              { type: "text", text: formatarPreco(a.valorCentavos / 100) },
+              { type: "text", text: quando(a.inicioISO) },
+              { type: "text", text: a.cidade },
+              {
+                type: "text",
+                text: `${a.cliente} · ${formatarWhatsapp(a.whatsappCliente)}`,
+              },
+            ],
+          },
+          {
+            type: "button",
+            sub_type: "url",
+            index: "0",
+            parameters: [{ type: "text", text: a.whatsappCliente }],
+          },
+        ],
+      };
+
+    default:
+      return null;
+  }
+}
+
 /**
  * Os botões que a cliente vê embaixo da confirmação.
  *
@@ -498,9 +621,25 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
       : await enviarPeloWebhook(webhook!, evento, a, para, texto);
 
     if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+
+      // Janela de 24 h fechada (código 131047 da Meta): tenta o envio pelo template aprovado correspondente
+      if (metaConfigurada() && (detalhe.includes("131047") || resp.status === 400)) {
+        const tpl = templateDoEvento(evento, a);
+        if (tpl) {
+          const respTpl = await enviarTemplatePelaMeta(para, tpl.nome, tpl.components);
+          if (!respTpl.ok) {
+            const detalheTpl = await respTpl.text().catch(() => "");
+            console.error(
+              `fallback template ${tpl.nome} pro ${para}: ${respTpl.status} ${detalheTpl.slice(0, 300)}`,
+            );
+          }
+          return;
+        }
+      }
+
       // O corpo da Meta diz o motivo: 131047 é janela fechada, 130497 é
       // restrição de país. Sem isso o log só diz "deu erro".
-      const detalhe = await resp.text().catch(() => "");
       console.error(`notificação ${evento}: ${resp.status} ${detalhe.slice(0, 300)}`);
     }
   } catch (e) {

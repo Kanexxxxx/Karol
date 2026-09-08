@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   enviarEvento,
+  enviarTemplatePelaMeta,
+  templateDoEvento,
   notificadorConfigurado,
   textoAgradecimento,
   linkDoPainel,
@@ -294,3 +296,85 @@ describe("o recado da cliente chega na Karol", () => {
     expect(t).not.toContain("\n\n\n");
   });
 });
+
+describe("templates da Meta", () => {
+  it("monta o template de confirmacao_agendamento com as 5 variáveis", () => {
+    const tpl = templateDoEvento("confirmacao", AG);
+    expect(tpl).not.toBeNull();
+    expect(tpl!.nome).toBe("confirmacao_agendamento");
+    expect(tpl!.components[0].type).toBe("body");
+    const params = tpl!.components[0].parameters.map((p) => p.text);
+    expect(params[0]).toBe("Maria");
+    expect(params[1]).toBe("Design com henna");
+    expect(params[3]).toBe("Pereira Barreto");
+    expect(params[4]).toMatch(/R\$\s?30/);
+  });
+
+  it("monta o template de lembrete_vespera com as 4 variáveis", () => {
+    const tpl = templateDoEvento("lembrete", AG);
+    expect(tpl).not.toBeNull();
+    expect(tpl!.nome).toBe("lembrete_vespera");
+    const params = tpl!.components[0].parameters.map((p) => p.text);
+    expect(params[0]).toBe("Maria");
+    expect(params[1]).toBe("Design com henna");
+    expect(params[3]).toBe("Pereira Barreto");
+  });
+
+  it("monta o aviso pra Karol com dados e botão dinâmico para o painel", () => {
+    const tpl = templateDoEvento("novo-agendamento", AG);
+    expect(tpl).not.toBeNull();
+    expect(tpl!.nome).toBe("aviso_karol_novo_agendamento");
+    expect(tpl!.components.length).toBe(2);
+    // botão dinâmico
+    const botao = tpl!.components[1];
+    expect(botao.type).toBe("button");
+    if (botao.type === "button") {
+      expect(botao.parameters[0].text).toBe(AG.whatsappCliente);
+    }
+  });
+
+  it("chama a API da Meta com formato type: template", async () => {
+    process.env.META_TOKEN = "token-teste";
+    process.env.META_PHONE_NUMBER_ID = "phone-123";
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("{}", { status: 200 }),
+    );
+
+    const tpl = templateDoEvento("confirmacao", AG)!;
+    await enviarTemplatePelaMeta("5518999998888", tpl.nome, tpl.components);
+
+    expect(buscar).toHaveBeenCalledTimes(1);
+    const [url, init] = buscar.mock.calls[0];
+    expect(url).toContain("phone-123/messages");
+    const corpo = JSON.parse(init?.body as string);
+    expect(corpo.type).toBe("template");
+    expect(corpo.template.name).toBe("confirmacao_agendamento");
+    expect(corpo.template.language.code).toBe("pt_BR");
+    buscar.mockRestore();
+  });
+
+  it("aciona fallback por template quando a Meta responde 131047 (janela fechada)", async () => {
+    process.env.META_TOKEN = "token-teste";
+    process.env.META_PHONE_NUMBER_ID = "phone-123";
+
+    let chamadas = 0;
+    const buscar = vi.spyOn(globalThis, "fetch").mockImplementation(async (_, init) => {
+      chamadas++;
+      const corpo = JSON.parse(String(init?.body));
+      // Primeira chamada tenta texto livre / interativo e falha com 131047
+      if (corpo.type === "interactive" || corpo.type === "text") {
+        return new Response(JSON.stringify({ error: { code: 131047, message: "Window closed" } }), {
+          status: 400,
+        });
+      }
+      // Segunda chamada é o template e tem sucesso
+      return new Response("{}", { status: 200 });
+    });
+
+    await enviarEvento("confirmacao", AG);
+
+    expect(chamadas).toBe(2);
+    buscar.mockRestore();
+  });
+});
+
