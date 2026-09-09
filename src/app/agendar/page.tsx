@@ -15,7 +15,7 @@ import {
 } from "@/data/servicos";
 import { bancoConfigurado } from "@/lib/banco";
 import { gradeDoDiaNaAgenda, horariosDoDia, mesDeVagas } from "@/lib/agendamentos";
-import { deChave, faixaDeDias, janelaDaCidade, primeiroDiaDisponivel } from "@/lib/agenda";
+import { deChave, horarioDaCidade, primeiroDiaDisponivel } from "@/lib/agenda";
 import { DIA_POR_EXTENSO } from "@/lib/datas";
 import { Calendario } from "./Calendario";
 import { FormularioDados } from "./FormularioDados";
@@ -171,7 +171,7 @@ function EscolherCidade({ servico }: { servico: Servico }) {
             >
               <span className="font-titulo text-[26px] leading-tight">{cidade.nome}</span>
               <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ouro">
-                {faixaDeDias(id)} · {janelaDaCidade(id)}
+                {horarioDaCidade(id)}
               </span>
               {cidade.local && (
                 <span className="mt-2.5 text-[14px] text-tinta-2">{cidade.local}</span>

@@ -1,5 +1,5 @@
 import { CIDADES, type CidadeId } from "@/data/negocio";
-import { faixaDeDias, janelaDaCidade } from "@/lib/agenda";
+import { horarioDaCidade } from "@/lib/agenda";
 import { Botao, Cabeca, Env, Revela } from "../ui";
 
 export function Local() {
@@ -22,7 +22,7 @@ export function Local() {
               <div key={id} className="bg-osso px-7 py-9 text-center">
                 <h3 className="mb-2 font-titulo text-[32px] font-light">{cidade.nome}</h3>
                 <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">
-                  {faixaDeDias(id)} · {janelaDaCidade(id)}
+                  {horarioDaCidade(id)}
                 </p>
                 {cidade.local && <p className="mt-3.5 text-[14.5px] text-tinta-2">{cidade.local}</p>}
               </div>

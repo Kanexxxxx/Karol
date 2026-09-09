@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  horarioDaCidade,
   blocoDoAgendamento,
   deChave,
   expedienteDoDia,
@@ -13,7 +14,7 @@ import {
   proximosDiasComVaga,
 } from "./agenda";
 import { buscarServico } from "@/data/servicos";
-import { REGRAS } from "@/data/negocio";
+import { EXPEDIENTE, REGRAS } from "@/data/negocio";
 
 const design = buscarServico("design-simples")!; // 40 min máx -> bloco de 50
 const lamination = buscarServico("brow-lamination")!; // 90 min máx -> bloco de 100
@@ -340,5 +341,43 @@ describe("marcar às 08:30 bloqueia horários ANTES também", () => {
   it("são exatamente 7 horários que somem, 3 antes e 3 depois", () => {
     const todos = horariosLivres({ data: segunda, servico: design }).length;
     expect(todos - livres.length).toBe(7);
+  });
+});
+
+/**
+ * O texto público do horário.
+ *
+ * ⚠️ Este bloco existe porque a função já foi CHUMBADA. Quando os turnos
+ * da noite e do domingo entraram, uma versão escreveu
+ * `if (cidade === "pereira-barreto") return "7h às 11h e 18h30..."` — o
+ * que funciona no dia em que se escreve e vira mentira no dia em que ela
+ * muda de horário. A agenda passaria a oferecer uma coisa e o site a
+ * dizer outra, sem nada quebrar pra denunciar.
+ */
+describe("horarioDaCidade sai do EXPEDIENTE, não de texto escrito à mão", () => {
+  it("cidade com um horário só diz só o horário", () => {
+    // Bandeirantes é sábado e nada mais
+    expect(horarioDaCidade("bandeirantes")).toBe("Sábado, 11h às 22h");
+  });
+
+  it("cidade com turnos diferentes qualifica cada um pelo dia", () => {
+    const t = horarioDaCidade("pereira-barreto");
+    expect(t).toContain("Seg a sex");
+    expect(t).toContain("7h às 11h");
+    expect(t).toContain("18h30 às 22h");
+    expect(t).toContain("Domingo");
+    expect(t).toContain("8h às 18h");
+  });
+
+  it("cada janela do EXPEDIENTE aparece no texto", () => {
+    for (const cidade of ["pereira-barreto", "bandeirantes"] as const) {
+      const texto = horarioDaCidade(cidade);
+      const janelas = EXPEDIENTE.filter((e) => e.cidade === cidade);
+      for (const j of janelas) {
+        const h = (m: number) =>
+          m % 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}` : `${Math.floor(m / 60)}h`;
+        expect(texto).toContain(`${h(j.inicio)} às ${h(j.fim)}`);
+      }
+    }
   });
 });

@@ -256,13 +256,76 @@ export function faixaDeDias(cidade: CidadeId): string {
 }
 
 /** "7h às 11h e 18h30 às 22h" — a janela de atendimento daquela cidade. */
-export function janelaDaCidade(cidade: CidadeId): string {
-  if (cidade === "pereira-barreto") {
-    return "7h às 11h e 18h30 às 22h · Dom: 8h às 18h";
+/** "18h30", "7h", "22h" — hora enxuta, do jeito que se fala. */
+function hh(minutos: number): string {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
+
+/**
+ * Domingo por último.
+ *
+ * `Date.getDay()` põe domingo como 0, então ordenar pelo número cru faz o
+ * domingo aparecer antes da segunda — "domingo 8h às 18h · seg a sex 7h
+ * às 11h", que é como ninguém fala.
+ */
+const ordemDoDia = (d: DiaSemana) => (d === 0 ? 7 : d);
+
+/** "Seg a sex", "Domingo", "Sábado" — o rótulo de um conjunto de dias. */
+function rotuloDeDias(dias: DiaSemana[]): string {
+  const ordenados = [...new Set(dias)].sort((a, b) => ordemDoDia(a) - ordemDoDia(b));
+  if (ordenados.length === 1) return maiuscula(NOMES_DIA[ordenados[0]]);
+
+  const ehSegASex =
+    ordenados.length === 5 && [1, 2, 3, 4, 5].every((d) => ordenados.includes(d as DiaSemana));
+  if (ehSegASex) return "Seg a sex";
+
+  return maiuscula(ordenados.map((d) => NOMES_DIA[d].slice(0, 3)).join(", "));
+}
+
+/**
+ * O horário de atendimento de uma cidade, por extenso e completo.
+ *
+ * ⚠️ ISTO É DERIVADO DO `EXPEDIENTE`, e tem que continuar sendo.
+ *
+ * Uma versão anterior chumbou a string de Pereira Barreto dentro da função
+ * quando os turnos da noite e do domingo entraram — `if (cidade ===
+ * "pereira-barreto") return "7h às 11h e 18h30 às 22h · Dom: 8h às 18h"`.
+ * Funciona no dia em que se escreve e vira mentira no dia em que ela muda
+ * o horário: a agenda passa a oferecer uma coisa e o site a dizer outra,
+ * sem nada quebrar pra denunciar.
+ *
+ * Este projeto já pagou esse preço antes — o domínio chumbado em três
+ * arquivos, a frase "Segunda a sexta" calculada duas vezes. Uma fonte da
+ * verdade só, sempre.
+ *
+ * Como monta: agrupa as janelas por CONJUNTO DE DIAS e escreve um trecho
+ * por grupo. Ela tem dois turnos de semana e um domingo diferente, então
+ * sai "Seg a sex, 7h às 11h e 18h30 às 22h · Domingo, 8h às 18h".
+ */
+export function horarioDaCidade(cidade: CidadeId): string {
+  const daCidade = EXPEDIENTE.filter((e) => e.cidade === cidade);
+  if (daCidade.length === 0) return "";
+
+  // dia -> as janelas daquele dia, já em texto
+  const porDia = new Map<DiaSemana, string[]>();
+  for (const e of daCidade) {
+    porDia.set(e.dia, [...(porDia.get(e.dia) ?? []), `${hh(e.inicio)} às ${hh(e.fim)}`]);
   }
-  const janela = EXPEDIENTE.find((e) => e.cidade === cidade);
-  if (!janela) return "";
-  const hh = (m: number) =>
-    `${String(Math.floor(m / 60)).padStart(2, "0")}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}`;
-  return `das ${hh(janela.inicio)} às ${hh(janela.fim)}`;
+
+  // agrupa os dias que têm exatamente o mesmo conjunto de janelas
+  const porHorario = new Map<string, DiaSemana[]>();
+  for (const [dia, janelas] of porDia) {
+    const chave = janelas.join(" e ");
+    porHorario.set(chave, [...(porHorario.get(chave) ?? []), dia]);
+  }
+
+  return [...porHorario.entries()]
+    .sort(
+      (a, b) =>
+        Math.min(...a[1].map(ordemDoDia)) - Math.min(...b[1].map(ordemDoDia)),
+    )
+    .map(([horario, dias]) => `${rotuloDeDias(dias)}, ${horario}`)
+    .join(" · ");
 }
