@@ -1,7 +1,7 @@
 import "server-only";
 
 import { CIDADES, NEGOCIO, NOTIFICACOES, REGRAS, SITE_URL } from "@/data/negocio";
-import { formatarPreco } from "@/data/servicos";
+import { formatarPreco, pedeSinalPorValor } from "@/data/servicos";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import { formatarWhatsapp } from "./telefone";
 
@@ -102,12 +102,12 @@ function enderecoPorCidade(cidadeNome: string): string {
 }
 
 export function textoParaKarol(a: DadosAgendamento): string {
-  const pendenteSinal = REGRAS.sinal.ativo && a.situacao === "pendente";
+  const pendenteSinal = a.situacao === "pendente" && pedeSinalPorValor(a.valorCentavos);
   const valorSinal = formatarPreco((a.valorCentavos * (REGRAS.sinal.porcentagem / 100)) / 100);
 
   return [
     pendenteSinal
-      ? "📅 Novo pedido pelo site (aguardando sinal PIX)"
+      ? "📅 Novo pedido — aguardando o sinal"
       : "📅 Novo agendamento pelo site",
     "",
     `👤 *${a.cliente}*`,
@@ -153,7 +153,7 @@ export function linkDoPainel(whatsappCliente: string): string {
 
 export function textoConfirmacao(a: DadosAgendamento): string {
   const endereco = enderecoPorCidade(a.cidade);
-  const pendenteSinal = REGRAS.sinal.ativo && a.situacao === "pendente";
+  const pendenteSinal = a.situacao === "pendente" && pedeSinalPorValor(a.valorCentavos);
 
   if (pendenteSinal) {
     const valorSinal = formatarPreco((a.valorCentavos * (REGRAS.sinal.porcentagem / 100)) / 100);
@@ -194,6 +194,7 @@ export function textoLembrete(a: DadosAgendamento): string {
     "",
     `💄 ${a.servico}`,
     `🗓️ ${quando(a.inicioISO)}`,
+    `📍 ${a.cidade}`,
     `📍 ${a.cidade} — ${endereco}`,
     "",
     "Não esquece de vir sem maquiagem. 🤍",

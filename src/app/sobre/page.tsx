@@ -114,7 +114,7 @@ function Retrato() {
 
   return (
     <section className="trama relative overflow-hidden border-b border-linha">
-      <Env className="grid items-end gap-9 pt-10 pb-0 lg:grid-cols-[0.92fr_1.08fr] lg:gap-10 lg:pt-14">
+      <Env className="grid items-end gap-9 pt-10 pb-0 lg:grid-cols-[1fr_0.82fr] lg:gap-12 lg:pt-14">
         <div className="py-8 lg:py-16">
           <Rotulo>Quem faz</Rotulo>
 
@@ -141,6 +141,18 @@ function Retrato() {
           do `Env` e encosta na borda da janela. No celular ela fica
           contida, porque lá não sobra margem pra sangrar.
         */}
+        {/*
+          ⚠️ A ALTURA É LIMITADA NO COMPUTADOR, e isso é conserto de um
+          defeito real: a foto é um retrato 4:5 de corpo inteiro, e numa
+          coluna larga ela virava um bloco de ~800 px de altura que
+          empurrava o resto da página pra fora da primeira tela. No
+          celular ela continua inteira e larga — lá é ela que segura a
+          atenção.
+
+          `w-auto` com `ml-auto` mantém a proporção e encosta a foto na
+          borda direita, que é o que faz o sangramento continuar
+          funcionando mesmo com a altura travada.
+        */}
         <div className="lg:-mr-[46px] lg:-mb-px xl:-mr-[calc((100vw-1220px)/2+46px)]">
           <Image
             src={foto.arquivo}
@@ -148,8 +160,8 @@ function Retrato() {
             width={foto.largura}
             height={foto.altura}
             priority
-            sizes="(min-width: 1024px) 56vw, 100vw"
-            className="h-auto w-full"
+            sizes="(min-width: 1024px) 42vw, 100vw"
+            className="h-auto w-full lg:ml-auto lg:max-h-[66vh] lg:w-auto"
           />
         </div>
       </Env>
@@ -231,34 +243,59 @@ function Curva() {
   );
 }
 
-/** Os três momentos da história dela. Palavras e respostas dela no formulário de fechamento (08/09/2026). */
+/**
+ * Os três momentos da história dela.
+ *
+ * ⚠️ TUDO AQUI SAIU DO FORMULÁRIO QUE ELA RESPONDEU em 07/09/2026. Não há
+ * uma frase inventada nesta lista, e não pode haver: é a página que leva o
+ * nome dela, e ela lê.
+ *
+ * As respostas que viraram texto:
+ * - "Em que ano você começou?" -> 2021
+ * - "Como você começou?" -> a mãe, o medo, as 6 meninas de treino
+ * - "O que você faz que as outras não fazem?" -> "minha disponibilidade,
+ *   e com certeza o atendimento"
+ * - "Qual foi o atendimento que você mais lembra?" -> a cliente que
+ *   desabafou e chorou
+ * - "Marca de produto?" -> "Lá Benig, minha henna queridinha"
+ * - "Fez algum curso?" -> o primeiro na cidade dela, mais três online de
+ *   maquiagem, e o de sobrancelha também local
+ *
+ * Uma versão anterior duplicou as chaves deste objeto (dois `titulo`, dois
+ * `rotulo`) tentando acrescentar sem apagar. Em JS a última vence, então
+ * metade do texto novo entrava e metade do velho ficava — e o resultado
+ * era a página dizendo a mesma coisa duas vezes, que é justamente do que o
+ * Kainã reclamou.
+ */
 const CAPITULOS = [
   {
     rotulo: "O começo",
-    titulo: "Começou com um empurrão da mãe",
+    titulo: "Foi a mãe dela que deu o empurrão",
     texto: [
-      "Em 2021 a Karol já atendia com maquiagem e ministrava cursos quando sua mãe deu o conselho certeiro: juntar maquiagem com sobrancelhas para complementar o trabalho e aumentar a renda.",
-      "No início dava medo de errar — maquiagem, se a cliente não gostar, é só lavar o rosto; sobrancelha é diferente. Ela criou coragem, fez o curso e treinou em 6 amigas voluntárias até se sentir 100% segura para cobrar a primeira cliente. Pegou confiança e segue na área até hoje.",
+      "Em 2021 a Karol já fazia maquiagem e dava aula. Foi a mãe quem apontou o óbvio que ela não estava vendo: juntar sobrancelha com maquiagem era o jeito de crescer sem trocar de profissão.",
+      "Ela travou. E o motivo dela é bom demais pra parafrasear: maquiagem, se a cliente não gostar, é só lavar o rosto. Sobrancelha é outra história — o erro fica no rosto da pessoa por semanas.",
+      "Fez o curso mesmo com medo. Depois treinou de graça em seis amigas, uma atrás da outra, até ter coragem de cobrar da primeira cliente. Está nisso desde então.",
     ],
     citacao: NEGOCIO.lemaCurso,
     fundo: "bg-papel",
   },
   {
-    rotulo: "A técnica e o cuidado",
-    titulo: "Atenção a cada detalhe e acolhimento",
+    rotulo: "O que ela faz diferente",
+    titulo: "A cliente que saiu chorando — de bem",
     texto: [
-      "Depois do primeiro curso presencial em Pereira Barreto, vieram mais três especializações em maquiagem e o aperfeiçoamento contínuo em design. Na henna, a queridinha de confiança é a Lá & Benig.",
-      "Mas o que mais marca quem passa pelo studio é a escuta e o atendimento. Teve cliente que desabafou sobre a vida durante o atendimento, chorou de emoção por ser ouvida com carinho e saiu renovada no espelho e na alma.",
+      "Perguntei a ela qual é o diferencial dela, esperando ouvir alguma técnica. A resposta foi: a disponibilidade, e o atendimento.",
+      "O atendimento de que ela mais se lembra não tem nada a ver com sobrancelha. Uma cliente começou a desabafar sobre o próprio passado no meio do procedimento, e as duas foram conversando. No fim ela chorou — não pelo espelho, pela conversa.",
+      "É o que acontece quando alguém senta na cadeira e ninguém está esperando na porta pra entrar depois.",
     ],
     citacao: NEGOCIO.lema,
     fundo: "bg-creme",
   },
   {
-    rotulo: "Pra quem",
-    titulo: "Disponibilidade e dedicação individual",
+    rotulo: "A mão dela",
+    titulo: "Quatro cursos e uma henna de confiança",
     texto: [
-      "O atendimento é exclusivo, com horário reservado e atenção dedicada a uma cliente por vez — em Pereira Barreto durante a semana e aos domingos, e em Bandeirantes D'Oeste aos sábados.",
-      "O design masculino tem seu espaço próprio na tabela com preço próprio. E no curso de automaquiagem, a aluna aprende no próprio ritmo, da preparação da pele ao acabamento, com atenção individual do início ao fim.",
+      "O primeiro curso foi aqui mesmo, em Pereira Barreto. Depois vieram mais três de maquiagem, todos online, e o de design de sobrancelha também na própria cidade.",
+      "Na henna ela não troca: Lá Benig. Palavra dela — “minha henna queridinha para sobrancelhas”. Em maquiagem ela circula entre várias marcas, mas a henna é uma só.",
     ],
     citacao: null,
     fundo: "bg-ouro-fundo",
@@ -347,7 +384,9 @@ function Historia() {
  * já diz o que precisa.
  */
 function Maos() {
-  const foto = FOTOS.atendimento;
+  // ⚠️ NÃO usar `FOTOS.atendimento` aqui: é o mesmo arquivo da galeria
+  // de trabalhos, e a foto aparecia duas vezes no site.
+  const foto = FOTOS.faixaTrabalho;
 
   return (
     <section className="relative">

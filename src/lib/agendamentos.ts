@@ -4,7 +4,6 @@ import { banco } from "./banco";
 import {
   blocoDoAgendamento,
   deChave,
-  expedienteDoDia,
   expedientesDoDia,
   fatiarPorDia,
   gradeDoDia,
@@ -18,7 +17,12 @@ import {
 import { lerPeriodo, montarPeriodo } from "./periodo";
 import { enviarEvento } from "./notificacoes";
 import { normalizarWhatsapp } from "./telefone";
-import { buscarServico, buscarServicoAgendavel, type Servico } from "@/data/servicos";
+import {
+  buscarServico,
+  buscarServicoAgendavel,
+  precisaDeSinal,
+  type Servico,
+} from "@/data/servicos";
 import { CIDADES, NEGOCIO, REGRAS, type CidadeId } from "@/data/negocio";
 
 export type Agendamento = {
@@ -288,7 +292,21 @@ export async function criarAgendamento(dados: {
   const fim = emData(dia, bloco.fim);
   const cidade = livres.find((h) => h.inicio === dados.inicioMin)!.cidade;
 
-  const situacao = REGRAS.sinal.ativo || REGRAS.aprovacaoManual ? "pendente" : "confirmado";
+  /*
+    ⚠️ QUEM ESPERA E QUEM CONFIRMA NA HORA.
+
+    Isto era `REGRAS.sinal.ativo || REGRAS.aprovacaoManual`, o que punha
+    TODO agendamento como pendente — inclusive um design de R$ 25, que ela
+    não quer travar. A cliente marcava e ficava no vácuo esperando uma
+    aprovação que a Karol nem sabia que precisava dar.
+
+    As duas respostas dela que pareciam brigar se encaixam aqui:
+    "pode valer na hora e eu só recebo o aviso" vale pros serviços baratos;
+    "cobro 50% de sinal nos de R$ 80 ou mais" vale pros caros, e sinal só
+    faz sentido se o horário esperar o comprovante.
+  */
+  const situacao =
+    precisaDeSinal(servico) || REGRAS.aprovacaoManual ? "pendente" : "confirmado";
 
   const { data, error } = await bd
     .from("agendamentos")

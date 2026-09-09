@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { expedientesDoDia, gradeDoDia } from "./agenda";
 import { blocoNaAgenda, buscarServico, SERVICOS } from "@/data/servicos";
-import { EXPEDIENTE, REGRAS } from "@/data/negocio";
+import { REGRAS } from "@/data/negocio";
 
 /**
  * Auditoria da agenda — a pergunta que o Kainã fez três vezes.

@@ -68,6 +68,53 @@ describe("criarAgendamento", () => {
     });
   });
 
+  /**
+   * ⚠️ QUEM ESPERA E QUEM CONFIRMA NA HORA.
+   *
+   * Ela deu duas respostas que pareciam brigar: "pode valer na hora e eu só
+   * recebo o aviso" E "cobro 50% de sinal nos de R$ 80 ou mais". As duas
+   * valem — cada uma pra uma faixa de preço.
+   *
+   * Uma versão anterior punha TODO agendamento como `pendente`, inclusive o
+   * design de R$ 25. A cliente marcava e ficava no vácuo esperando uma
+   * aprovação que a Karol nem sabia que precisava dar.
+   */
+  it("serviço abaixo do mínimo confirma na hora", async () => {
+    const m = usarBanco({
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: { id: "ag-novo" }, error: null }),
+    });
+
+    await criarAgendamento({
+      servicoId: "design-simples", // R$ 25
+      chaveDia: diaUtilFuturo(),
+      inicioMin: 7 * 60,
+      nome: "Fulana de Tal",
+      whatsapp: "(18) 99999-8888",
+    });
+
+    const insert = m.chamadas.find((c) => c.op === "insert");
+    expect(insert?.valores).toMatchObject({ situacao: "confirmado" });
+  });
+
+  it("serviço que pede sinal fica pendente até ela conferir o PIX", async () => {
+    const m = usarBanco({
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: { id: "ag-novo" }, error: null }),
+    });
+
+    await criarAgendamento({
+      servicoId: "brow-lamination", // R$ 80
+      chaveDia: diaUtilFuturo(),
+      inicioMin: 7 * 60,
+      nome: "Fulana de Tal",
+      whatsapp: "(18) 99999-8888",
+    });
+
+    const insert = m.chamadas.find((c) => c.op === "insert");
+    expect(insert?.valores).toMatchObject({ situacao: "pendente" });
+  });
+
   it("recusa serviço inexistente", async () => {
     usarBanco({});
     const r = await criarAgendamento({

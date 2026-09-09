@@ -102,6 +102,20 @@ export const FOTOS = {
     largura: 1400,
     altura: 1867,
   },
+
+  /**
+   * A faixa larga da página dela.
+   *
+   * ⚠️ Existe pra NÃO repetir. A `/sobre` usava `atendimento`, que é o
+   * mesmo arquivo da galeria de trabalhos — a mesma foto aparecia duas
+   * vezes no site, e o Kainã viu. Esta vinha sobrando no acervo.
+   */
+  faixaTrabalho: {
+    arquivo: `${P}/trab-15.jpg`,
+    alt: "Cliente com o design de sobrancelha pronto",
+    largura: 1200,
+    altura: 1600,
+  },
 } as const;
 
 /** Uma cliente diferente por serviço — nada se repete na tabela. */
@@ -169,6 +183,7 @@ export const GALERIA: Foto[] = [
   trabalho(2, "Design de sobrancelha"),
   trabalho(3, "Maquiagem social"),
   trabalho(4, "Brow lamination"),
+  trabalho(5, "Maquiagem social"),
   // trab-05 saiu: moça de trança com make escura de trend de challenge
   trabalho(6, "Design de sobrancelha"),
   trabalho(7, "Brow lamination"),
@@ -245,5 +260,6 @@ export const INSTAGRAM = {
 export const ESTEIRA: Foto[] = [
   "trab-01.jpg", "trab-03.jpg", "trab-06.jpg", "trab-11.jpg",
   "trab-09.jpg", "trab-13.jpg", "trab-16.jpg", "trab-20.jpg",
+  "trab-02.jpg", "trab-05.jpg",
   "trab-02.jpg", "trab-17.jpg",
 ].map(naGaleria);

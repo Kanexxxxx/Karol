@@ -4,7 +4,7 @@ import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env, Rotulo } from "@/components/ui";
 import { ANTES_DE_VIR, NEGOCIO, REGRAS } from "@/data/negocio";
-import { formatarPreco } from "@/data/servicos";
+import { buscarServico, formatarPreco, valorDoSinal } from "@/data/servicos";
 import { buscarAgendamento } from "@/lib/agendamentos";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
@@ -26,11 +26,7 @@ export default async function Confirmado({
       <Cabecalho />
       <main className="flex-1 bg-osso pb-24 lg:pb-0">
         <Env className="py-14 lg:py-20">
-          {!agendamento ? (
-            <NaoEncontrado />
-          ) : (
-            <Sucesso agendamento={agendamento} />
-          )}
+          {!agendamento ? <NaoEncontrado /> : <Sucesso agendamento={agendamento} />}
         </Env>
       </main>
       <Rodape />
@@ -44,28 +40,57 @@ function Sucesso({
 }: {
   agendamento: NonNullable<Awaited<ReturnType<typeof buscarAgendamento>>>;
 }) {
-  const pendente = agendamento.situacao === "pendente";
   const dia = DIA_POR_EXTENSO.format(agendamento.inicio);
   const hora = HORA.format(agendamento.inicio);
-  const valorSinal = formatarPreco((agendamento.servicoPreco * (REGRAS.sinal.porcentagem / 100)) / 100);
 
-  const mensagemWhatsapp = pendente && REGRAS.sinal.ativo
-    ? `Oi Karol! Acabei de agendar pelo site: ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}. Estou enviando o comprovante do sinal de 50%!`
-    : `Oi Karol! Acabei de agendar pelo site. ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}.`;
+  /*
+    O sinal é do SERVIÇO, não do agendamento.
 
-  const recado = linkWhatsapp(mensagemWhatsapp);
+    Ela pediu sinal só nos serviços de R$ 80 ou mais. Um design de R$ 25
+    confirma na hora e nunca vê esta parte da tela. Ver `precisaDeSinal`
+    em `data/servicos.ts`.
+
+    Se o serviço sumiu da tabela (foi renomeado, saiu do catálogo), o
+    agendamento antigo continua abrindo — só sem o bloco do PIX. Nunca
+    quebrar uma tela de confirmação por causa de dado histórico.
+  */
+  const servico = buscarServico(agendamento.servicoId);
+  const sinalCentavos = servico ? valorDoSinal(servico) : 0;
+  const pedeSinal = sinalCentavos > 0;
+  const esperandoPagamento = agendamento.situacao === "pendente" && pedeSinal;
+
+  /*
+    Este toque é a peça central do WhatsApp automático, e por dois motivos:
+
+    1. avisa a Karol na hora, com o nome e o horário — ela acha a cliente
+       no painel pelo nome ou pelo telefone;
+    2. abre a **janela de 24 h** da Meta. Mensagem que a empresa manda sem
+       a cliente ter falado primeiro é template pago e precisa de
+       aprovação. Depois deste toque, tudo o que sair nas 24 h seguintes é
+       texto livre e de graça. Ver WHATSAPP.md, seção 2.
+
+    Por isso a mensagem sai escrita da cliente PRA Karol, e não o contrário.
+
+    ⚠️ SEM código de agendamento. A Karol acha a pessoa pelo nome ou pelo
+    telefone, que é o que ela já tem na conversa — decisão do Kainã, e ele
+    tem razão: código escrito não combina com studio de beleza, e obriga a
+    cliente a guardar uma coisa que não significa nada pra ela.
+  */
+  const recado = linkWhatsapp(
+    esperandoPagamento
+      ? `Oi Karol! Acabei de agendar pelo site: ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}. Estou mandando o comprovante do sinal aqui.`
+      : `Oi Karol! Acabei de agendar pelo site. ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}.`,
+  );
 
   return (
     <div className="mx-auto max-w-[620px]">
-      <Rotulo>{pendente ? "Quase lá" : "Tudo certo"}</Rotulo>
+      <Rotulo>{esperandoPagamento ? "Quase lá" : "Tudo certo"}</Rotulo>
       <h1 className="mt-2.5 mb-3 font-titulo text-[clamp(32px,6vw,50px)] leading-[1.05] font-light">
-        {pendente ? "Seu pedido chegou pra Karol" : "Horário confirmado"}
+        {esperandoPagamento ? "Falta o sinal pra fechar" : "Horário confirmado"}
       </h1>
       <p className="mb-8 text-tinta-2">
-        {pendente && REGRAS.sinal.ativo
-          ? "Para segurar o seu horário na agenda, faça o PIX do sinal de 50% e envie o comprovante para a Karol no WhatsApp. Assim que ela conferir, seu agendamento é aprovado!"
-          : pendente
-          ? "Ela confirma com você pelo WhatsApp em breve. Enquanto isso, o horário está segurado no seu nome."
+        {esperandoPagamento
+          ? `Seu horário está segurado até ${REGRAS.sinal.seguraAte}. Faça o PIX do sinal e mande o comprovante pra Karol no WhatsApp — assim que ela conferir, está fechado.`
           : "O horário já está reservado no seu nome. Anote os detalhes:"}
       </p>
 
@@ -74,36 +99,27 @@ function Sucesso({
         <Linha rotulo="Dia" valor={dia} capitalizar />
         <Linha rotulo="Hora" valor={hora} />
         <Linha rotulo="Onde" valor={agendamento.cidade} />
-        <Linha rotulo="Valor total" valor={formatarPreco(agendamento.servicoPreco / 100)} />
-        {REGRAS.sinal.ativo && (
-          <Linha rotulo={`Sinal (${REGRAS.sinal.porcentagem}%)`} valor={valorSinal} destaque />
+        <Linha
+          rotulo={pedeSinal ? "Valor total" : "Valor"}
+          valor={formatarPreco(agendamento.servicoPreco / 100)}
+          destaque={!pedeSinal}
+        />
+        {pedeSinal && (
+          <Linha
+            rotulo={`Sinal (${REGRAS.sinal.porcentagem}%)`}
+            valor={formatarPreco(sinalCentavos / 100)}
+            destaque
+          />
+        )}
+        {pedeSinal && (
+          <Linha
+            rotulo="Paga no dia"
+            valor={formatarPreco((agendamento.servicoPreco - sinalCentavos) / 100)}
+          />
         )}
       </dl>
 
-      {pendente && REGRAS.sinal.ativo && (
-        <div className="mt-7 border border-ouro/40 bg-ouro-fundo/40 p-5 sm:p-6">
-          <div className="flex flex-col gap-2">
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">
-              Dados para pagamento do sinal
-            </span>
-            <p className="text-[14px] text-tinta-2">
-              Chave PIX ({REGRAS.sinal.tipoChave}): <strong className="font-mono text-tinta font-semibold">{REGRAS.sinal.chavePix}</strong>
-            </p>
-            <p className="text-[13px] text-tinta-3">
-              Banco: <strong className="text-tinta-2">{REGRAS.sinal.banco}</strong> · Favorecido: <strong className="text-tinta-2">{REGRAS.sinal.favorecido}</strong>
-            </p>
-            <div className="mt-2 flex items-center gap-3">
-              <CopiarPix chave={REGRAS.sinal.chavePix} />
-              <span className="text-[12px] text-tinta-3">
-                ou digite {REGRAS.sinal.chavePix} no seu app do banco
-              </span>
-            </div>
-            <p className="mt-3 border-t border-ouro/20 pt-3 text-[12px] text-tinta-3">
-              💡 <em>O sinal é devolvido caso você precise desmarcar com pelo menos 24 horas de antecedência.</em>
-            </p>
-          </div>
-        </div>
-      )}
+      {esperandoPagamento && <BlocoPix valorCentavos={sinalCentavos} />}
 
       <div className="mt-7 border-t border-linha pt-6">
         <h2 className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.22em] text-ouro">
@@ -112,7 +128,9 @@ function Sucesso({
         <ul className="flex flex-col gap-2">
           {ANTES_DE_VIR.map((aviso) => (
             <li key={aviso} className="flex gap-2 text-[14px] text-tinta-2">
-              <span aria-hidden="true" className="text-ouro-claro">—</span>
+              <span aria-hidden="true" className="text-ouro-claro">
+                —
+              </span>
               {aviso}
             </li>
           ))}
@@ -126,9 +144,7 @@ function Sucesso({
           rel="noopener noreferrer"
           className="inline-flex min-h-[50px] items-center justify-center bg-ouro px-7 py-4 text-[11.5px] font-bold uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-90"
         >
-          {pendente && REGRAS.sinal.ativo
-            ? "Enviar comprovante no WhatsApp"
-            : "Avisar a Karol no WhatsApp"}
+          {esperandoPagamento ? "Mandar o comprovante" : "Avisar a Karol no WhatsApp"}
         </a>
         <Link
           href="/"
@@ -146,12 +162,53 @@ function Sucesso({
   );
 }
 
+/**
+ * Os dados do PIX.
+ *
+ * ⚠️ NÃO PROMETA DEVOLUÇÃO AQUI. Uma versão anterior escreveu que o sinal
+ * volta se a cliente desmarcar com 24 h de antecedência — e a resposta
+ * dela no formulário foi o contrário, literalmente: "Não volta — é
+ * justamente pra ela não desmarcar".
+ *
+ * Isso chegou a ir pro ar. Promessa de dinheiro numa tela de confirmação
+ * não é detalhe de texto: é o que a cliente vai cobrar depois, e quem
+ * responde é a Karol. O aviso abaixo é o que ela decidiu, escrito de um
+ * jeito que não soa hostil.
+ */
+function BlocoPix({ valorCentavos }: { valorCentavos: number }) {
+  return (
+    <div className="mt-7 border border-ouro/40 bg-ouro-fundo/40 p-5 sm:p-6">
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">
+        PIX do sinal · {formatarPreco(valorCentavos / 100)}
+      </p>
+
+      <p className="mt-3 text-[14px] text-tinta-2">
+        Chave ({REGRAS.sinal.tipoChave}):{" "}
+        <strong className="font-mono font-semibold text-tinta">{REGRAS.sinal.chavePix}</strong>
+      </p>
+      <p className="mt-1 text-[13px] text-tinta-3">
+        {REGRAS.sinal.banco} · {REGRAS.sinal.favorecido}
+      </p>
+
+      <div className="mt-4">
+        <CopiarPix chave={REGRAS.sinal.chavePix} />
+      </div>
+
+      {!REGRAS.sinal.devolve && (
+        <p className="mt-4 border-t border-ouro/20 pt-3.5 text-[12.5px] leading-relaxed text-tinta-3">
+          O sinal desconta do valor final e não é devolvido em caso de
+          desistência — é ele que garante que o horário fica guardado só pra
+          você. Se precisar mudar de dia, me chame antes que a gente ajeita.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function NaoEncontrado() {
   return (
     <div className="mx-auto max-w-[520px] border border-linha bg-papel p-8 text-center">
-      <h1 className="mb-3 font-titulo text-[30px] font-light">
-        Não achei esse agendamento
-      </h1>
+      <h1 className="mb-3 font-titulo text-[30px] font-light">Não achei esse agendamento</h1>
       <p className="mb-6 text-tinta-2">
         O link pode ter expirado. Se você acabou de agendar e recebeu a
         confirmação, está tudo certo. Na dúvida, me chame no WhatsApp.

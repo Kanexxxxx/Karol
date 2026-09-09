@@ -138,3 +138,44 @@ export function buscarServicoAgendavel(id: string): Servico | undefined {
   const s = buscarServico(id);
   return s?.agendavel ? s : undefined;
 }
+
+/* ------------------------------------------------------------------ */
+/* O sinal                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Este serviço pede sinal adiantado?
+ *
+ * ⚠️ A regra é do VALOR, não do serviço. Ela respondeu "só os de R$ 80 ou
+ * mais (brow lamination, maquiagem, curso)" — que é exatamente o que sai
+ * deste corte na tabela de hoje. Amarrando ao preço em vez de a uma lista
+ * de ids, um serviço novo caro já nasce pedindo sinal e um reajuste não
+ * exige lembrar de mexer aqui.
+ *
+ * É isto que reconcilia as duas respostas dela que pareciam brigar: ela
+ * quer sinal, E quer que o agendamento valha na hora. As duas valem —
+ * cada uma pra uma faixa de preço. Design de R$ 25 confirma na hora; brow
+ * lamination espera o comprovante.
+ */
+/**
+ * A regra em CENTAVOS — a unidade que o banco e as notificações usam.
+ *
+ * ⚠️ Existe separada de `precisaDeSinal` porque quem monta a mensagem do
+ * WhatsApp só tem o valor, não o objeto do serviço. Uma versão anterior
+ * calculou 50% de qualquer agendamento pendente sem conferir o mínimo, e
+ * um design de R$ 30 aparecia pedindo R$ 15 de sinal — num serviço em que
+ * ela não quer sinal nenhum.
+ */
+export function pedeSinalPorValor(centavos: number): boolean {
+  return REGRAS.sinal.ativo && centavos >= REGRAS.sinal.minimoCentavos;
+}
+
+export function precisaDeSinal(servico: Servico): boolean {
+  return pedeSinalPorValor(servico.preco * 100);
+}
+
+/** Quanto de sinal, em CENTAVOS. Zero quando o serviço não pede. */
+export function valorDoSinal(servico: Servico): number {
+  if (!precisaDeSinal(servico)) return 0;
+  return Math.round((servico.preco * 100 * REGRAS.sinal.porcentagem) / 100);
+}

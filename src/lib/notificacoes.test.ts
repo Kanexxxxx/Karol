@@ -57,18 +57,43 @@ describe("templates", () => {
   });
 
   it("quando pendente com sinal, mensagem pra cliente inclui PIX e 50%", () => {
-    const pendente = textoConfirmacao({ ...AG, situacao: "pendente" });
+    // R$ 100 (maquiagem social) — acima do mínimo de R$ 80, então pede
+    // sinal. O `AG` padrão é um design de R$ 30 e NÃO pede.
+    const pendente = textoConfirmacao({
+      ...AG,
+      situacao: "pendente",
+      valorCentavos: 10000,
+    });
     expect(pendente).toContain("Sinal para segurar o horário (50%)");
     expect(pendente).toContain("18997525291");
     expect(pendente).toContain("Nubank");
-    expect(pendente).toMatch(/R\$\s?15/);
+    expect(pendente).toMatch(/R\$\s?50/);
   });
 
-  it("aviso pra Karol inclui sinal quando pendente", () => {
-    const t = textoParaKarol({ ...AG, situacao: "pendente" });
-    expect(t).toContain("aguardando sinal PIX");
+  it("cliente que marcou serviço barato não recebe PIX nenhum", () => {
+    const pendente = textoConfirmacao({ ...AG, situacao: "pendente" });
+    expect(pendente).not.toContain("18997525291");
+    expect(pendente).not.toMatch(/sinal/i);
+  });
+
+  /**
+   * ⚠️ O sinal é só nos serviços de R$ 80 ou mais — resposta dela.
+   *
+   * Uma versão anterior calculava 50% de qualquer agendamento pendente,
+   * e um design de R$ 30 aparecia pedindo R$ 15 num serviço em que ela
+   * não quer sinal nenhum. Estes dois testes são o par que trava isso.
+   */
+  it("aviso pra Karol pede o sinal num serviço acima do mínimo", () => {
+    const t = textoParaKarol({ ...AG, situacao: "pendente", valorCentavos: 10000 });
+    expect(t).toMatch(/aguardando o sinal/i);
     expect(t).toContain("Sinal a receber (50%)");
-    expect(t).toMatch(/R\$\s?15/);
+    expect(t).toMatch(/R\$\s?50/);
+  });
+
+  it("NÃO pede sinal num serviço abaixo do mínimo, mesmo pendente", () => {
+    const t = textoParaKarol({ ...AG, situacao: "pendente", valorCentavos: 3000 });
+    expect(t).not.toMatch(/sinal/i);
+    expect(t).toContain("Novo agendamento pelo site");
   });
 });
 

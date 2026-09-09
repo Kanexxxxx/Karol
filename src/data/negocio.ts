@@ -85,7 +85,16 @@ export type CidadeId = "pereira-barreto" | "bandeirantes";
  */
 export const CIDADES: Record<
   CidadeId,
-  { nome: string; local: string | null; enderecoCompleto: string }
+  {
+    nome: string;
+    /** O que aparece no SITE PÚBLICO. `null` = só a cidade. */
+    local: string | null;
+    /**
+     * ⚠️ NUNCA vai pro site. Só entra na mensagem de WhatsApp de quem já
+     * marcou — ela pediu assim, e são endereços residenciais.
+     */
+    enderecoCompleto: string;
+  }
 > = {
   "pereira-barreto": {
     nome: "Pereira Barreto",
@@ -94,6 +103,8 @@ export const CIDADES: Record<
   },
   bandeirantes: {
     nome: "Bandeirantes D'Oeste",
+    // Ela ainda não passou o local; combinado é publicar só a cidade e
+    // acrescentar depois. `local: null` some do site sem deixar buraco.
     local: null,
     enderecoCompleto: "Rua 2 de Fevereiro, 274 (casa da mãe)",
   },
@@ -154,27 +165,83 @@ export const REGRAS = {
   pausaAlmoco: null,
 
   /**
-   * Resposta do formulário final (08/09/2026):
+   * O SINAL — respondido por ela no formulário final (07/09/2026).
+   *
+   * ⚠️ Esta seção passou o projeto inteiro como A_CONFIRMAR porque havia
+   * uma ambiguidade real: "sinal" podia ser dinheiro ou aviso. Ela
+   * respondeu **"as duas coisas"**, e detalhou:
+   *
    * - "se for o sinal eu cobro 50% do valor do procedimento"
-   * - Chave PIX: 18997525291 (Telefone / Nubank / Karolaine)
-   * - Devolução se desmarcar: "Volta, se ela avisar com um dia de antecedência" (24h)
-   * - Karol confere o comprovante no WhatsApp e aprova no painel.
+   * - Chave PIX: 18997525291 (telefone, Nubank, Karolaine)
+   * - "Não volta — é justamente pra ela não desmarcar"
+   * - Segura o horário "até o fim do dia" esperando o comprovante
+   * - Só nos serviços "de R$ 80 ou mais (brow lamination, maquiagem, curso)"
+   *
+   * ⚠️ A DEVOLUÇÃO É A LINHA MAIS PERIGOSA DAQUI. Uma versão anterior
+   * escreveu que o sinal volta se a cliente avisar com 24 h — o contrário
+   * do que ela respondeu — e isso foi pro ar como promessa de dinheiro na
+   * tela de confirmação. Se alguém for mudar, tem que ser com resposta
+   * dela por escrito, não por dedução.
    */
   sinal: {
     ativo: true,
+
+    /** Metade do valor do serviço. Palavra dela. */
     porcentagem: 50,
+
+    /**
+     * Só serviços a partir deste valor pedem sinal.
+     *
+     * Ela escolheu "só os de R$ 80 ou mais", que na tabela de hoje são
+     * brow lamination, maquiagem social e o curso. Um design de R$ 25 com
+     * sinal de R$ 12,50 daria mais trabalho de conferir comprovante do que
+     * o horário vale.
+     *
+     * Em centavos, que é a unidade em que o preço vive no banco.
+     */
+    minimoCentavos: 80 * 100,
+
     chavePix: "18997525291",
     tipoChave: "Telefone",
     banco: "Nubank",
     favorecido: "Karolaine Carvalho",
-    prazoDevolucaoHoras: 24,
+
+    /**
+     * NÃO devolve. Resposta literal: "Não volta — é justamente pra ela não
+     * desmarcar". O site não pode prometer o contrário em lugar nenhum.
+     */
+    devolve: false,
+
+    /**
+     * Até quando o horário fica segurado esperando o comprovante.
+     * Ela escolheu "até o fim do dia".
+     */
+    seguraAte: "o fim do dia",
   },
 
   /**
+   * Ela pediu pra aprovar cada agendamento na mão. Ver seção 04 do briefing:
+   * a recomendação é deixar desligado e o sinal fazer o filtro, com este
+   * botão disponível no painel caso ela prefira.
    * Com o sinal ativo, o agendamento pelo site entra como "pendente" até a
    * Karol conferir o comprovante e confirmar pelo painel ou WhatsApp.
    */
-  aprovacaoManual: true,
+  /**
+   * ⚠️ NÃO é mais um interruptor global — é consequência do sinal.
+   *
+   * Ela respondeu "Não, pode valer na hora e eu só recebo o aviso". Mas
+   * também pediu sinal nos serviços de R$ 80 ou mais, e sinal só faz
+   * sentido se o horário ESPERAR o comprovante.
+   *
+   * As duas respostas não brigam: quem marca um design de R$ 25 confirma
+   * na hora; quem marca brow lamination fica `pendente` até ela conferir
+   * o PIX. Quem decide é `precisaDeSinal()` em `data/servicos.ts`, não uma
+   * chave booleana aqui.
+   *
+   * Esta constante fica como o que sobrou: se um dia ela quiser aprovar
+   * TODOS na mão, é aqui que liga.
+   */
+  aprovacaoManual: false,
 
   /** Ela não quer que a cliente desmarque sozinha pelo site. */
   clientePodeCancelar: false,
