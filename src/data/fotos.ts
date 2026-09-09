@@ -103,19 +103,6 @@ export const FOTOS = {
     altura: 1867,
   },
 
-  /**
-   * A faixa larga da página dela.
-   *
-   * ⚠️ Existe pra NÃO repetir. A `/sobre` usava `atendimento`, que é o
-   * mesmo arquivo da galeria de trabalhos — a mesma foto aparecia duas
-   * vezes no site, e o Kainã viu. Esta vinha sobrando no acervo.
-   */
-  faixaTrabalho: {
-    arquivo: `${P}/trab-15.jpg`,
-    alt: "Cliente com o design de sobrancelha pronto",
-    largura: 1200,
-    altura: 1600,
-  },
 } as const;
 
 /** Uma cliente diferente por serviço — nada se repete na tabela. */
@@ -212,8 +199,10 @@ export const GALERIA: Foto[] = [
     etiqueta: "Durante",
   },
   {
-    arquivo: `${P}/processo-3.jpg`,
-    alt: "Brow lamination sendo aplicada na sobrancelha",
+    // ⚠️ era `processo-3.jpg`, o mesmo arquivo da seção de atendimento
+    // na home — a mesma foto aparecia duas vezes no site.
+    arquivo: `${P}/trab-15.jpg`,
+    alt: "Sobrancelha depois do brow lamination",
     ...RETRATO,
     legenda: "Brow lamination",
     etiqueta: "Durante",

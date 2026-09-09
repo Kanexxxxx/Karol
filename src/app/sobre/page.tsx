@@ -334,34 +334,53 @@ function Historia() {
                 top: `calc(5.5rem + ${i * 1.35}rem)`,
               }}
             >
-              <div className="grid gap-6 p-7 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-11 lg:p-12">
+              <div className="p-7 lg:p-12">
                 {/*
                   O número do capítulo é informação de verdade: são três
                   momentos em ordem, e a ordem importa (ela foi aluna
                   ANTES de ensinar). Não é enfeite de "01 / 02 / 03".
                 */}
-                <p
-                  aria-hidden="true"
-                  className="font-titulo text-[clamp(40px,7vw,72px)] leading-none font-light text-ouro-claro"
-                >
-                  {i + 1}
-                </p>
+                {/* cabeçalho: número + título, na largura toda */}
+                <div className="flex items-start gap-5 lg:gap-8">
+                  <p
+                    aria-hidden="true"
+                    className="shrink-0 font-titulo text-[clamp(40px,7vw,72px)] leading-[0.8] font-light text-ouro-claro"
+                  >
+                    {i + 1}
+                  </p>
+                  <div className="min-w-0">
+                    <Rotulo>{c.rotulo}</Rotulo>
+                    <h2 className="mt-2.5 font-titulo text-[clamp(28px,5vw,46px)] leading-[1.04] font-light text-balance">
+                      {c.titulo}
+                    </h2>
+                  </div>
+                </div>
 
-                <div>
-                  <Rotulo>{c.rotulo}</Rotulo>
-                  <h2 className="mt-2.5 mb-4 font-titulo text-[clamp(28px,5vw,46px)] leading-[1.04] font-light text-balance">
-                    {c.titulo}
-                  </h2>
+                {/*
+                  ⚠️ Texto e citação DIVIDEM a largura no computador.
 
-                  <div className="flex max-w-[54ch] flex-col gap-3.5 text-[16.5px] leading-[1.66] text-tinta-2">
+                  Antes o cartão era `[número | texto]` com o texto limitado
+                  a 54ch, e num container de 1220 px sobrava metade da largura
+                  vazia à direita — o cartão parecia inacabado justamente na
+                  tela em que ele é maior.
+
+                  Quando não há citação, o texto ocupa as duas colunas em vez
+                  de deixar o buraco de volta.
+                */}
+                <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-12">
+                  <div
+                    className={`flex flex-col gap-3.5 text-[16.5px] leading-[1.66] text-tinta-2 ${
+                      c.citacao ? "" : "lg:col-span-2 lg:max-w-[68ch]"
+                    }`}
+                  >
                     {c.texto.map((t) => (
                       <p key={t}>{t}</p>
                     ))}
                   </div>
 
                   {c.citacao && (
-                    <blockquote className="mt-6 border-l-2 border-ouro-claro pl-5">
-                      <p className="max-w-[30ch] font-titulo text-[clamp(21px,3vw,30px)] leading-[1.2] font-light italic text-tinta">
+                    <blockquote className="self-center border-l-2 border-ouro-claro pl-5 lg:pl-7">
+                      <p className="font-titulo text-[clamp(21px,2.6vw,32px)] leading-[1.16] font-light italic text-balance text-tinta">
                         {c.citacao}
                       </p>
                     </blockquote>
@@ -384,9 +403,18 @@ function Historia() {
  * já diz o que precisa.
  */
 function Maos() {
-  // ⚠️ NÃO usar `FOTOS.atendimento` aqui: é o mesmo arquivo da galeria
-  // de trabalhos, e a foto aparecia duas vezes no site.
-  const foto = FOTOS.faixaTrabalho;
+  /*
+    ⚠️ A FAIXA É DELA, não de uma cliente.
+
+    Aqui já passaram duas fotos erradas. Primeiro `FOTOS.atendimento`,
+    que é o mesmo arquivo da galeria de trabalhos — a mesma imagem duas
+    vezes no site. Depois um retrato de cliente esticado em 64vh, que
+    virava um rosto gigante de uma pessoa que não é o assunto da página.
+
+    Esta é 3:2 — proporção larga de verdade, então a faixa não precisa
+    cortar quase nada pra caber, e quem aparece é a Karol.
+  */
+  const foto = FOTOS.paleta;
 
   return (
     <section className="relative">
@@ -396,7 +424,7 @@ function Maos() {
         width={foto.largura}
         height={foto.altura}
         sizes="100vw"
-        className="h-[52vh] w-full object-cover object-[center_28%] lg:h-[64vh]"
+        className="h-[44vh] w-full object-cover object-[center_38%] lg:h-[52vh]"
       />
     </section>
   );

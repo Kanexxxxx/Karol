@@ -156,9 +156,9 @@ body {
 .trama {
   background-color: var(--color-osso);
   background-image:
-    linear-gradient(0deg, transparent 24%, var(--color-linha) 25%, var(--color-linha) 26%, transparent 27%, transparent 74%, var(--color-linha) 75%, var(--color-linha) 76%, transparent 77%, transparent),
-    linear-gradient(90deg, transparent 24%, var(--color-linha) 25%, var(--color-linha) 26%, transparent 27%, transparent 74%, var(--color-linha) 75%, var(--color-linha) 76%, transparent 77%, transparent);
-  background-size: 56px 56px;
+    linear-gradient(0deg, transparent 24%, color-mix(in srgb, var(--color-linha) 55%, transparent) 25%, color-mix(in srgb, var(--color-linha) 55%, transparent) 26%, transparent 27%, transparent 74%, color-mix(in srgb, var(--color-linha) 55%, transparent) 75%, color-mix(in srgb, var(--color-linha) 55%, transparent) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, color-mix(in srgb, var(--color-linha) 55%, transparent) 25%, color-mix(in srgb, var(--color-linha) 55%, transparent) 26%, transparent 27%, transparent 74%, color-mix(in srgb, var(--color-linha) 55%, transparent) 75%, color-mix(in srgb, var(--color-linha) 55%, transparent) 76%, transparent 77%, transparent);
+  background-size: 64px 64px;
 }
 
 /*
@@ -182,8 +182,18 @@ body {
   }
 }
 
+/*
+   ⚠️ SEM `display` aqui, de propósito.
+
+   Esta classe já teve `display: inline-block`, e como o CSS escrito
+   fora de `@layer` vence as utilitárias do Tailwind, ela ganhava do
+   `block` no `className` — o nome dela aparecia numa linha só no
+   celular em vez de empilhado.
+
+   É a mesma armadilha documentada em `components/ui.tsx`, com o
+   `hidden` que não escondia o botão. Quem manda no display é quem usa.
+*/
 .palavra {
-  display: inline-block;
   animation: entra-palavra 0.9s var(--ease-marca) both;
 }
 
