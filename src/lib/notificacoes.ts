@@ -667,8 +667,19 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
     if (!resp.ok) {
       const detalhe = await resp.text().catch(() => "");
 
-      // Janela de 24 h fechada (código 131047 da Meta): tenta o envio pelo template aprovado correspondente
-      if (metaConfigurada() && (detalhe.includes("131047") || resp.status === 400)) {
+      /*
+        Janela de 24 h fechada: cai pro template aprovado.
+
+        ⚠️ O gatilho é o CÓDIGO 131047, e só ele. Antes bastava um 400
+        qualquer, e um 400 pode ser telefone malformado, parâmetro
+        errado, conta suspensa — casos em que mandar template não
+        resolve nada e ainda gasta uma chamada.
+
+        131047 quer dizer exatamente uma coisa: "essa pessoa não te
+        escreveu nas últimas 24 h". É o único erro em que template é a
+        resposta certa.
+      */
+      if (metaConfigurada() && detalhe.includes("131047")) {
         const tpl = templateDoEvento(evento, a);
         if (tpl) {
           const respTpl = await enviarTemplatePelaMeta(para, tpl.nome, tpl.components);

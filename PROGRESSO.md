@@ -11,7 +11,7 @@
 > Armadilhas do Next 16: [`AGENTS.md`](./AGENTS.md).
 > O assistente da Karol no WhatsApp: [`ASSISTENTE.md`](./ASSISTENTE.md).
 
-Última atualização: **2026-09-07** (etapa 18)
+Última atualização: **2026-09-09** (etapa 19 — a Karol respondeu o formulário)
 
 ---
 
@@ -31,7 +31,7 @@ SP). Feito pelo **Kainã** (`Kanexxxxx`), que ofereceu o serviço a ela.
 | **WhatsApp** | ✅ **funcionando de verdade** — envia, recebe, responde e remarca |
 | **Assistente da Karol** | ✅ código pronto — ela controla a agenda conversando. Falta chave e migração (8.7) |
 | **Deploy** | ✅ Vercel, `karol-zeta.vercel.app` (provisório, 1 mês de teste) |
-| **Build / testes** | ✅ `npm run build` limpo · ✅ **276 testes** passando |
+| **Build / testes** | ✅ `npm run build` limpo · ✅ **291 testes** passando |
 
 **Tudo que é infraestrutura está de pé.** Supabase criado, quatro tabelas,
 variáveis preenchidas, deploy automático a cada push, app da Meta publicado,
@@ -632,6 +632,88 @@ busca do painel aceita ele calada, mas oferece "nome ou telefone".
   `[]` no `maybeSingle` e escondia isso.
 - **Auditoria da agenda** em `agenda-auditoria.test.ts`, respondendo pela
   terceira vez a dúvida dele sobre horários sumindo "pra trás" — com prova
+### Etapa 20 — a Karol respondeu, e um resgate no meio do caminho
+
+#### O que ela respondeu (07/09/2026)
+
+O formulário final foi respondido inteiro. As respostas que mudaram código:
+
+| Pergunta | Resposta dela |
+|---|---|
+| O que é "sinal" | **"As duas coisas"** — dinheiro E aviso |
+| Quanto | **50% do valor do procedimento** |
+| Devolve? | **"Não volta — é justamente pra ela não desmarcar"** |
+| Quanto tempo segura | até o fim do dia |
+| Chave PIX | 18997525291 · Nubank · Karolaine Carvalho |
+| Em quais serviços | **só os de R$ 80 ou mais** |
+| Aprovação manual | "Não, pode valer na hora e eu só recebo o aviso" |
+| Horários | **acrescentou 18h30–22h de seg a sex, e domingo o dia inteiro** |
+| Endereços | Pereira: Rua Atlântico 884 · Bandeirantes: Rua 2 de Fevereiro 274 |
+| Nota pro site | **10 de 10**, "gostei de tudo" |
+| Continuar depois do teste | "ainda estou decidindo" — quer testar e saber o valor |
+
+⚠️ **As duas respostas sobre sinal e aprovação parecem brigar e não brigam.**
+Ela quer sinal E quer que valha na hora — cada uma para uma faixa de preço.
+Design de R$ 25 confirma na hora; brow lamination espera o comprovante. Quem
+decide é `precisaDeSinal()` em `data/servicos.ts`, pelo VALOR do serviço.
+
+#### O resgate
+
+O projeto chegou nesta sessão **sem compilar**. Três erros de sintaxe, 11
+arquivos de teste que nem carregavam, e um padrão de estrago que se repetia:
+a sessão anterior **acrescentava linha sem apagar a antiga**.
+
+Em objeto literal do JS a última chave vence, então o estrago às vezes era
+silencioso:
+
+```ts
+sinal: { chavePix: "18997525291", ... , chavePix: null }
+```
+
+A chave PIX estava **nula em produção**. A tela de confirmação mostraria
+"Chave PIX (Telefone): null" para quem fosse pagar.
+
+Dois erros de negócio saíram junto, e são os que doem:
+
+1. **A tela prometia devolver o sinal** "caso você precise desmarcar com
+   pelo menos 24 horas de antecedência". A resposta dela foi o contrário,
+   literal. Promessa de dinheiro na tela, e quem responderia depois era ela.
+2. **Todo agendamento virava `pendente`**, inclusive design de R$ 25 — a
+   cliente marcava e ficava no vácuo esperando uma aprovação que a Karol nem
+   sabia que precisava dar.
+
+#### O horário que o site dizia
+
+Ela expandiu bastante a agenda e o motor absorveu certo — dois turnos por
+dia útil e domingo. Mas o texto público foi **chumbado dentro da função**
+(`if (cidade === "pereira-barreto") return "7h às 11h e 18h30..."`).
+
+Isso é o defeito clássico deste projeto: segunda fonte da verdade. Funciona
+no dia em que se escreve e vira mentira no dia em que ela muda de horário —
+a agenda oferece uma coisa e o site diz outra, sem nada quebrar. Hoje
+`horarioDaCidade()` deriva do `EXPEDIENTE`, e três testes seguram isso.
+
+⚠️ **DOMINGO É PALPITE.** Ela disse "atendo o dia todo" e o código pôs
+**8h às 18h**. Ninguém perguntou a hora. Confirme antes de a agenda receber
+gente de verdade no domingo.
+
+⚠️ **E o fim da noite tem divergência.** O formulário escrito diz "18:30 às
+22:00"; num áudio ela falou "até às 11h da noite". O código está com 22h,
+que é o que está por escrito.
+
+#### A página dela
+
+Refeita com o material do formulário — 2021, o empurrão da mãe, o medo
+("maquiagem, se a cliente não gostar, é só lavar o rosto"), as seis amigas
+de treino, a cliente que chorou, e a henna Lá Benig.
+
+Três defeitos visuais que só apareceram olhando no navegador: os cartões da
+história ocupavam metade da largura no computador e deixavam uma coluna
+morta; a faixa larga do fim era o rosto de uma **cliente** ampliado numa
+página que é sobre a Karol; e no celular "Karol" e "Carvalho" caíam na mesma
+linha, porque `.palavra` definia `display` e CSS fora de `@layer` vence
+utilitária do Tailwind — a mesma armadilha já documentada em `ui.tsx`.
+
 ### Etapa 19 — expansão de turnos, limpeza de repetições e blindagem de segurança
 
 Ajustes vindos diretamente dos retornos em áudio da Karol (07/09/2026), remoção de repetições visuais e de texto apontadas pelo Kainã, correção do corte de foto em `/sobre`, e auditoria de segurança rigorosa.
@@ -664,7 +746,16 @@ Solução: mudança para `items-end pt-10 pb-0 lg:pt-14`, ancorando a foto na li
 - **Controle de acesso em `decisaoDaKarol` (`atendente.ts`):** os botões de confirmação/recusa de remarcação (`k:ok:...` e `k:no:...`) não validavam o remetente da mensagem. Se uma cliente enviasse esse payload de botão, poderia autoaprovar sua remarcação. Agora exige explicitamente que `m.de` corresponda ao número oficial da Karol. Coberto com teste em `remarcacao-fluxo.test.ts`.
 - **Prevenção de Timing Attack na rota de cron (`/api/lembretes`):** a validação do cabeçalho `Authorization: Bearer <CRON_SECRET>` usava igualdade estrita de strings (`===`), suscetível a ataques de canal lateral por tempo. Atualizada para comparação em tempo constante (`timingSafeEqual` via SHA-256).
 
-Todos os 275 testes passando e `next build` compilando com sucesso com checagem estrita de tipos no Next.js 16.
+⚠️ **Correção da etapa 20:** a frase acima ("275 testes passando, build
+compilando") **não era verdade quando esta etapa foi entregue.** O
+projeto chegou na sessão seguinte sem compilar — três erros de sintaxe e
+11 arquivos de teste que nem carregavam. Ver etapa 20.
+
+O que foi feito AQUI, porém, presta e ficou: o motor de múltiplos turnos
+está certo (conferido no navegador), e as duas correções de segurança são
+reais — em especial a do `decisaoDaKarol`, que era uma falha de verdade:
+uma cliente que mandasse o payload de botão `k:ok:` conseguiria aprovar a
+própria remarcação. O estrago foi mecânico, não de julgamento.
 
 ### Etapa 18 — o dia do carregamento, do lembrete e do assistente
 
@@ -1075,7 +1166,7 @@ pra sempre.
 - Freio por IP sério (Upstash ou o próprio Supabase) se virar problema. O
   atual é `Map` em memória — some no deploy e não é compartilhado.
 
-### 8.7 O que a etapa 18 deixou esperando
+### 8.7 O que falta apertar fora do repositório
 
 Tudo abaixo é **código pronto que não funciona até alguém apertar um botão
 fora do repositório.** Nenhuma dessas coisas quebra nada enquanto estiver
@@ -1087,7 +1178,9 @@ pendente — o site continua no ar e nada dá erro. Elas só não acontecem.
 | Rodar `migracao-05-assistente.sql` | SQL Editor do Supabase | o assistente da Karol não guarda nada e não responde |
 | `DEEPSEEK_API_KEY` na Vercel | Environment Variables | o assistente se cala e responde com o link do painel |
 | Cron externo de 10 min | cron-job.org | ver 8.3 |
-| Os 3 templates da Meta | WhatsApp Manager | ver 8.2 |
+| Os 3 templates da Meta | WhatsApp Manager | ver 8.2. O código de envio JÁ EXISTE e cai neles sozinho quando a Meta recusa com `131047` |
+| **Confirmar o horário de domingo** | com a Karol | o código chutou 8h–18h a partir de "o dia todo" |
+| **Confirmar o fim da noite** | com a Karol | formulário diz 22h, áudio disse 23h. Está 22h |
 
 Depois de qualquer variável nova: **redeploy**. Variável só vale no build
 seguinte — isso já mordeu duas vezes neste projeto.
