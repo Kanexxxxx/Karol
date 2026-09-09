@@ -1,0 +1,606 @@
+{
+ "gerador": "segno 1.6.6",
+ "varredura": [
+  {
+   "texto": "St",
+   "versao": 1,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "25bb7ed85e8d771dd56763d495d4f458",
+   "lado": 21
+  },
+  {
+   "texto": "St",
+   "versao": 1,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "874d2eb44f43790798bd5fda613ab8b2",
+   "lado": 21
+  },
+  {
+   "texto": "St",
+   "versao": 1,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "082e101fe0c6a6ff8ffd4fcc54faa75e",
+   "lado": 21
+  },
+  {
+   "texto": "St",
+   "versao": 1,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "5b0094cfbb38a95c7031207195793343",
+   "lado": 21
+  },
+  {
+   "texto": "Stud",
+   "versao": 2,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "00a3feef3056b22b4b0ee500749a9da8",
+   "lado": 25
+  },
+  {
+   "texto": "Stud",
+   "versao": 2,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "a8aff4210d4259781c74277bb5a22018",
+   "lado": 25
+  },
+  {
+   "texto": "Stud",
+   "versao": 2,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "a9e8f6f63014447646555fcffdbf860f",
+   "lado": 25
+  },
+  {
+   "texto": "Stud",
+   "versao": 2,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "e1a027f19d9ac58499ddfa1d79aff527",
+   "lado": 25
+  },
+  {
+   "texto": "Studio",
+   "versao": 3,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "bd31221727bca0582c9d0aa1a2195dc9",
+   "lado": 29
+  },
+  {
+   "texto": "Studio",
+   "versao": 3,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "8bac927f95288493c7c9ba8a1878d383",
+   "lado": 29
+  },
+  {
+   "texto": "Studio",
+   "versao": 3,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "42af00694dfd3771657e08aaa0919a28",
+   "lado": 29
+  },
+  {
+   "texto": "Studio",
+   "versao": 3,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "f44d369435b2a3e377508f280761b943",
+   "lado": 29
+  },
+  {
+   "texto": "Studio K",
+   "versao": 4,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "680dc26f3023632bdfc390b5340e03d1",
+   "lado": 33
+  },
+  {
+   "texto": "Studio K",
+   "versao": 4,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "5c84c65763ff4e0d3f92e5d7c831d031",
+   "lado": 33
+  },
+  {
+   "texto": "Studio K",
+   "versao": 4,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "354a7fa76d77ad2fe55672b97f755e0c",
+   "lado": 33
+  },
+  {
+   "texto": "Studio K",
+   "versao": 4,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "c9de4ba5a8985de818f7b5ce098a11a2",
+   "lado": 33
+  },
+  {
+   "texto": "Studio Kar",
+   "versao": 5,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "a0cf9da58afa5b312bc50c4ab8dcd70c",
+   "lado": 37
+  },
+  {
+   "texto": "Studio Kar",
+   "versao": 5,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "33c3a9e1ff51cae0bfa8873916229ee7",
+   "lado": 37
+  },
+  {
+   "texto": "Studio Kar",
+   "versao": 5,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "2ccb966e1055f19d1e26f9a80c331dbc",
+   "lado": 37
+  },
+  {
+   "texto": "Studio Kar",
+   "versao": 5,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "89366c630b4a48f975ac932974ae8c97",
+   "lado": 37
+  },
+  {
+   "texto": "Studio Karol",
+   "versao": 6,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "eba0390f6b68adc24af845c2ad324b0a",
+   "lado": 41
+  },
+  {
+   "texto": "Studio Karol",
+   "versao": 6,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "1b8348daf181aa287117d44ff734a52f",
+   "lado": 41
+  },
+  {
+   "texto": "Studio Karol",
+   "versao": 6,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "7b2727b8ff045960eb9de360f81e4df4",
+   "lado": 41
+  },
+  {
+   "texto": "Studio Karol",
+   "versao": 6,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "2ddf51423106be4dce918b233da7022b",
+   "lado": 41
+  },
+  {
+   "texto": "Studio Karol C",
+   "versao": 7,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "b66e2072e0f51e6e77a1f3387b051d15",
+   "lado": 45
+  },
+  {
+   "texto": "Studio Karol C",
+   "versao": 7,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "7a22be5a9c20b088df15a40ec06617b3",
+   "lado": 45
+  },
+  {
+   "texto": "Studio Karol C",
+   "versao": 7,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "67ddc7d2a78a5b37407de6e8e6c5c9b9",
+   "lado": 45
+  },
+  {
+   "texto": "Studio Karol C",
+   "versao": 7,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "9c5b59d6ac15d38ff247a9aff8e9a625",
+   "lado": 45
+  },
+  {
+   "texto": "Studio Karol Car",
+   "versao": 8,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "423466c1b7e2b0d8276d47552dc0d6d5",
+   "lado": 49
+  },
+  {
+   "texto": "Studio Karol Car",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "7cc4c04d453d7c616e1a54f38de5a9b1",
+   "lado": 49
+  },
+  {
+   "texto": "Studio Karol Car",
+   "versao": 8,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "9fe89057a3e212f76f745860a665183e",
+   "lado": 49
+  },
+  {
+   "texto": "Studio Karol Car",
+   "versao": 8,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "7d1061987059d6a5ab07efa9067b6489",
+   "lado": 49
+  },
+  {
+   "texto": "Studio Karol Carva",
+   "versao": 9,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "56f9457eb03ec4de83b886537f99cabf",
+   "lado": 53
+  },
+  {
+   "texto": "Studio Karol Carva",
+   "versao": 9,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "d9e7b9cf15fa9856262286458690a025",
+   "lado": 53
+  },
+  {
+   "texto": "Studio Karol Carva",
+   "versao": 9,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "b5963cdd8a1798f4c6eee74c2d920607",
+   "lado": 53
+  },
+  {
+   "texto": "Studio Karol Carva",
+   "versao": 9,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "4a771577855e8eaf0531fa77ccde2631",
+   "lado": 53
+  },
+  {
+   "texto": "Studio Karol Carvalh",
+   "versao": 10,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "6d85fab4fdb94d6d4b851eb0effaac02",
+   "lado": 57
+  },
+  {
+   "texto": "Studio Karol Carvalh",
+   "versao": 10,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "8d086036947340215ebeb07749b86e92",
+   "lado": 57
+  },
+  {
+   "texto": "Studio Karol Carvalh",
+   "versao": 10,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "b9ce6d7a29d42d625b378022d004c733",
+   "lado": 57
+  },
+  {
+   "texto": "Studio Karol Carvalh",
+   "versao": 10,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "693244f49c75bf6b5906d90d3bbe2ac7",
+   "lado": 57
+  },
+  {
+   "texto": "Studio Karol Carvalho ",
+   "versao": 11,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "05c2c44169275f8e8b5e02ea6c4bc8db",
+   "lado": 61
+  },
+  {
+   "texto": "Studio Karol Carvalho ",
+   "versao": 11,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "c1f78945defe54b8e8c72a17913443d1",
+   "lado": 61
+  },
+  {
+   "texto": "Studio Karol Carvalho ",
+   "versao": 11,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "10ac4e01f3ecc75a95cfb6ff11c9d97f",
+   "lado": 61
+  },
+  {
+   "texto": "Studio Karol Carvalho ",
+   "versao": 11,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "4d34fbc32a69b6dd6a207d19805f67f2",
+   "lado": 61
+  },
+  {
+   "texto": "Studio Karol Carvalho St",
+   "versao": 12,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "af1cee06e90200f4aaea6703e262d387",
+   "lado": 65
+  },
+  {
+   "texto": "Studio Karol Carvalho St",
+   "versao": 12,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "35a13e8297af4e6cb22f398fb736e64d",
+   "lado": 65
+  },
+  {
+   "texto": "Studio Karol Carvalho St",
+   "versao": 12,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "74aac3ab886d3a9b072e221e5de056d4",
+   "lado": 65
+  },
+  {
+   "texto": "Studio Karol Carvalho St",
+   "versao": 12,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "18a6c16bb7cdbe371b3bd70cc0892cd0",
+   "lado": 65
+  },
+  {
+   "texto": "Studio Karol Carvalho Stud",
+   "versao": 13,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "2a785c07a61b9f461f7c78b5aeb078a1",
+   "lado": 69
+  },
+  {
+   "texto": "Studio Karol Carvalho Stud",
+   "versao": 13,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "84a8214f3b379e5c2094273343533115",
+   "lado": 69
+  },
+  {
+   "texto": "Studio Karol Carvalho Stud",
+   "versao": 13,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "17880365d559ced55c1345333832e61f",
+   "lado": 69
+  },
+  {
+   "texto": "Studio Karol Carvalho Stud",
+   "versao": 13,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "e2209b864789c695d30f41880df3ee59",
+   "lado": 69
+  },
+  {
+   "texto": "Studio Karol Carvalho Studio",
+   "versao": 14,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "b1d439dddcd9b03fefa5c3bde39bba88",
+   "lado": 73
+  },
+  {
+   "texto": "Studio Karol Carvalho Studio",
+   "versao": 14,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "c88d42591ed0053a9b0b647c085fd9e5",
+   "lado": 73
+  },
+  {
+   "texto": "Studio Karol Carvalho Studio",
+   "versao": 14,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "4c2d55aec189d0b583af86b8548993e5",
+   "lado": 73
+  },
+  {
+   "texto": "Studio Karol Carvalho Studio",
+   "versao": 14,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "bedfba7b336a021753f60b68745ef8c6",
+   "lado": 73
+  },
+  {
+   "texto": "Studio Karol Carvalho Studio K",
+   "versao": 15,
+   "nivel": "L",
+   "mascara": 3,
+   "impressao": "002268f5f156b447b4ca5b5ef531681c",
+   "lado": 77
+  },
+  {
+   "texto": "Studio Karol Carvalho Studio K",
+   "versao": 15,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "e01ac59e602be1afdc365f995043fcea",
+   "lado": 77
+  },
+  {
+   "texto": "Studio Karol Carvalho Studio K",
+   "versao": 15,
+   "nivel": "Q",
+   "mascara": 3,
+   "impressao": "05946d1ff9d129876d1086087d424450",
+   "lado": 77
+  },
+  {
+   "texto": "Studio Karol Carvalho Studio K",
+   "versao": 15,
+   "nivel": "H",
+   "mascara": 3,
+   "impressao": "5bcd39cfabbfbd49ec43bb29b799c85e",
+   "lado": 77
+  },
+  {
+   "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 0,
+   "impressao": "73e48002590de595ae4d2be821dfdfd0",
+   "lado": 49
+  },
+  {
+   "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 1,
+   "impressao": "04582102eb51ee50e58ae561ed41de03",
+   "lado": 49
+  },
+  {
+   "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 2,
+   "impressao": "d2b1fa8f0d67b4f1bf8c6619286e407a",
+   "lado": 49
+  },
+  {
+   "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 3,
+   "impressao": "5a7b9fa8d2a97b9f0b8b5adb3ac69f31",
+   "lado": 49
+  },
+  {
+   "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 4,
+   "impressao": "9963b1a304cc1adf0ab93f8a43abad93",
+   "lado": 49
+  },
+  {
+   "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 5,
+   "impressao": "6840b81c52973809a68c1d44aac4508b",
+   "lado": 49
+  },
+  {
+   "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 6,
+   "impressao": "b3c5a6592909699bcc629e0139174fd7",
+   "lado": 49
+  },
+  {
+   "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+   "versao": 8,
+   "nivel": "M",
+   "mascara": 7,
+   "impressao": "baac40301d07cf5280e404a1441071f4",
+   "lado": 49
+  }
+ ],
+ "real": {
+  "texto": "00020126360014br.gov.bcb.pix0114+5518997525291520400005303986540540.005802BR5918KAROLAINE CARVALHO6015PEREIRA BARRETO62070503***6304",
+  "nivel": "M",
+  "versao": 8,
+  "mascara": 3,
+  "matriz": [
+   "1111111010100111011101001000001101010100101111111",
+   "1000001011000110101000100110000011110011101000001",
+   "1011101000111010101000110110100100100101101011101",
+   "1011101010011011001101001000000101111001001011101",
+   "1011101001110101011010111110000010001100001011101",
+   "1000001001010010101000100010101110000010001000001",
+   "1111111010101010101010101010101010101010101111111",
+   "0000000010010100110011100011111100001011000000000",
+   "1011011100011001100001111110100100100111001001011",
+   "1110000111010011010101011000001101001001001000010",
+   "0111101101110001100000110101001001110100001011010",
+   "1000010101011100110101110001011110111100100100110",
+   "0111111110110011110001011000010100011101011100100",
+   "1110110011000111110101100011010001011111010101001",
+   "0010111001110100100110001010011011100100111110100",
+   "0010010101001000110110110101010001010000101110001",
+   "0001111100100110011110010111111100010101111010010",
+   "0101000000100000101000000000011110101100100000110",
+   "0111011010001001111100101100101110111010010101011",
+   "1000100100011100110010001101010011110011010100000",
+   "0100001111100111000101000111111000010101010101010",
+   "1001010001100010111100011110011000001001011000010",
+   "1100111111001010001000111111011100110101111111110",
+   "0001100010110000111101100011010011111101100010101",
+   "1000101011010001100111101011000000001001101010101",
+   "0100100011110001101010100010010100010010100010101",
+   "1010111110011001111001111110111101000011111111100",
+   "0000000010010111111001101001111011000010011001011",
+   "1010101110001011000110010011011010100110100101111",
+   "1010110010100101101100011100100111100000011101011",
+   "1100111110100001101100000001010100011001001010101",
+   "0001000101101101111010001101010111001000101010010",
+   "1000111110000010011100100100110100100110000101010",
+   "0100110101110110100101111000001101000000100101001",
+   "1100001000010011010000000010000010011001110010000",
+   "1111000110100101100100010111000101101101111110101",
+   "1001111101011010011111110001000100101001100110101",
+   "1001100111011010001010110001010111000010000011000",
+   "0100011111001001110101101000101100010010000111110",
+   "0111000010011101011000110000111111010100010001000",
+   "1110001000101001000100111110000011110010111111110",
+   "0000000010110111011100100010100100100100100010111",
+   "1111111011011001011101101010010000101110101010001",
+   "1000001011101100101110100011110101001101100010010",
+   "1011101000111011101100111111100000000110111111001",
+   "1011101010000000000110110001101110011100101110001",
+   "1011101011010100101000010111101100010010011010111",
+   "1000001001010100001010110100111101001110110110100",
+   "1111111011010010100000001100100111101011001000111"
+  ]
+ }
+}

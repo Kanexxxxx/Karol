@@ -77,18 +77,42 @@ function Espera() {
   }, []);
 
   /*
-    Chegamos quando a rota deixou de ser a de partida.
+    ⚠️ A ESPERA SOME QUANDO A ROTA MUDA — e isso PRECISA ser um efeito.
 
-    ⚠️ Isto é DERIVADO na renderização, não guardado em estado. Zerar o
-    `saindoDe` dentro de um efeito funcionaria, mas dispara uma renderização
-    em cascata a cada navegação — e o lint reprova, com razão. O valor já
-    está todo aqui: a rota de partida e a de agora.
+    A versão anterior derivava "chegou" na renderização, comparando a rota
+    de agora com a de partida, e deixava o `saindoDe` apontando pra rota
+    antiga pra sempre. O comentário dizia que tudo bem. Não estava.
 
-    O `saindoDe` continua apontando pra rota antiga depois de chegar, e
-    tudo bem: o próximo clique sobrescreve antes de qualquer coisa aparecer.
+    O botão VOLTAR do navegador leva de volta exatamente à rota de partida.
+    Aí `rotaAtual` volta a ser igual a `saindoDe`, "chegou" vira falso, e a
+    espera REAPARECE e não sai mais — a tela fica travada com a sobrancelha
+    girando pra sempre. Foi assim que o Kainã encontrou: clicou em agendar,
+    voltou, e o site morreu.
+
+    Zerar aqui é o caso legítimo de efeito: sincronizar com um sistema
+    externo (a navegação do navegador), que não tem como ser derivado da
+    renderização. Passar `null` quando já é `null` não re-renderiza — o
+    React descarta a atualização —, então não há cascata.
   */
-  const chegou = saindoDe !== null && saindoDe !== rotaAtual;
-  if (saindoDe === null || chegou) return null;
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- ver acima
+  useEffect(() => setSaindoDe(null), [rotaAtual]);
+
+  /*
+    Rede de segurança: a espera se apaga sozinha depois de um tempo.
+
+    Se a navegação nunca terminar — link que o roteador aborta, rota que
+    estoura, conexão que morre no meio — a rota não muda, o efeito acima
+    não roda, e a espera ficaria de novo pra sempre. Doze segundos é mais
+    do que qualquer página deste site leva e menos do que a paciência de
+    quem está olhando.
+  */
+  useEffect(() => {
+    if (saindoDe === null) return;
+    const t = setTimeout(() => setSaindoDe(null), 12000);
+    return () => clearTimeout(t);
+  }, [saindoDe]);
+
+  if (saindoDe === null) return null;
 
   return (
     <div
