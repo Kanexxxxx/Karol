@@ -67,7 +67,7 @@ export function Calendario({
         <Seta href={temAnterior ? mesLink(-1) : null} rotulo="Mês anterior">
           ‹
         </Seta>
-        <p className="font-titulo text-[21px] capitalize lg:text-[24px]">
+        <p className="font-titulo text-[21px] first-letter:uppercase lg:text-[24px]">
           {MES_POR_EXTENSO.format(new Date(ano, mes, 1))}
         </p>
         <Seta href={temSeguinte ? mesLink(1) : null} rotulo="Próximo mês">
@@ -183,7 +183,13 @@ function Legenda() {
   return (
     <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-linha px-3 py-3 text-[11px] text-tinta-3">
       <li className="flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-2.5 border border-ouro bg-papel" />
+        {/* ⚠️ A amostra tem que ser igual à célula. Era borda DOURADA,
+            e nenhum dia do calendário tem borda dourada — os livres têm
+            borda cinza e número escuro. A legenda ensinava a procurar uma
+            coisa que não existia. */}
+        <span aria-hidden="true" className="grid size-3.5 place-items-center border border-linha bg-papel text-[8px] font-bold text-tinta">
+          1
+        </span>
         livre
       </li>
       <li className="flex items-center gap-1.5">
@@ -199,7 +205,10 @@ function Legenda() {
       </li>
       <li className="flex items-center gap-1.5">
         <span aria-hidden="true" className="size-2.5 border border-linha bg-papel opacity-45" />
-        não atende
+        {/* "nesta cidade": sábado aparece apagado em Pereira Barreto, mas
+            ela atende sábado — em Bandeirantes. "Não atende" sozinho dizia
+            que ela não trabalha sábado, e quem lê isso fecha a aba. */}
+        não atende nesta cidade
       </li>
     </ul>
   );

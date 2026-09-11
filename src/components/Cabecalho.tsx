@@ -11,14 +11,37 @@ const MENU = [
 ];
 
 /**
+ * O material do cabeçalho: VIDRO, o translúcido do iPhone.
+ *
+ * Ele gruda no topo e a página passa por baixo desfocada, em vez de sumir
+ * atrás de uma barra opaca. É o mesmo material da barra de baixo do
+ * celular (`.vidro` no globals.css), só que escrito em utilitários do
+ * Tailwind — por dois motivos:
+ *
+ * 1. precisa variar por largura (`lg:`), e classe própria no globals.css
+ *    não ganha variante;
+ * 2. CSS fora de `@layer` vence os utilitários, e já mordeu este projeto
+ *    antes. Utilitário contra utilitário não tem essa briga.
+ *
+ * O fundo começa quase opaco (92%) e só fica translúcido (60%) onde o
+ * navegador sabe desfocar. Sem desfoque, 60% de transparência deixaria o
+ * texto da página brigando com o menu.
+ */
+const VIDRO =
+  "bg-osso/92 supports-[backdrop-filter:blur(1px)]:bg-osso/60 backdrop-blur-xl backdrop-saturate-150";
+const VIDRO_LG =
+  "lg:bg-osso/92 lg:supports-[backdrop-filter:blur(1px)]:bg-osso/60 lg:backdrop-blur-xl lg:backdrop-saturate-150";
+
+/**
  * `sobreHero` = a home no celular, onde o cabeçalho fica transparente por
- * cima da foto de abertura, em branco. Nas outras páginas (e sempre no
- * computador) é uma barra sólida com texto escuro.
+ * cima da foto de abertura, em branco, e vai embora com a rolagem — ali a
+ * foto é o assunto e a barra de baixo já leva o "Agendar". No computador,
+ * e em todas as outras páginas, é o vidro grudado no topo.
  */
 export function Cabecalho({ sobreHero = false }: { sobreHero?: boolean }) {
   const posicao = sobreHero
-    ? "absolute inset-x-0 top-0 lg:relative lg:border-b lg:border-linha lg:bg-osso"
-    : "relative border-b border-linha bg-osso";
+    ? `absolute inset-x-0 top-0 lg:sticky lg:border-b lg:border-linha/60 ${VIDRO_LG}`
+    : `sticky top-0 border-b border-linha/60 ${VIDRO}`;
 
   return (
     <header className={`z-50 ${posicao}`}>
@@ -27,7 +50,10 @@ export function Cabecalho({ sobreHero = false }: { sobreHero?: boolean }) {
           <MenuMobile itens={MENU} claro={sobreHero} />
           <Link
             href="/"
-            className={`font-titulo text-2xl uppercase tracking-[0.16em] ${
+            // No celular o nome ia pra duas linhas e o cabeçalho ficava com o
+            // dobro da altura, comendo a tela. Fonte e espaçamento menores
+            // até 640 px fazem caber numa linha só, ao lado do menu e do botão.
+            className={`whitespace-nowrap font-titulo text-[19px] uppercase tracking-[0.1em] sm:text-2xl sm:tracking-[0.16em] ${
               sobreHero
                 ? "text-white [text-shadow:0_1px_14px_rgba(0,0,0,0.5)] lg:text-tinta lg:[text-shadow:none]"
                 : "text-tinta"

@@ -1,18 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
+import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env, Rotulo } from "@/components/ui";
 import { FOTO_DO_SERVICO } from "@/data/fotos";
-import { ANTES_DE_VIR, CIDADES, type CidadeId } from "@/data/negocio";
-import {
-  SERVICOS_AGENDAVEIS,
-  buscarServico,
-  formatarDuracao,
-  formatarPreco,
-  type Servico,
-} from "@/data/servicos";
+import { ANTES_DE_VIR, CIDADES, REGRAS, type CidadeId } from "@/data/negocio";
+import { SERVICOS_AGENDAVEIS, buscarServico, formatarDuracao, formatarPreco, precisaDeSinal, type Servico, valorDoSinal } from "@/data/servicos";
 import { bancoConfigurado } from "@/lib/banco";
 import { gradeDoDiaNaAgenda, horariosDoDia, mesDeVagas } from "@/lib/agendamentos";
 import { deChave, horarioDaCidade, primeiroDiaDisponivel } from "@/lib/agenda";
@@ -45,7 +39,7 @@ export default async function Agendar({
   return (
     <>
       <Cabecalho />
-      <main className="flex-1 bg-osso pb-24 lg:pb-0">
+      <main className="flex-1 bg-osso pb-12 lg:pb-0">
         <Env className="pt-10 lg:pt-16">
           <Passos
             temServico={!!servico}
@@ -70,7 +64,8 @@ export default async function Agendar({
         )}
       </main>
       <Rodape />
-      <BarraMobile />
+      {/* Sem a barra "Agendar meu horário" aqui: dentro da própria página
+          de agendar ela só levava de volta ao passo 1 e cobria os horários. */}
     </>
   );
 }
@@ -292,7 +287,7 @@ async function EscolherHora({
                       <li key={v.inicio}>
                         <Link
                           href={`/agendar?${base}&dia=${dia}&hora=${v.inicio}`}
-                          className="block border border-linha bg-papel py-4 text-center font-titulo text-[21px] tabular-nums transition-colors hover:border-ouro-claro hover:text-ouro focus-visible:outline-2 focus-visible:outline-ouro"
+                          className="block border border-linha bg-papel py-4 text-center font-titulo text-[21px] lining-nums proportional-nums transition-colors hover:border-ouro-claro hover:text-ouro focus-visible:outline-2 focus-visible:outline-ouro"
                         >
                           {v.rotulo}
                         </Link>
@@ -301,7 +296,7 @@ async function EscolherHora({
                       <li key={v.inicio}>
                         <span
                           aria-label={`${v.rotulo}, já reservado`}
-                          className="block border border-linha/60 bg-creme/40 py-4 text-center font-titulo text-[21px] tabular-nums text-tinta-3/70 line-through decoration-tinta-3/50"
+                          className="block border border-linha/60 bg-creme/40 py-4 text-center font-titulo text-[21px] lining-nums proportional-nums text-tinta-3/70 line-through decoration-tinta-3/50"
                         >
                           {v.rotulo}
                         </span>
@@ -384,8 +379,31 @@ async function Confirmar({
               valor={CIDADES[escolhido.cidade].nome}
             />
             <Linha rotulo="Duração" valor={formatarDuracao(servico)} />
-            <Linha rotulo="Valor" valor={formatarPreco(servico.preco)} destaque />
+            {/*
+              ⚠️ O SINAL aparece AQUI, antes de ela confirmar — e não só na
+              tela seguinte. O resumo dizia só "Valor R$ 80" e a cliente
+              descobria o sinal de 50% depois de já ter marcado, que é a
+              pior hora pra saber de um pagamento.
+            */}
+            {precisaDeSinal(servico) ? (
+              <>
+                <Linha rotulo="Valor total" valor={formatarPreco(servico.preco)} />
+                <Linha
+                  rotulo={`Sinal (${REGRAS.sinal.porcentagem}%)`}
+                  valor={formatarPreco(valorDoSinal(servico) / 100)}
+                  destaque
+                />
+              </>
+            ) : (
+              <Linha rotulo="Valor" valor={formatarPreco(servico.preco)} destaque />
+            )}
           </dl>
+          {precisaDeSinal(servico) && (
+            <p className="mt-3 text-[12.5px] leading-relaxed text-tinta-3">
+              O sinal é pago por PIX logo depois de marcar e desconta do valor
+              final. É ele que segura o horário no seu nome.
+            </p>
+          )}
 
           <div className="mt-6 border-t border-linha pt-5">
             <h3 className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.22em] text-ouro">

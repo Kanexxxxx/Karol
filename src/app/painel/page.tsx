@@ -69,12 +69,13 @@ export default async function Painel({
             >
               Bloqueios
             </Link>
-            <Link
-              href="/painel/notificacoes"
-              className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
-            >
-              Mensagens
-            </Link>
+            {/*
+              "Mensagens" saiu do menu dela a pedido do Kainã: a tela mostrava
+              números sem nome, um botão que o relógio automático já aperta
+              sozinho, e um diagnóstico técnico. Nada disso é pra Karol. A
+              página continua em /painel/notificacoes, pelo endereço, como
+              ferramenta de quem for consertar.
+            */}
             <form action={sair}>
               <button
                 type="submit"

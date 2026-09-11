@@ -300,3 +300,12 @@ body {
   }
 }
 
+
+/*
+   O cabeçalho agora gruda no topo. Sem isto, tocar em "Serviços" leva a
+   seção pra borda da tela — exatamente embaixo do cabeçalho, com o título
+   escondido atrás do vidro.
+*/
+html {
+  scroll-padding-top: 88px;
+}
