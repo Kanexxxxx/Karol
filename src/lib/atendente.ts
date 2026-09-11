@@ -9,6 +9,7 @@ import {
 import { abrirJanela, janelaAberta } from "./conversas";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import {
+  BOTAO_TEMPLATE,
   enviarPedidoDeSinal,
   enviarTexto,
   enviarTextoComBotoes,
@@ -66,6 +67,7 @@ export type Desfecho =
   | { fez: "respondeu-horario" }
   | { fez: "mandou-pro-site" }
   | { fez: "pediu-sinal"; valorCentavos: number }
+  | { fez: "encaminhou-pra-karol" }
   | { fez: "avisou-karol"; pedido: "cancelar" | "remarcar" };
 
 export async function atender(m: MensagemRecebida): Promise<Desfecho> {
@@ -123,11 +125,56 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
   // A cliente escolheu um horário na lista de remarcação.
   if (m.botao?.startsWith("h:")) return escolhaDaCliente(m);
 
+  /*
+    "Receber o PIX", o botão do template `pedido_sinal`.
+
+    Na primeira mensagem da conversa o PIX já saiu lá em cima, no bloco do
+    `chegandoAgora`. Aqui é o caso de ela tocar de novo com a conversa
+    aberta — perdeu a mensagem, apagou, quer o QR outra vez. Pedido
+    explícito: manda de novo.
+  */
+  if (m.botao === BOTAO_TEMPLATE.pix) {
+    const pendente = await proximoAgendamentoDe(m.de);
+    if (pendente && esperandoSinal(paraDados(pendente))) {
+      await enviarPedidoDeSinal(paraDados(pendente));
+      return { fez: "pediu-sinal", valorCentavos: pendente.servicoPreco };
+    }
+  }
+
+  /*
+    "Falar com a Karol", o botão dos templates.
+
+    ⚠️ ESTE NÚMERO NÃO TEM CAIXA DE ENTRADA. É o chip da API — ninguém abre
+    ele num celular. Mensagem que a cliente manda pra cá só existe pro
+    webhook, e a Karol nunca lê. Então "falar com a Karol" aqui só pode
+    ser uma coisa: entregar o WhatsApp de verdade dela.
+  */
+  if (m.botao === BOTAO_TEMPLATE.falar) {
+    await enviarTexto(m.de, encaminhamento());
+    return { fez: "encaminhou-pra-karol" };
+  }
+
   const intencao = lerIntencao(m.texto, m.botao);
 
-  // Conversa de verdade ("você atende sábado?") é da Karol. Robô chutando
-  // resposta em pergunta que ele não entendeu é pior do que robô calado.
-  if (intencao === "outro") return { fez: "nada", motivo: "conversa-de-verdade" };
+  /*
+    Conversa de verdade ("você atende sábado?", "posso levar minha filha?").
+
+    O robô continua sem chutar resposta — isso não mudou. O que mudou é o
+    silêncio. Antes esta linha só devolvia "nada", e como este número não
+    tem caixa de entrada, a pergunta ia pra um buraco: nem o robô
+    respondia, nem a Karol via. A cliente ficava falando sozinha.
+
+    Agora a primeira mensagem livre de cada conversa recebe o WhatsApp
+    dela. Só a primeira — da segunda em diante a cliente já tem o link, e
+    repetir viraria spam.
+  */
+  if (intencao === "outro") {
+    if (chegandoAgora) {
+      await enviarTexto(m.de, encaminhamento());
+      return { fez: "encaminhou-pra-karol" };
+    }
+    return { fez: "nada", motivo: "conversa-de-verdade" };
+  }
 
   const ag = await proximoAgendamentoDe(m.de);
   if (!ag) return semAgendamento(m, intencao);
@@ -369,4 +416,19 @@ function avisoParaKarol(
 
 function primeiroNome(nome: string): string {
   return nome.trim().split(/\s+/)[0] || nome;
+}
+
+/**
+ * O WhatsApp de verdade da Karol, pra quem escreveu no número da API.
+ *
+ * Diz com todas as letras que este número é de avisos — senão a cliente
+ * continua escrevendo aqui e achando que foi ignorada.
+ */
+function encaminhamento(): string {
+  return [
+    `Oi! Este número é só dos avisos automáticos do ${NEGOCIO.nome} 💛`,
+    "",
+    `Pra falar com a Karol, é no WhatsApp dela: ${NEGOCIO.whatsapp.exibicao}`,
+    linkWhatsapp("Oi Karol!"),
+  ].join("\n");
 }

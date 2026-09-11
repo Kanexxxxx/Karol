@@ -348,13 +348,22 @@ describe("o recado da cliente chega na Karol", () => {
   });
 });
 
+/**
+ * O valor de um parâmetro de template, seja texto ou payload de botão.
+ * Desde que os botões passaram a levar payload, um parâmetro pode ser um
+ * ou outro — ler `.text` direto quebrava a tipagem.
+ */
+function valorDoParam(p: { type: string; text?: string; payload?: string }) {
+  return p.type === "payload" ? p.payload : p.text;
+}
+
 describe("templates da Meta", () => {
   it("monta o template de confirmacao_agendamento com as 5 variáveis", () => {
     const tpl = templateDoEvento("confirmacao", AG);
     expect(tpl).not.toBeNull();
     expect(tpl!.nome).toBe("confirmacao_agendamento");
     expect(tpl!.components[0].type).toBe("body");
-    const params = tpl!.components[0].parameters.map((p) => p.text);
+    const params = tpl!.components[0].parameters.map(valorDoParam);
     expect(params[0]).toBe("Maria");
     expect(params[1]).toBe("Design com henna");
     expect(params[3]).toBe("Pereira Barreto");
@@ -365,7 +374,7 @@ describe("templates da Meta", () => {
     const tpl = templateDoEvento("lembrete", AG);
     expect(tpl).not.toBeNull();
     expect(tpl!.nome).toBe("lembrete_vespera");
-    const params = tpl!.components[0].parameters.map((p) => p.text);
+    const params = tpl!.components[0].parameters.map(valorDoParam);
     expect(params[0]).toBe("Maria");
     expect(params[1]).toBe("Design com henna");
     expect(params[3]).toBe("Pereira Barreto");
@@ -380,7 +389,7 @@ describe("templates da Meta", () => {
     const botao = tpl!.components[1];
     expect(botao.type).toBe("button");
     if (botao.type === "button") {
-      expect(botao.parameters[0].text).toBe(AG.whatsappCliente);
+      expect(valorDoParam(botao.parameters[0])).toBe(AG.whatsappCliente);
     }
   });
 
@@ -429,3 +438,56 @@ describe("templates da Meta", () => {
   });
 });
 
+/**
+ * O template de quem deve o sinal.
+ *
+ * Com a janela fechada — o caso de quase toda cliente nova —, quem marcava
+ * uma brow lamination recebia "seu horário está reservado", com o preço
+ * cheio e sem uma palavra sobre o PIX. Lia que estava tudo certo e não
+ * pagava. Estes testes travam a troca.
+ */
+describe("o template de quem deve o sinal", () => {
+  // R$ 100 pede sinal (o mínimo é R$ 80); o AG padrão é um design de R$ 30
+  const DEVENDO = { ...AG, situacao: "pendente", valorCentavos: 10000 };
+
+  it("recebe pedido_sinal, e não 'horário reservado'", () => {
+    const tpl = templateDoEvento("confirmacao", DEVENDO)!;
+    expect(tpl.nome).toBe("pedido_sinal");
+    const valores = tpl.components[0].parameters.map(valorDoParam);
+    expect(valores[0]).toBe("Maria");
+    // o 5º é o SINAL (50% de R$ 100), não o preço cheio
+    expect(valores[4]).toMatch(/R\$\s?50/);
+  });
+
+  it("o primeiro botão é o do PIX, o segundo é falar com a Karol", () => {
+    const tpl = templateDoEvento("confirmacao", DEVENDO)!;
+    const botoes = tpl.components.slice(1);
+    expect(botoes).toHaveLength(2);
+    expect(botoes.map((b) => (b.type === "button" ? b.index : ""))).toEqual(["0", "1"]);
+    expect(botoes.map((b) => valorDoParam(b.parameters[0]))).toEqual(["pix", "falar"]);
+  });
+
+  it("serviço barato pendente continua recebendo a confirmação normal", () => {
+    const tpl = templateDoEvento("confirmacao", { ...AG, situacao: "pendente" })!;
+    expect(tpl.nome).toBe("confirmacao_agendamento");
+  });
+
+  it("confirmação e lembrete mandam os três payloads, na ordem dos botões da Meta", () => {
+    // A Meta casa payload com botão pela POSIÇÃO. Trocar a ordem aqui sem
+    // trocar lá faz "Remarcar" chegar como "Confirmar".
+    for (const evento of ["confirmacao", "lembrete"] as const) {
+      const tpl = templateDoEvento(evento, AG)!;
+      const botoes = tpl.components.slice(1);
+      expect(botoes.map((b) => (b.type === "button" ? b.sub_type : ""))).toEqual([
+        "quick_reply",
+        "quick_reply",
+        "quick_reply",
+      ]);
+      expect(botoes.map((b) => valorDoParam(b.parameters[0]))).toEqual([
+        "confirmar",
+        "remarcar",
+        "falar",
+      ]);
+    }
+  });
+});

@@ -26,6 +26,7 @@ vi.mock("./agendamentos", () => ({
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
+  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix" },
   enviarPedidoDeSinal: vi.fn(async () => true),
   esperandoSinal: vi.fn(() => false),
   paraDados: vi.fn((a: unknown) => a),
@@ -340,7 +341,10 @@ describe("o pedido do sinal quando a cliente chega do site", () => {
     const r = await atender(mensagem("oi, quanto custa a maquiagem?"));
 
     expect(enviarPedidoDeSinal).not.toHaveBeenCalled();
-    expect(r.fez).toBe("nada");
+    // Chegando agora com uma pergunta de verdade: o robô não responde a
+    // pergunta, mas entrega o WhatsApp dela. Este número não tem caixa de
+    // entrada, e o silêncio deixava a cliente falando sozinha.
+    expect(r.fez).toBe("encaminhou-pra-karol");
   });
 
   it("pergunta se a janela estava aberta ANTES de abrir a janela", () => {
@@ -355,5 +359,57 @@ describe("o pedido do sinal quando a cliente chega do site", () => {
     const abriu = texto.indexOf("await abrirJanela(");
     expect(perguntou).toBeGreaterThan(0);
     expect(perguntou).toBeLessThan(abriu);
+  });
+});
+
+/**
+ * Os botões dos templates, e o número que não tem caixa de entrada.
+ *
+ * O número da API só existe pro webhook — ninguém abre ele num celular.
+ * Tudo o que chega nele e o robô não trata, ninguém lê. Estes testes
+ * garantem que a cliente sempre sai com um caminho até a Karol.
+ */
+describe("os botões dos templates", () => {
+  beforeEach(() => {
+    vi.mocked(janelaAberta).mockResolvedValue(true);
+    vi.mocked(esperandoSinal).mockReturnValue(false);
+    vi.mocked(enviarPedidoDeSinal).mockClear();
+  });
+
+  it("'Receber o PIX' manda o PIX de novo mesmo com a conversa aberta", async () => {
+    vi.mocked(esperandoSinal).mockReturnValue(true);
+    acharMock.mockResolvedValue({ ...agendamentoFalso(), situacao: "pendente" });
+
+    const r = await atender({ ...mensagem("💳 Receber o PIX"), botao: "pix" });
+
+    expect(r.fez).toBe("pediu-sinal");
+    expect(enviarPedidoDeSinal).toHaveBeenCalledTimes(1);
+  });
+
+  it("'Receber o PIX' de quem já está confirmada não manda PIX nenhum", async () => {
+    acharMock.mockResolvedValue(agendamentoFalso());
+
+    const r = await atender({ ...mensagem("💳 Receber o PIX"), botao: "pix" });
+
+    expect(enviarPedidoDeSinal).not.toHaveBeenCalled();
+    expect(r.fez).not.toBe("pediu-sinal");
+  });
+
+  it("'Falar com a Karol' entrega o WhatsApp pessoal dela", async () => {
+    const r = await atender({ ...mensagem("💬 Falar com a Karol"), botao: "falar" });
+
+    expect(r.fez).toBe("encaminhou-pra-karol");
+    const [para, texto] = enviados().at(-1)!;
+    expect(para).toBe(CLIENTE);
+    expect(texto).toContain("99752-5291");
+    expect(texto).toContain("wa.me/5518997525291");
+  });
+
+  it("mensagem livre no meio da conversa não repete o encaminhamento", async () => {
+    // janela aberta = ela já recebeu o link nesta conversa
+    const r = await atender(mensagem("posso levar minha filha junto?"));
+
+    expect(r.fez).toBe("nada");
+    expect(enviarMock).not.toHaveBeenCalled();
   });
 });
