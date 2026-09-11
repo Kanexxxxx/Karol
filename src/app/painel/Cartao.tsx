@@ -155,7 +155,11 @@ export function Cartao({
                 href={`https://wa.me/${ag.clienteWhatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-ouro underline decoration-ouro-claro underline-offset-2 lining-nums hover:decoration-ouro"
+                // `py-3 -my-3`: 12 px de área de toque acima e abaixo, e a
+                // margem negativa devolve o espaço — o link passa dos 44 px
+                // sem esticar a linha da cidade. Sem isso ele tinha 20 px,
+                // e é o toque que ela mais dá: chamar a cliente.
+                className="-my-3 inline-block py-3 text-ouro underline decoration-ouro-claro underline-offset-2 lining-nums hover:decoration-ouro"
               >
                 {formatarWhatsapp(ag.clienteWhatsapp)}
               </a>
