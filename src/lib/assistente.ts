@@ -81,7 +81,7 @@ const LEITURA = new Set(["ver_agenda", "procurar", "horarios_livres", "resumo_do
 /** Ferramentas de ESCRITA: viram proposta com botão. */
 const ESCRITA = new Set(["mudar_situacao", "remarcar", "bloquear", "marcar"]);
 
-const FERRAMENTAS: Ferramenta[] = [
+export const FERRAMENTAS: Ferramenta[] = [
   {
     type: "function",
     function: {
@@ -251,7 +251,7 @@ const FERRAMENTAS: Ferramenta[] = [
  * em data nenhuma — ele não tem relógio, e chutar a data é o erro mais
  * fácil e mais caro que ele poderia cometer aqui.
  */
-function instrucoes(): string {
+export function instrucoes(): string {
   const hoje = new Date();
 
   return [
