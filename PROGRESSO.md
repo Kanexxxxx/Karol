@@ -465,14 +465,31 @@ configurável (`NOTIFICADOR_WEBHOOK_URL`). Quem estiver do outro lado (n8n, Make
 Zapier, função própria) manda a mensagem de verdade. Sem o webhook, as
 mensagens são montadas e não saem. Formato do corpo em `src/lib/notificacoes.ts`.
 
-### 6.5 Agendamento com sinal — planejado, não construído
+### 6.5 Agendamento com sinal — construído (09 a 11/09/2026)
 
-O fluxo pedido (paga → agenda → Karol aprova → confirma, com endereço) está
-analisado em [`PLANO-PAGAMENTO.md`](./PLANO-PAGAMENTO.md): o que muda nos
-estados, por que a trava anti-conflito precisa expirar, qual provedor dá pra
-usar sem CNPJ e o que depende de decisão dela.
+Ela respondeu no formulário final: **50% de sinal só nos serviços de R$ 80
+ou mais**, por PIX (telefone 18997525291, Nubank, Karolaine Carvalho), e
+**o sinal não volta** — "é justamente pra ela não desmarcar".
 
-**Nada disso existe no código.** `REGRAS.sinal.ativo` segue `false`.
+| Peça | Onde |
+|---|---|
+| A regra (quem pede sinal, quanto) | `precisaDeSinal` / `valorDoSinal` em `data/servicos.ts` |
+| O BR Code com o **valor dentro** (campo 54) | `lib/pix.ts` |
+| O QR, escrito à mão e conferido contra o `segno` e o OpenCV | `lib/qr.ts`, `lib/png.ts` |
+| O QR como imagem pro WhatsApp (valor sai do banco, nunca da URL) | `app/api/pix/[id]/route.ts` |
+| A tela depois de marcar: QR, copia e cola e chave | `app/agendar/confirmado/page.tsx` |
+| A mensagem do sinal: texto, QR e copia e cola sozinho | `enviarPedidoDeSinal` em `lib/notificacoes.ts` |
+| O template `pedido_sinal` (janela fechada) | `templateDoEvento` + `TEMPLATES-WHATSAPP.md` |
+| O PIX sai quando a cliente toca em "Receber o PIX" | `atender` em `lib/atendente.ts` |
+| A Karol confirma quem pagou | painel, ou "caiu o pix da Ana" no assistente |
+
+⚠️ **O número do botão da tela de confirmação é o PESSOAL da Karol**, de
+propósito: o chip da API não tem caixa de entrada. Então o PIX automático
+pelo WhatsApp depende do **template** `pedido_sinal` estar aprovado. Sem
+ele, a cliente paga pelo QR da própria tela e manda o comprovante no
+WhatsApp pessoal — funciona, só não é automático.
+
+`PLANO-PAGAMENTO.md` ficou como registro da análise que veio antes.
 
 ---
 
@@ -1054,9 +1071,44 @@ identificador em inglês do projeto → `data-revelando`.
 
 ---
 
+### Etapa 18 — 09 a 11/09/2026: sinal, mensagens e o que estava quebrado
+
+**O que quebrava sem ninguém ver:**
+- A **espera entre telas** reaparecia e travava ao usar o botão VOLTAR do
+  navegador (defeito introduzido ao calar um aviso do lint). Voltou a ser
+  efeito, com rede de segurança de 12 s. Conferido no navegador.
+- O **assistente** respondia "vou confirmar" sem chamar a ferramenta —
+  nada acontecia — e mandava "sexta" pro próprio dia numa sexta. O roteiro
+  foi reescrito com o jeito dela de falar e os próximos 14 dias prontos.
+  Conferido contra o DeepSeek de verdade: 8 de 8 na primeira etapa, 4 de 4
+  na segunda.
+- A **mensagem livre de cliente** no número da API era ignorada, e ninguém
+  lia (o chip não tem caixa de entrada). Agora a primeira de cada conversa,
+  e o botão "Falar com a Karol", recebem o WhatsApp pessoal dela.
+- O site não mandava **nenhum cabeçalho de segurança**. Agora manda seis.
+
+**O que entrou:** o sinal inteiro (seção 6.5); todas as mensagens
+reescritas; o vidro no cabeçalho e no rodapé; as legendas do agendamento
+(o sinal no resumo antes de confirmar, a legenda do calendário, "Setembro
+De", "1 1:15"); a política de privacidade de acordo com a LGPD, incluindo
+a transferência de dado de cliente pra DeepSeek, na China.
+
+**O que se descobriu no banco (só leitura):** as migrações 04 e 05 **já
+estão aplicadas** (foram à mão, por isso não aparecem na lista de
+migrações). E há uma reserva de "Design de sobrancelha" parada em
+`pendente` desde 08/09 — sobra da época em que tudo entrava pendente. Um
+serviço de R$ 25 não pede sinal; ela precisa ser confirmada ou cancelada à
+mão no painel.
+
+**O que não deu pra saber:** o que aconteceu com a mensagem de teste pro
+marido dela. O log da Vercel daquele dia já passou do que o plano gratuito
+guarda.
+
+---
+
 ## 8. O que falta
 
-> Atualizado em 07/09/2026, depois de a automação de WhatsApp entrar no ar.
+> Atualizado em 11/09/2026. A etapa 18 (seção 7) diz o que mudou.
 > **Leia esta seção inteira antes de mexer em qualquer coisa.**
 
 ### 8.1 ⚠️ A ARMADILHA MAIS PERIGOSA DO PROJETO
@@ -1071,11 +1123,16 @@ incomodar ela, e está certo pro momento do teste.
 **Apague essa variável na Vercel antes de a Karol usar o site.** Sem ela, o
 código volta sozinho pro número real (`NEGOCIO.whatsapp.numero`).
 
-O painel avisa: `/painel/notificacoes` mostra um aviso vermelho enquanto o
-desvio estiver ativo. Mas ninguém abre painel todo dia — por isso está aqui
-também.
+O aviso do desvio fica em `/painel/notificacoes`, dentro do bloco
+técnico fechado — e essa página **saiu do menu da Karol** em 11/09 (ela não
+é pra ela). Só se chega pelo endereço. Por isso está aqui também.
 
 ### 8.2 Templates da Meta — o único bloqueio real que sobrou
+
+> **11/09/2026: agora são QUATRO.** Entrou o `pedido_sinal`, pra quem deve
+> o sinal, e os botões dos templates passaram a mandar *payload* — **a
+> ordem dos botões cadastrados na Meta tem que bater com a do código**.
+> Tudo em `TEMPLATES-WHATSAPP.md`, pronto pra colar.
 
 Hoje as mensagens automáticas **só chegam se a cliente tiver escrito nas
 últimas 24 h**. Fora dessa janela a Meta recusa com `131047`, e é esperado.
@@ -1235,7 +1292,7 @@ Observado ao longo da construção. Poupa retrabalho:
 | Código, documentação, schema do banco | ✅ no GitHub |
 | Fotos processadas (`public/fotos/`, 37) | ✅ no GitHub |
 | Originais em alta (`ferramentas/originais/`, 50) | ✅ no GitHub desde `393fbbf` |
-| `.env.local` | não existe — nunca foi configurado |
+| `.env.local` | ⚠️ existe só nesta máquina (fora do git, de propósito) — tem a chave do DeepSeek e a senha do painel. Numa máquina nova, copie as variáveis da Vercel |
 | Protótipos e documentos de briefing | ✅ Artifacts na claude.ai (links na seção 4) |
 | Formulário de briefing | ✅ no Google Forms da conta dele |
 

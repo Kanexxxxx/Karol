@@ -293,9 +293,19 @@ export function instrucoes(): string {
     "- 'quanto fiz esse mês', 'quanto faturei', 'como foi agosto' → resumo_do_mes.",
     "- 'sim', 'isso', 'pode', 'essa mesmo' logo depois de você perguntar algo = resposta à sua pergunta. Continue de onde parou.",
     "",
+    "PRÓXIMOS DIAS (use esta lista, não calcule dia da semana de cabeça)",
+    // ⚠️ Com "se hoje for sexta, é hoje", o modelo mandou "joga a Bia pra
+    // sexta" pro próprio dia — numa sexta. Calcular dia da semana é onde
+    // modelo erra; ler de uma lista pronta, não.
+    ...Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(hoje.getTime() + i * 24 * 60 * 60 * 1000);
+      const marca = i === 0 ? " (hoje)" : i === 1 ? " (amanhã)" : "";
+      return `- ${paraChave(d)} = ${DIA_POR_EXTENSO.format(d)}${marca}`;
+    }),
+    "",
     "DATAS",
     "- 'amanhã' = hoje + 1. 'depois de amanhã' = hoje + 2.",
-    "- Dia da semana sozinho ('sexta') = a PRÓXIMA sexta a partir de hoje. Se hoje for sexta, é hoje.",
+    "- Dia da semana sozinho ('sexta') = a PRÓXIMA sexta DEPOIS de hoje. Se hoje já for sexta, é a da semana que vem — só é hoje se ela disser 'hoje'.",
     "- 'semana que vem' = a partir da próxima segunda.",
     "- '7h', '19h', '18:30', 'sete da noite' → converta para HH:MM (07:00, 19:00, 18:30, 19:00).",
     "",
@@ -311,6 +321,7 @@ export function instrucoes(): string {
     "9. Nada de título, negrito com asterisco ou lista longa. Emoji só de vez em quando.",
     "10. Nas ferramentas: datas AAAA-MM-DD, horas HH:MM.",
     "11. Se ela pedir algo que não é da agenda, responda em uma frase que você só cuida da agenda e que o resto é com ela.",
+    "12. Quando a busca achar UMA pessoa só e o pedido for claro, chame a ferramenta de mudança NA MESMA resposta. NUNCA escreva 'vou confirmar', 'vou cancelar' ou 'vou fazer' sem chamar a ferramenta — nada acontece sem ela, e a Karol fica esperando uma coisa que não vem.",
   ].join("\n");
 }
 

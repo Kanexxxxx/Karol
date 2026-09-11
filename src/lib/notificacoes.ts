@@ -484,8 +484,35 @@ export type ComponenteTemplate =
       type: "button";
       sub_type: "url" | "quick_reply";
       index: string;
-      parameters: { type: "text"; text: string }[];
+      parameters: ({ type: "text"; text: string } | { type: "payload"; payload: string })[];
     };
+
+/**
+ * Os botões de resposta rápida de um template, com o PAYLOAD de cada um.
+ *
+ * ⚠️ Sem payload, o que volta no webhook quando a cliente toca é o TEXTO
+ * do botão ("✅ Confirmar"), e `lerIntencao` tinha que adivinhar pelo
+ * texto. Com payload volta o id exato ("confirmar"), igual aos botões
+ * interativos. A ORDEM aqui tem que ser a ordem dos botões cadastrados na
+ * Meta, e a QUANTIDADE também — a Meta recusa o envio se sobrar ou faltar
+ * payload. Ver TEMPLATES-WHATSAPP.md.
+ */
+function botoesRapidos(ids: readonly string[]): ComponenteTemplate[] {
+  return ids.map((id, i) => ({
+    type: "button" as const,
+    sub_type: "quick_reply" as const,
+    index: String(i),
+    parameters: [{ type: "payload" as const, payload: id }],
+  }));
+}
+
+/** Os ids que voltam do toque nos botões dos templates. */
+export const BOTAO_TEMPLATE = {
+  confirmar: "confirmar",
+  remarcar: "remarcar",
+  falar: "falar",
+  pix: "pix",
+} as const;
 
 /**
  * Manda mensagem usando TEMPLATE aprovado na Meta.
@@ -534,6 +561,36 @@ export function templateDoEvento(
 ): { nome: string; components: ComponenteTemplate[] } | null {
   switch (evento) {
     case "confirmacao":
+      /*
+        ⚠️ QUEM DEVE O SINAL NÃO RECEBE "SEU HORÁRIO ESTÁ RESERVADO".
+
+        Com a janela fechada (o caso de quase toda cliente nova), era o
+        template de confirmação que saía — dizendo "reservado", com o preço
+        cheio e sem uma palavra sobre o PIX. A cliente lia que estava tudo
+        certo e não pagava.
+
+        `pedido_sinal` diz o valor do sinal e tem o botão "Receber o PIX":
+        o toque é uma mensagem DELA, abre a janela, e o `atendente.ts`
+        responde com o texto, o QR e o copia e cola, de graça.
+      */
+      if (esperandoSinal(a)) {
+        return {
+          nome: "pedido_sinal",
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: primeiroNome(a.cliente) },
+                { type: "text", text: a.servico },
+                { type: "text", text: quando(a.inicioISO) },
+                { type: "text", text: a.cidade },
+                { type: "text", text: formatarPreco(sinalDoAgendamento(a) / 100) },
+              ],
+            },
+            ...botoesRapidos([BOTAO_TEMPLATE.pix, BOTAO_TEMPLATE.falar]),
+          ],
+        };
+      }
       return {
         nome: "confirmacao_agendamento",
         components: [
@@ -547,6 +604,7 @@ export function templateDoEvento(
               { type: "text", text: formatarPreco(a.valorCentavos / 100) },
             ],
           },
+          ...botoesRapidos([BOTAO_TEMPLATE.confirmar, BOTAO_TEMPLATE.remarcar, BOTAO_TEMPLATE.falar]),
         ],
       };
 
@@ -563,6 +621,7 @@ export function templateDoEvento(
               { type: "text", text: a.cidade },
             ],
           },
+          ...botoesRapidos([BOTAO_TEMPLATE.confirmar, BOTAO_TEMPLATE.remarcar, BOTAO_TEMPLATE.falar]),
         ],
       };
 

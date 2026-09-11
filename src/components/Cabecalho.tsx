@@ -53,7 +53,10 @@ export function Cabecalho({ sobreHero = false }: { sobreHero?: boolean }) {
             // No celular o nome ia pra duas linhas e o cabeçalho ficava com o
             // dobro da altura, comendo a tela. Fonte e espaçamento menores
             // até 640 px fazem caber numa linha só, ao lado do menu e do botão.
-            className={`whitespace-nowrap font-titulo text-[19px] uppercase tracking-[0.1em] sm:text-2xl sm:tracking-[0.16em] ${
+            // ⚠️ E numa linha só o link ficou com 29 px de altura — abaixo dos
+            // 44 px de alvo de toque. Em duas linhas passava por acaso. A
+            // altura mínima vem do próprio link, não do tamanho da letra.
+            className={`inline-flex min-h-[44px] items-center whitespace-nowrap font-titulo text-[19px] uppercase tracking-[0.1em] sm:text-2xl sm:tracking-[0.16em] ${
               sobreHero
                 ? "text-white [text-shadow:0_1px_14px_rgba(0,0,0,0.5)] lg:text-tinta lg:[text-shadow:none]"
                 : "text-tinta"

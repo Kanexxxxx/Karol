@@ -198,12 +198,11 @@ Tipo: **Ir para o site** (URL dinâmica)
 | Texto do botão | `Abrir no painel` |
 | Tipo de URL | **Dinâmica** |
 | URL | `https://karol-zeta.vercel.app/painel?q={{1}}` |
-| Exemplo da URL | `https://karol-zeta.vercel.app/painel?q=1CF02F` |
+| Exemplo da URL | `https://karol-zeta.vercel.app/painel?q=5518999998888` |
 
-> É esse botão que substitui o código que ficava escrito na mensagem. Ela
-> toca, cai no painel já com o agendamento aberto, e resolve por lá. O
-> código continua existindo por dentro como chave do link — ninguém digita,
-> ninguém vê.
+> Ela toca e cai no painel já filtrado pelo **telefone** da cliente. O
+> código de agendamento saiu do projeto — o link passa o número, que é o
+> que ela já tem na mão.
 
 ### Exemplos
 
@@ -214,6 +213,97 @@ Tipo: **Ir para o site** (URL dinâmica)
 | `{{3}}` | `quarta-feira, 9 de setembro às 07:15` |
 | `{{4}}` | `Pereira Barreto` |
 | `{{5}}` | `Maria Silva · (18) 99999-8888` |
+
+---
+
+## 4. `pedido_sinal`
+
+Sai no lugar da confirmação quando o serviço pede **sinal** (R$ 80 ou
+mais) e a cliente ainda não pagou. Sem este template, quem marcou uma
+brow lamination recebia "seu horário está **reservado**", com o preço
+cheio e sem uma palavra sobre o PIX — e não pagava.
+
+O truque está no botão: quando a cliente toca em **Receber o PIX**, o
+toque é uma mensagem DELA, a janela de 24 h abre, e o site responde na hora
+com o texto do sinal, o **QR Code com o valor já preenchido** e o **copia e
+cola** — tudo de graça, porque já está dentro da janela.
+
+| Campo | Valor |
+|---|---|
+| **Nome** | `pedido_sinal` |
+| **Categoria** | Utilidade |
+| **Idioma** | Português (BR) |
+
+### Cabeçalho
+Tipo: **Texto**
+
+```
+Falta o sinal pra fechar ✨
+```
+
+### Corpo
+
+```
+Oi, {{1}}! Recebi seu pedido de horário no Studio Karol Carvalho. 💛
+
+💄 *{{2}}*
+📅 {{3}}
+📍 {{4}}
+
+Pra garantir esse horário no seu nome, o sinal é de *{{5}}* — e ele desconta do valor final.
+
+Toque em *Receber o PIX* aqui embaixo que eu te mando a chave e o QR Code com o valor já preenchido.
+```
+
+### Rodapé
+
+```
+Studio Karol Carvalho
+```
+
+### Botões
+Tipo: **Resposta rápida** — **nesta ordem**
+
+| | Texto do botão |
+|---|---|
+| 1 | `💳 Receber o PIX` |
+| 2 | `💬 Falar com a Karol` |
+
+### Exemplos
+
+| Variável | Exemplo |
+|---|---|
+| `{{1}}` | `Maria` |
+| `{{2}}` | `Brow lamination` |
+| `{{3}}` | `sábado, 12 de setembro às 14:00` |
+| `{{4}}` | `Bandeirantes D'Oeste` |
+| `{{5}}` | `R$ 40` |
+
+---
+
+## ⚠️ A ordem dos botões importa
+
+O site manda, junto com cada template, um **código escondido** pra cada
+botão (`confirmar`, `remarcar`, `falar`, `pix`). É por ele que o site sabe
+qual botão a cliente tocou, sem depender de ler o texto.
+
+Esse código vai **pela posição**: o primeiro código é do primeiro botão, e
+assim por diante. Então:
+
+- **Pode** mudar o texto de um botão à vontade.
+- **Não pode** mudar a **ordem** nem a **quantidade** de botões sem me
+  avisar. Se sobrar ou faltar botão, a Meta recusa o envio inteiro.
+
+| Template | Botão 1 | Botão 2 | Botão 3 |
+|---|---|---|---|
+| `confirmacao_agendamento` | confirmar | remarcar | falar |
+| `lembrete_vespera` | confirmar | remarcar | falar |
+| `pedido_sinal` | pix | falar | — |
+
+**"Falar com a Karol" manda a cliente pro WhatsApp pessoal dela.** O número
+da API não tem caixa de entrada — ninguém lê o que chega nele. Por isso, quando
+a cliente toca nesse botão (ou escreve qualquer coisa livre pela primeira
+vez), o site responde com o número de verdade da Karol.
 
 ---
 
@@ -254,4 +344,5 @@ conversa.
 2. Status em **WhatsApp Manager → Modelos de mensagem**.
 3. Se reprovar, a Meta diz o motivo. O mais comum é a categoria: se ela
    jogar pra *marketing*, é porque achou tom de venda em algum lugar.
-4. Quando os três estiverem **Aprovados**, me avisa — aí eu ligo no código.
+4. Quando os quatro estiverem **Aprovados**, me avisa. O código já está ligado:
+   ele tenta mandar e, enquanto o template não existir, a Meta só recusa.

@@ -27,6 +27,7 @@ vi.mock("./ia", () => ({
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
+  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix" },
   enviarTextoComBotoes: vi.fn(async () => true),
   whatsappDaKarol: vi.fn(() => "5518997525291"),
 }));
