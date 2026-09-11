@@ -8,6 +8,8 @@ import { buscarServico, formatarPreco, valorDoSinal } from "@/data/servicos";
 import { buscarAgendamento } from "@/lib/agendamentos";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
+import { brCodeDoSinal } from "@/lib/pix";
+import { qrParaSvg } from "@/lib/qr";
 import { CopiarPix } from "./CopiarPix";
 
 export const metadata: Metadata = { title: "Horário confirmado", robots: { index: false } };
@@ -76,10 +78,14 @@ function Sucesso({
     tem razão: código escrito não combina com studio de beleza, e obriga a
     cliente a guardar uma coisa que não significa nada pra ela.
   */
+  /*
+    O mesmo texto pra quem já pagou pelo QR desta tela e pra quem ainda
+    vai pagar. Quem está devendo o sinal recebe, em resposta a esta
+    mensagem, o PIX com valor, o QR e o copia e cola — é esta mensagem que
+    abre a janela de 24 h. Ver `atender()` em lib/atendente.ts.
+  */
   const recado = linkWhatsapp(
-    esperandoPagamento
-      ? `Oi Karol! Acabei de agendar pelo site: ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}. Estou mandando o comprovante do sinal aqui.`
-      : `Oi Karol! Acabei de agendar pelo site. ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}.`,
+    `Oi Karol! Acabei de agendar pelo site: ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}.`,
   );
 
   return (
@@ -90,7 +96,7 @@ function Sucesso({
       </h1>
       <p className="mb-8 text-tinta-2">
         {esperandoPagamento
-          ? `Seu horário está segurado até ${REGRAS.sinal.seguraAte}. Faça o PIX do sinal e mande o comprovante pra Karol no WhatsApp — assim que ela conferir, está fechado.`
+          ? `Seu horário está guardado até ${REGRAS.sinal.seguraAte}. Pague o sinal pelo QR abaixo — o valor já vai preenchido — e mande o comprovante pra Karol no WhatsApp. Assim que ela conferir, está fechado.`
           : "O horário já está reservado no seu nome. Anote os detalhes:"}
       </p>
 
@@ -119,7 +125,7 @@ function Sucesso({
         )}
       </dl>
 
-      {esperandoPagamento && <BlocoPix valorCentavos={sinalCentavos} />}
+      {esperandoPagamento && <BlocoPix valorCentavos={sinalCentavos} id={agendamento.id} />}
 
       <div className="mt-7 border-t border-linha pt-6">
         <h2 className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.22em] text-ouro">
@@ -144,7 +150,7 @@ function Sucesso({
           rel="noopener noreferrer"
           className="inline-flex min-h-[50px] items-center justify-center bg-ouro px-7 py-4 text-[11.5px] font-bold uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-90"
         >
-          {esperandoPagamento ? "Mandar o comprovante" : "Avisar a Karol no WhatsApp"}
+          {esperandoPagamento ? "Mandar o comprovante no WhatsApp" : "Avisar a Karol no WhatsApp"}
         </a>
         <Link
           href="/"
@@ -175,23 +181,62 @@ function Sucesso({
  * responde é a Karol. O aviso abaixo é o que ela decidiu, escrito de um
  * jeito que não soa hostil.
  */
-function BlocoPix({ valorCentavos }: { valorCentavos: number }) {
+function BlocoPix({ valorCentavos, id }: { valorCentavos: number; id: string }) {
+  /*
+    O BR Code com o valor DENTRO (campo 54). Escaneado, o app do banco
+    abre com o valor já preenchido — a cliente não digita, então não erra.
+    O identificador é o do agendamento: aparece no extrato da Karol e liga
+    o PIX a quem pagou.
+
+    O SVG é gerado aqui mesmo, no servidor, a partir de `lib/qr.ts` — que
+    só emite coordenadas e as duas cores abaixo. Não existe texto da
+    cliente dentro dele, por isso o `dangerouslySetInnerHTML` é seguro.
+  */
+  const codigo = brCodeDoSinal(valorCentavos, id);
+  const svg = qrParaSvg(codigo, { nivel: "M", escuro: "#332b22", claro: "#ffffff" });
+  const valor = formatarPreco(valorCentavos / 100);
+
   return (
     <div className="mt-7 border border-ouro/40 bg-ouro-fundo/40 p-5 sm:p-6">
       <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">
-        PIX do sinal · {formatarPreco(valorCentavos / 100)}
+        PIX do sinal · {valor}
       </p>
 
-      <p className="mt-3 text-[14px] text-tinta-2">
-        Chave ({REGRAS.sinal.tipoChave}):{" "}
-        <strong className="font-mono font-semibold text-tinta">{REGRAS.sinal.chavePix}</strong>
-      </p>
-      <p className="mt-1 text-[13px] text-tinta-3">
-        {REGRAS.sinal.banco} · {REGRAS.sinal.favorecido}
-      </p>
+      <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-start">
+        <div
+          role="img"
+          aria-label={`QR Code do PIX de ${valor}`}
+          className="mx-auto w-[184px] shrink-0 border border-linha bg-white p-1 sm:mx-0"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
 
-      <div className="mt-4">
-        <CopiarPix chave={REGRAS.sinal.chavePix} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] text-tinta-2">
+            Abra o app do seu banco, escolha <strong>PIX › Ler QR Code</strong> e aponte a
+            câmera. O valor de <strong>{valor}</strong> já vai preenchido.
+          </p>
+
+          <p className="mt-4 text-[13px] text-tinta-3">
+            Está pagando pelo mesmo celular? Copie o código e cole em{" "}
+            <strong>PIX Copia e Cola</strong>:
+          </p>
+          <div className="mt-2">
+            <CopiarPix texto={codigo} rotulo="Copiar código PIX" rotuloCopiado="Código copiado ✓" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 border-t border-ouro/20 pt-4">
+        <p className="text-[13px] text-tinta-2">
+          Prefere digitar? Chave ({REGRAS.sinal.tipoChave.toLowerCase()}):{" "}
+          <strong className="font-mono font-semibold text-tinta">{REGRAS.sinal.chavePix}</strong>
+        </p>
+        <p className="mt-1 text-[12.5px] text-tinta-3">
+          {REGRAS.sinal.favorecido} · {REGRAS.sinal.banco}
+        </p>
+        <div className="mt-3">
+          <CopiarPix texto={REGRAS.sinal.chavePix} rotulo="Copiar chave" rotuloCopiado="Chave copiada ✓" />
+        </div>
       </div>
 
       {!REGRAS.sinal.devolve && (

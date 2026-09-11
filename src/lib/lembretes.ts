@@ -5,9 +5,8 @@ import {
   agendamentosDeAmanha,
   agendamentosParaLembrar,
   marcarLembreteEnviado,
-  type Agendamento,
 } from "./agendamentos";
-import { enviarEvento, type DadosAgendamento } from "./notificacoes";
+import { enviarEvento, paraDados } from "./notificacoes";
 
 /**
  * Os lembretes.
@@ -27,18 +26,10 @@ import { enviarEvento, type DadosAgendamento } from "./notificacoes";
  *   `CRON_SECRET` no cabeçalho. Ver WHATSAPP.md.
  */
 
-export function paraDados(a: Agendamento): DadosAgendamento {
-  return {
-    id: a.id,
-    cliente: a.clienteNome,
-    whatsappCliente: a.clienteWhatsapp,
-    servico: a.servicoNome,
-    cidade: a.cidade,
-    inicioISO: a.inicio.toISOString(),
-    valorCentavos: a.servicoPreco,
-    observacao: a.observacao,
-  };
-}
+// `paraDados` mudou de casa: agora vive em `notificacoes.ts`, junto do
+// tipo que ela produz. Continua saindo por aqui porque o painel importa
+// deste módulo.
+export { paraDados };
 
 export async function rodarLembretes(): Promise<{
   lembretes: number;

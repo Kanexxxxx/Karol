@@ -13,13 +13,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * Karol respondeu no briefing que a cliente não desmarca sozinha.
  */
 
-vi.mock("./conversas", () => ({ abrirJanela: vi.fn(async () => {}) }));
+vi.mock("./conversas", () => ({
+  abrirJanela: vi.fn(async () => {}),
+  // Por padrão a janela JÁ está aberta: a cliente é alguém que já conversou
+  // com a Karol antes. O caso de "chegando agora" é ligado só nos testes
+  // que tratam dele, pra não disparar o pedido de sinal em todo o arquivo.
+  janelaAberta: vi.fn(async () => true),
+}));
 vi.mock("./agendamentos", () => ({
   proximoAgendamentoDe: vi.fn(),
   remarcarAgendamento: vi.fn(async () => ({ ok: true })),
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
+  enviarPedidoDeSinal: vi.fn(async () => true),
+  esperandoSinal: vi.fn(() => false),
+  paraDados: vi.fn((a: unknown) => a),
   enviarTextoComBotoes: vi.fn(async () => true),
   enviarTextoComLista: vi.fn(async () => true),
   whatsappDaKarol: vi.fn(() => "5518997525291"),
@@ -36,9 +45,9 @@ vi.mock("./remarcacao", () => ({
   fechar: vi.fn(async () => {}),
 }));
 
-import { abrirJanela } from "./conversas";
+import { abrirJanela, janelaAberta } from "./conversas";
 import { proximoAgendamentoDe } from "./agendamentos";
-import { enviarTexto } from "./notificacoes";
+import { enviarPedidoDeSinal, enviarTexto, esperandoSinal } from "./notificacoes";
 import { atender } from "./atendente";
 
 const abrirMock = vi.mocked(abrirJanela);
@@ -269,5 +278,82 @@ describe("o atendimento automático não pode mexer na agenda", () => {
     expect(corte).toBeGreaterThan(0);
     expect(fonte.slice(corte)).toContain("await remarcarAgendamento(");
     expect(fonte.slice(0, corte)).not.toContain("await remarcarAgendamento(");
+  });
+});
+
+/**
+ * O PIX que sai sozinho quando a cliente chega.
+ *
+ * Este é o desfecho de toda a arquitetura de janela de 24 h. Quem marca
+ * pelo site nunca falou com a Karol, então a Meta recusa texto livre. A
+ * tela de confirmação termina num botão que faz a CLIENTE mandar a
+ * primeira mensagem — e é essa mensagem que abre a janela e destrava o
+ * envio do sinal de graça.
+ *
+ * Se estes testes caírem, o sinal volta a depender de a Karol digitar a
+ * chave PIX na mão em toda cliente nova.
+ */
+describe("o pedido do sinal quando a cliente chega do site", () => {
+  beforeEach(() => {
+    vi.mocked(janelaAberta).mockResolvedValue(true);
+    vi.mocked(esperandoSinal).mockReturnValue(false);
+    vi.mocked(enviarPedidoDeSinal).mockClear();
+  });
+
+  it("dispara o PIX na primeira mensagem de quem está devendo o sinal", async () => {
+    // janela fechada = pessoa chegando agora, vinda do site
+    vi.mocked(janelaAberta).mockResolvedValue(false);
+    vi.mocked(esperandoSinal).mockReturnValue(true);
+    acharMock.mockResolvedValue({ ...agendamentoFalso(), situacao: "pendente" });
+
+    const r = await atender(mensagem("Oi Karol! Acabei de agendar pelo site"));
+
+    expect(r.fez).toBe("pediu-sinal");
+    expect(enviarPedidoDeSinal).toHaveBeenCalledTimes(1);
+  });
+
+  it("NÃO repete o PIX em cada mensagem seguinte da mesma conversa", async () => {
+    // a janela já está aberta: ela está conversando, não chegando
+    vi.mocked(janelaAberta).mockResolvedValue(true);
+    vi.mocked(esperandoSinal).mockReturnValue(true);
+    acharMock.mockResolvedValue({ ...agendamentoFalso(), situacao: "pendente" });
+
+    await atender(mensagem("já mandei o comprovante"));
+
+    expect(enviarPedidoDeSinal).not.toHaveBeenCalled();
+  });
+
+  it("não manda PIX pra quem marcou serviço que não pede sinal", async () => {
+    vi.mocked(janelaAberta).mockResolvedValue(false);
+    vi.mocked(esperandoSinal).mockReturnValue(false);
+    acharMock.mockResolvedValue(agendamentoFalso());
+
+    await atender(mensagem("Oi Karol! Acabei de agendar pelo site"));
+
+    expect(enviarPedidoDeSinal).not.toHaveBeenCalled();
+  });
+
+  it("não trava a conversa de quem chega sem agendamento nenhum", async () => {
+    vi.mocked(janelaAberta).mockResolvedValue(false);
+    acharMock.mockResolvedValue(null);
+
+    const r = await atender(mensagem("oi, quanto custa a maquiagem?"));
+
+    expect(enviarPedidoDeSinal).not.toHaveBeenCalled();
+    expect(r.fez).toBe("nada");
+  });
+
+  it("pergunta se a janela estava aberta ANTES de abrir a janela", () => {
+    /*
+      A ordem é o truque inteiro. `abrirJanela` deixa toda janela aberta;
+      se a pergunta viesse depois, a resposta seria sempre "já estava" e o
+      PIX nunca sairia — um bug silencioso, porque nada quebra: as
+      mensagens continuam funcionando, só o sinal some.
+    */
+    const texto = readFileSync(new URL("./atendente.ts", import.meta.url), "utf8");
+    const perguntou = texto.indexOf("await janelaAberta(");
+    const abriu = texto.indexOf("await abrirJanela(");
+    expect(perguntou).toBeGreaterThan(0);
+    expect(perguntou).toBeLessThan(abriu);
   });
 });

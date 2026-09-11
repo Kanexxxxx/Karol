@@ -6,13 +6,16 @@ import {
   remarcarAgendamento,
   type Agendamento,
 } from "./agendamentos";
-import { abrirJanela } from "./conversas";
+import { abrirJanela, janelaAberta } from "./conversas";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import {
+  enviarPedidoDeSinal,
   enviarTexto,
   enviarTextoComBotoes,
   enviarTextoComLista,
+  esperandoSinal,
   linkDoPainel,
+  paraDados,
   whatsappDaKarol,
 } from "./notificacoes";
 import { paraChave } from "./agenda";
@@ -62,13 +65,51 @@ export type Desfecho =
   | { fez: "karol-recusou" }
   | { fez: "respondeu-horario" }
   | { fez: "mandou-pro-site" }
+  | { fez: "pediu-sinal"; valorCentavos: number }
   | { fez: "avisou-karol"; pedido: "cancelar" | "remarcar" };
 
 export async function atender(m: MensagemRecebida): Promise<Desfecho> {
-  // Primeiro de tudo, e sempre: registrar que ela falou. Mesmo que o resto
-  // não faça nada, é este registro que libera as mensagens grátis pelas
-  // próximas 24 h. Ver lib/conversas.ts.
+  /*
+    ⚠️ ESTA PERGUNTA VEM ANTES DE ABRIR A JANELA, e a ordem é o truque
+    inteiro: depois do `abrirJanela` abaixo, toda janela está aberta e não
+    dá mais pra saber se ela já estava.
+
+    "A janela estava fechada" é a definição prática de "esta pessoa está
+    chegando agora" — foi ao site, marcou, e tocou no botão que abre a
+    conversa. É o único momento em que a gente sabe que ela acabou de
+    marcar sem precisar adivinhar pelo texto.
+  */
+  const chegandoAgora = !(await janelaAberta(m.de));
+
+  // E sempre: registrar que ela falou. Mesmo que o resto não faça nada, é
+  // este registro que libera as mensagens grátis pelas próximas 24 h. Ver
+  // lib/conversas.ts.
   await abrirJanela(m.de, m.texto);
+
+  /*
+    O PEDIDO DO SINAL — e este é o motivo de todo o resto existir.
+
+    Quem marca pelo site NUNCA falou com a Karol antes, então a janela de
+    24 h está fechada e a Meta recusa qualquer texto livre. É exatamente o
+    que aconteceu no teste com o marido dela.
+
+    Por isso a tela de confirmação termina num botão que abre o WhatsApp
+    com a mensagem já escrita: a cliente toca, a mensagem sai DELA, a
+    janela abre — e é aqui, uma fração de segundo depois, que o PIX com
+    valor, o QR e o copia e cola saem de graça.
+
+    Sem isto, o sinal dependia de a Karol digitar a chave na mão toda vez.
+  */
+  if (chegandoAgora) {
+    const pendente = await proximoAgendamentoDe(m.de);
+    if (pendente) {
+      const dados = paraDados(pendente);
+      if (esperandoSinal(dados)) {
+        await enviarPedidoDeSinal(dados);
+        return { fez: "pediu-sinal", valorCentavos: dados.valorCentavos };
+      }
+    }
+  }
 
   /*
     Quem mandou pode ser a KAROL, não uma cliente. Ela responde no mesmo

@@ -1,8 +1,10 @@
 import "server-only";
 
-import { CIDADES, NEGOCIO, NOTIFICACOES, REGRAS, SITE_URL } from "@/data/negocio";
+import { ANTES_DE_VIR, CIDADES, NEGOCIO, NOTIFICACOES, REGRAS, SITE_URL } from "@/data/negocio";
 import { formatarPreco, pedeSinalPorValor } from "@/data/servicos";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
+import { brCodeDoSinal } from "./pix";
+import type { Agendamento } from "./agendamentos";
 import { formatarWhatsapp } from "./telefone";
 
 /**
@@ -49,6 +51,30 @@ export type DadosAgendamento = {
   observacao?: string | null;
 };
 
+/**
+ * Converte um agendamento do banco no que as mensagens precisam.
+ *
+ * Mora aqui, e não em `lembretes.ts` como antes, porque o tipo de destino
+ * é daqui — e porque agora três caminhos diferentes precisam dela: os
+ * lembretes, o botão do painel e o atendimento automático.
+ *
+ * ⚠️ `situacao` faz parte. Sem ela, `esperandoSinal()` acha que ninguém
+ * está devendo PIX e o pedido do sinal nunca sai.
+ */
+export function paraDados(a: Agendamento): DadosAgendamento {
+  return {
+    id: a.id,
+    cliente: a.clienteNome,
+    whatsappCliente: a.clienteWhatsapp,
+    servico: a.servicoNome,
+    cidade: a.cidade,
+    inicioISO: a.inicio.toISOString(),
+    valorCentavos: a.servicoPreco,
+    situacao: a.situacao,
+    observacao: a.observacao,
+  };
+}
+
 export type Evento =
   | "novo-agendamento"
   | "confirmacao"
@@ -93,6 +119,12 @@ export function avisosDesviadosPara(): string | null {
   return configurado === dela ? null : configurado;
 }
 
+/**
+ * O endereço completo da cidade.
+ *
+ * ⚠️ NUNCA vai pro site. Só entra em mensagem de quem JÁ marcou — são
+ * endereços residenciais, um deles a casa da mãe dela.
+ */
 function enderecoPorCidade(cidadeNome: string): string {
   const norm = (cidadeNome || "").toLowerCase();
   if (norm.includes("bandeirantes")) {
@@ -101,35 +133,76 @@ function enderecoPorCidade(cidadeNome: string): string {
   return CIDADES["pereira-barreto"].enderecoCompleto;
 }
 
+/** "sexta-feira, 12 de setembro, 19:00" com a primeira letra maiúscula. */
+function quandoBonito(iso: string): string {
+  const texto = quando(iso);
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+/** O sinal deste agendamento, em centavos. 0 = não pede sinal. */
+export function sinalDoAgendamento(a: DadosAgendamento): number {
+  if (!pedeSinalPorValor(a.valorCentavos)) return 0;
+  return Math.round((a.valorCentavos * REGRAS.sinal.porcentagem) / 100);
+}
+
+/** Está esperando o PIX pra fechar? */
+export function esperandoSinal(a: DadosAgendamento): boolean {
+  return a.situacao === "pendente" && sinalDoAgendamento(a) > 0;
+}
+
+/**
+ * O aviso que chega no celular da Karol quando alguém marca.
+ *
+ * ---------------------------------------------------------------------
+ * O que esta mensagem tem que resolver
+ * ---------------------------------------------------------------------
+ *
+ * Ela vai ler isto no meio de um atendimento, com a mão suja de pigmento,
+ * pela prévia da notificação. Então a ordem é: **quem e quando** primeiro,
+ * o resto depois. Nome e horário são o que ela precisa pra saber se
+ * aquilo muda alguma coisa no dia dela.
+ *
+ * O que NÃO entra: nada que ela já saiba (o nome do studio), nada que ela
+ * não possa usar (identificador interno), e nada de aviso técnico. A
+ * versão anterior começava com "📅 Novo agendamento pelo site" — quatro
+ * palavras gastas antes da primeira útil.
+ */
 export function textoParaKarol(a: DadosAgendamento): string {
-  const pendenteSinal = a.situacao === "pendente" && pedeSinalPorValor(a.valorCentavos);
-  const valorSinal = formatarPreco((a.valorCentavos * (REGRAS.sinal.porcentagem / 100)) / 100);
+  const faltaSinal = esperandoSinal(a);
+  const valorSinal = formatarPreco(sinalDoAgendamento(a) / 100);
 
   return [
-    pendenteSinal
-      ? "📅 Novo pedido — aguardando o sinal"
-      : "📅 Novo agendamento pelo site",
+    faltaSinal ? "🔑 *Pedido de horário — falta o sinal*" : "💛 *Novo agendamento*",
     "",
-    `👤 *${a.cliente}*`,
-    `💄 ${a.servico} — ${formatarPreco(a.valorCentavos / 100)}`,
-    ...(pendenteSinal
-      ? [`🔑 Sinal a receber (${REGRAS.sinal.porcentagem}%): *${valorSinal}*`]
-      : []),
-    `🗓️ ${quando(a.inicioISO)}`,
-    `📍 ${a.cidade}`,
+    `*${a.cliente}*`,
+    quandoBonito(a.inicioISO),
     "",
-    // ⚠️ O RECADO vem antes do link, e não depois. É a única informação da
-    // mensagem que ela não consegue adivinhar sozinha, e pode mudar o que
-    // ela separa antes de a cliente chegar.
+    `${a.servico} · ${a.cidade}`,
+    faltaSinal
+      ? `${formatarPreco(a.valorCentavos / 100)} · sinal de *${valorSinal}*`
+      : formatarPreco(a.valorCentavos / 100),
+
+    // ⚠️ O RECADO vem antes dos links, e não depois. É a única informação
+    // da mensagem que ela não consegue adivinhar sozinha, e pode mudar o
+    // que ela separa antes de a cliente chegar.
     // ⚠️ a linha em branco que separa este bloco do próximo vai DENTRO do
     // ternário. Fora dele, ela soma com a de cima e abre um buraco no meio
     // da mensagem sempre que não há recado.
-    ...(a.observacao ? ["📝 Recado da cliente:", `"${a.observacao}"`, ""] : []),
-    `Chamar no WhatsApp: https://wa.me/${a.whatsappCliente}`,
+    ...(a.observacao ? ["", "📝 *Recado dela:*", `"${a.observacao}"`] : []),
+
+    ...(faltaSinal
+      ? [
+          "",
+          `Já mandei o PIX de ${valorSinal} pra ela. O horário fica guardado até ${REGRAS.sinal.seguraAte}.`,
+          "Quando o comprovante chegar, é só confirmar na agenda.",
+        ]
+      : []),
+
     "",
+    `Falar com ${primeiroNome(a.cliente)}: https://wa.me/${a.whatsappCliente}`,
     // Ela toca e cai no painel já filtrado nesta cliente. Sem código, sem
     // digitar nada.
-    linkDoPainel(a.whatsappCliente),
+    `Ver na agenda: ${linkDoPainel(a.whatsappCliente)}`,
   ].join("\n");
 }
 
@@ -151,53 +224,139 @@ export function linkDoPainel(whatsappCliente: string): string {
   return `${SITE_URL}/painel?q=${encodeURIComponent(whatsappCliente)}`;
 }
 
-export function textoConfirmacao(a: DadosAgendamento): string {
-  const endereco = enderecoPorCidade(a.cidade);
-  const pendenteSinal = a.situacao === "pendente" && pedeSinalPorValor(a.valorCentavos);
+/**
+ * A imagem do QR do PIX deste agendamento.
+ *
+ * É uma URL pública porque a Meta busca a imagem pra reenviar — ela não
+ * aceita arquivo colado na requisição. O identificador do agendamento é
+ * um UUID, então a URL não é adivinhável, e a rota deriva o valor do
+ * banco: ninguém consegue mandar gerar um QR de R$ 5.000 na chave dela só
+ * mexendo no endereço. Ver `app/api/pix/[id]/route.ts`.
+ */
+export function linkDoQrPix(id: string): string {
+  return `${SITE_URL}/api/pix/${encodeURIComponent(id)}`;
+}
 
-  if (pendenteSinal) {
-    const valorSinal = formatarPreco((a.valorCentavos * (REGRAS.sinal.porcentagem / 100)) / 100);
-    return [
-      `Oi, ${primeiroNome(a.cliente)}! Seu pedido de agendamento no ${NEGOCIO.nome} foi recebido. ✨`,
-      "",
-      `💄 ${a.servico}`,
-      `🗓️ ${quando(a.inicioISO)}`,
-      `📍 ${a.cidade} — ${endereco}`,
-      `💵 Valor total: ${formatarPreco(a.valorCentavos / 100)}`,
-      `🔑 *Sinal para segurar o horário (${REGRAS.sinal.porcentagem}%): ${valorSinal}*`,
-      "",
-      `*Chave PIX (${REGRAS.sinal.tipoChave}):* \`${REGRAS.sinal.chavePix}\``,
-      `Banco: ${REGRAS.sinal.banco} — Favorecido: ${REGRAS.sinal.favorecido}`,
-      "",
-      "⚠️ *Para garantir o seu horário:* faça o PIX do sinal e envie o comprovante por aqui. A Karol vai conferir e confirmar seu agendamento! 💛",
-      "",
-      "Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa. 🤍",
-    ].join("\n");
-  }
+/** As três linhas de "antes de vir", como texto de WhatsApp. */
+function antesDeVir(): string[] {
+  return ["*Antes de vir:*", ...ANTES_DE_VIR.map((aviso) => `• ${aviso}`)];
+}
+
+/**
+ * A confirmação de quem JÁ está fechado — serviço barato, sem sinal.
+ */
+export function textoConfirmacao(a: DadosAgendamento): string {
+  if (esperandoSinal(a)) return textoDoSinal(a);
 
   return [
-    `Oi, ${primeiroNome(a.cliente)}! Seu horário está confirmado no ${NEGOCIO.nome}. ✨`,
+    `Oi, ${primeiroNome(a.cliente)}! Seu horário está confirmado 💛`,
     "",
     `💄 ${a.servico}`,
-    `🗓️ ${quando(a.inicioISO)}`,
-    `📍 ${a.cidade} — ${endereco}`,
+    `🗓️ ${quandoBonito(a.inicioISO)}`,
+    `📍 ${a.cidade} — ${enderecoPorCidade(a.cidade)}`,
     `💵 ${formatarPreco(a.valorCentavos / 100)}`,
     "",
-    "Antes de vir: venha sem maquiagem. Se for trazer acompanhante, no máximo uma pessoa. 🤍",
+    ...antesDeVir(),
+    "",
+    "Qualquer coisa é só me chamar por aqui. Te espero! 🤍",
   ].join("\n");
 }
 
-export function textoLembrete(a: DadosAgendamento): string {
-  const endereco = enderecoPorCidade(a.cidade);
+/**
+ * A MENSAGEM DO SINAL — a que faz a pessoa pagar.
+ *
+ * ---------------------------------------------------------------------
+ * Por que ela é escrita assim
+ * ---------------------------------------------------------------------
+ *
+ * Pedir dinheiro adiantado é o momento em que a cliente pode desistir. O
+ * texto tem que derrubar as quatro perguntas que aparecem na cabeça dela,
+ * na ordem em que aparecem:
+ *
+ * 1. "Quanto?"           → o valor em negrito, sozinho numa linha.
+ * 2. "É a mais?"         → *desconta do valor final*. É a objeção mais
+ *                          comum e a mais fácil de resolver: ninguém está
+ *                          cobrando nada além do combinado.
+ * 3. "Como pago?"        → chave + QR com valor + copia e cola. Três
+ *                          caminhos, porque cada pessoa usa o banco de um
+ *                          jeito.
+ * 4. "E se eu desistir?" → a verdade, dita antes de ela perguntar.
+ *
+ * ⚠️ SOBRE O ITEM 4: a Karol respondeu, com estas palavras, que o sinal
+ * **não volta** — "é justamente pra ela não desmarcar". Uma versão
+ * anterior deste projeto escreveu o contrário na tela de confirmação, e
+ * foi pro ar prometendo devolução em 24 h. Promessa de dinheiro não é
+ * detalhe de texto: quem ia ter que honrar era ela.
+ *
+ * A regra fica aqui escrita de um jeito que explica em vez de ameaçar —
+ * o sinal é o que segura o horário —, e sempre acompanhada da saída real:
+ * remarcar, avisando antes, continua valendo.
+ */
+export function textoDoSinal(a: DadosAgendamento): string {
+  const sinal = sinalDoAgendamento(a);
+  const resta = a.valorCentavos - sinal;
+
   return [
-    `Oi, ${primeiroNome(a.cliente)}! Passando pra lembrar do seu horário amanhã. 💛`,
+    `Oi, ${primeiroNome(a.cliente)}! Recebi seu pedido de horário ✨`,
     "",
     `💄 ${a.servico}`,
-    `🗓️ ${quando(a.inicioISO)}`,
+    `🗓️ ${quandoBonito(a.inicioISO)}`,
     `📍 ${a.cidade}`,
-    `📍 ${a.cidade} — ${endereco}`,
+    `💵 ${formatarPreco(a.valorCentavos / 100)} no total`,
     "",
-    "Não esquece de vir sem maquiagem. 🤍",
+    `Pra esse horário ficar guardado no seu nome, peço um sinal de *${formatarPreco(sinal / 100)}*.`,
+    `Ele *desconta do valor final* — no dia você paga só os outros ${formatarPreco(resta / 100)}.`,
+    "",
+    `*PIX (${REGRAS.sinal.tipoChave.toLowerCase()}):* ${REGRAS.sinal.chavePix}`,
+    `${REGRAS.sinal.favorecido} · ${REGRAS.sinal.banco}`,
+    "",
+    "Me manda o comprovante aqui que eu confirmo na hora 💛",
+    "",
+    `_Guardo o horário até ${REGRAS.sinal.seguraAte}._`,
+    ...(REGRAS.sinal.devolve
+      ? []
+      : [
+          "_O sinal não volta em caso de desistência — é ele que garante que o horário não vai pra outra pessoa. Se precisar mudar de dia, me avisa antes que a gente ajeita._",
+        ]),
+  ].join("\n");
+}
+
+/**
+ * A legenda da imagem do QR.
+ *
+ * Curta de propósito: no WhatsApp a legenda fica colada embaixo da foto e
+ * texto comprido ali vira um bloco que ninguém lê. O que importa é dizer
+ * que o valor já está dentro — é a diferença entre escanear e digitar.
+ */
+export function legendaDoQr(a: DadosAgendamento): string {
+  return `Aponte a câmera do seu banco aqui — o valor de ${formatarPreco(
+    sinalDoAgendamento(a) / 100,
+  )} já vai preenchido, você só confirma.`;
+}
+
+/**
+ * O aviso de que a mensagem seguinte é só o código.
+ *
+ * O "copia e cola" vai numa mensagem SOZINHA, sem mais nada junto. É o que
+ * deixa a pessoa segurar o dedo e copiar a mensagem inteira de uma vez —
+ * com texto em volta, ela tem que selecionar na mão e sempre sobra ou
+ * falta um pedaço, e código de PIX pela metade não abre no banco.
+ */
+export const AVISO_COPIA_E_COLA =
+  "Ou copie o código abaixo e cole no seu banco, em *PIX Copia e Cola* 👇";
+
+export function textoLembrete(a: DadosAgendamento): string {
+  return [
+    `Oi, ${primeiroNome(a.cliente)}! Passando pra lembrar do seu horário amanhã 💛`,
+    "",
+    `💄 ${a.servico}`,
+    `🗓️ ${quandoBonito(a.inicioISO)}`,
+    // ⚠️ UMA linha de local, com cidade E endereço. Esta mensagem já saiu
+    // com a cidade repetida em duas linhas seguidas, uma delas sem o
+    // endereço — sobra de uma edição antiga.
+    `📍 ${a.cidade} — ${enderecoPorCidade(a.cidade)}`,
+    "",
+    "Não esquece de vir sem maquiagem 🤍",
     "",
     "Se surgiu alguma coisa e você não vai conseguir, me avisa hoje — assim dá tempo de encaixar outra pessoa nesse horário. 🙏",
   ].join("\n");
@@ -208,19 +367,18 @@ export function textoLembrete(a: DadosAgendamento): string {
  *
  * Deliberadamente MAIS CURTO que o da véspera: quem recebe isto está se
  * arrumando, provavelmente lendo a prévia da notificação sem abrir o
- * WhatsApp. Serviço, hora e cidade cabem na prévia; o resto não seria lido.
+ * WhatsApp. Hora, cidade e endereço cabem na prévia; o resto não seria
+ * lido.
  *
  * Não repete o "venha sem maquiagem" — a essa altura ou ela já tirou, ou
  * não dá mais tempo, e o aviso só faria a pessoa se sentir mal na saída.
  */
 export function textoLembreteCurto(a: DadosAgendamento): string {
-  const endereco = enderecoPorCidade(a.cidade);
   return [
-    `Oi, ${primeiroNome(a.cliente)}! Seu horário é daqui a pouco. ⏰`,
+    `Oi, ${primeiroNome(a.cliente)}! Seu horário é daqui a pouco ⏰`,
     "",
-    `💄 ${a.servico}`,
-    `🕐 ${HORA.format(new Date(a.inicioISO))} — ${a.cidade}`,
-    `📍 ${endereco}`,
+    `🕐 ${HORA.format(new Date(a.inicioISO))} — ${a.servico}`,
+    `📍 ${a.cidade} — ${enderecoPorCidade(a.cidade)}`,
     "",
     "Te espero! 💛",
   ].join("\n");
@@ -228,11 +386,11 @@ export function textoLembreteCurto(a: DadosAgendamento): string {
 
 export function textoAgradecimento(a: DadosAgendamento): string {
   return [
-    `Foi ótimo te atender, ${primeiroNome(a.cliente)}! 🥰`,
+    `Foi muito bom te atender, ${primeiroNome(a.cliente)}! 🥰`,
     "",
-    "Qualquer dúvida sobre os cuidados, é só me chamar por aqui.",
+    "Se ficar qualquer dúvida sobre os cuidados, é só me chamar por aqui.",
     "",
-    `Se você gostou, me marca nas fotos: @${NEGOCIO.instagram.studio} 📸`,
+    `E se você gostou, me marca nas fotos: @${NEGOCIO.instagram.studio} 📸`,
   ].join("\n");
 }
 
@@ -244,26 +402,26 @@ export function textoAgradecimento(a: DadosAgendamento): string {
  */
 export function textoRemarcado(a: DadosAgendamento): string {
   return [
-    `Oi, ${primeiroNome(a.cliente)}! Precisei mudar o seu horário. 💛`,
+    `Oi, ${primeiroNome(a.cliente)}! Precisei mudar o seu horário, me desculpa 💛`,
     "",
     "Ficou assim:",
     `💄 ${a.servico}`,
-    `🗓️ ${quando(a.inicioISO)}`,
-    `📍 ${a.cidade}`,
+    `🗓️ ${quandoBonito(a.inicioISO)}`,
+    `📍 ${a.cidade} — ${enderecoPorCidade(a.cidade)}`,
     "",
-    "Se esse novo horário não der, me avisa por aqui que a gente acha outro. 🤍",
+    "Se esse novo horário não der, me avisa por aqui que a gente acha outro 🤍",
   ].join("\n");
 }
 
 /** A Karol cancelou pelo painel. A cliente não pode descobrir na porta. */
 export function textoCancelado(a: DadosAgendamento): string {
   return [
-    `Oi, ${primeiroNome(a.cliente)}. Precisei cancelar o seu horário, me desculpa. 🙏`,
+    `Oi, ${primeiroNome(a.cliente)}. Precisei cancelar o seu horário, me desculpa 🙏`,
     "",
     `💄 ${a.servico}`,
-    `🗓️ ${quando(a.inicioISO)}`,
+    `🗓️ ${quandoBonito(a.inicioISO)}`,
     "",
-    "Me chama por aqui que a gente acha outro dia — tenho horário essa semana. 💛",
+    "Me chama por aqui que a gente acha outro dia — tenho horário essa semana 💛",
   ].join("\n");
 }
 
@@ -638,6 +796,100 @@ export async function enviarTexto(para: string, texto: string): Promise<boolean>
   }
 }
 
+/**
+ * Manda uma IMAGEM pela Cloud API.
+ *
+ * ⚠️ A Meta busca a imagem na URL — ela não aceita o arquivo colado na
+ * requisição. Então o endereço precisa ser público, responder `image/png`
+ * ou `image/jpeg` e não estar atrás de login. É por isso que o QR do PIX
+ * tem uma rota própria em vez de virar um data URI.
+ *
+ * O tempo limite aqui é maior que o das mensagens de texto: quem espera
+ * não somos nós, é a Meta indo buscar o arquivo, e o primeiro acesso pode
+ * cair numa função fria.
+ */
+async function enviarImagemPelaMeta(
+  para: string,
+  link: string,
+  legenda?: string,
+): Promise<Response> {
+  return fetch(
+    `https://graph.facebook.com/v23.0/${process.env.META_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${process.env.META_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: para,
+        type: "image",
+        image: { link, ...(legenda ? { caption: legenda.slice(0, 1024) } : {}) },
+      }),
+      signal: AbortSignal.timeout(10000),
+    },
+  );
+}
+
+/** Imagem por URL, sem lançar. Devolve false quando não deu. */
+export async function enviarImagem(
+  para: string,
+  link: string,
+  legenda?: string,
+): Promise<boolean> {
+  if (!metaConfigurada()) return false;
+  try {
+    const resp = await enviarImagemPelaMeta(para, link, legenda);
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+      console.error(`imagem pro ${para}: ${resp.status} ${detalhe.slice(0, 300)}`);
+    }
+    return resp.ok;
+  } catch (e) {
+    console.error(`imagem pro ${para} falhou:`, e);
+    return false;
+  }
+}
+
+/**
+ * O PEDIDO DO SINAL, inteiro: três mensagens em sequência.
+ *
+ * ---------------------------------------------------------------------
+ * Por que três e não uma
+ * ---------------------------------------------------------------------
+ *
+ * 1. O TEXTO — o valor, o que ele desconta, a chave, o prazo e a regra da
+ *    devolução. É o que convence.
+ * 2. O QR com o valor dentro — quem tem dois aparelhos, ou vai pagar pelo
+ *    computador, resolve aqui sem digitar nada.
+ * 3. O "copia e cola" SOZINHO numa mensagem, sem uma palavra em volta.
+ *
+ * O item 3 é o detalhe que faz diferença de verdade no Brasil: com o
+ * código sozinho, a pessoa segura o dedo, toca em "copiar" e leva a
+ * mensagem inteira. Se houver qualquer texto junto, ela tem que selecionar
+ * na mão — e código de PIX copiado pela metade não abre no banco, só dá
+ * "código inválido" e a sensação de que o problema é a Karol.
+ *
+ * Cada envio é independente: se o QR falhar (a Meta não conseguiu buscar a
+ * imagem, por exemplo), o texto e o copia e cola já foram e a cliente
+ * ainda consegue pagar. Devolve `true` se ao menos o texto saiu.
+ */
+export async function enviarPedidoDeSinal(a: DadosAgendamento): Promise<boolean> {
+  const sinal = sinalDoAgendamento(a);
+  if (sinal <= 0) return false;
+
+  const foiOTexto = await enviarTexto(a.whatsappCliente, textoDoSinal(a));
+
+  await enviarImagem(a.whatsappCliente, linkDoQrPix(a.id), legendaDoQr(a));
+
+  await enviarTexto(a.whatsappCliente, AVISO_COPIA_E_COLA);
+  await enviarTexto(a.whatsappCliente, brCodeDoSinal(sinal, a.id));
+
+  return foiOTexto;
+}
+
 export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise<void> {
   if (!ligado(evento)) return;
 
@@ -650,12 +902,33 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
   // é montada e simplesmente não sai — e nada quebra.
   if (!metaConfigurada() && !webhook) return;
 
+  /*
+    O PEDIDO DO SINAL não é uma mensagem, são três (texto, QR e o copia e
+    cola sozinho). Sai por um caminho próprio.
+
+    Se o primeiro texto não passar, quase sempre é a janela de 24 h
+    fechada — o caso normal de quem marcou pelo site e nunca escreveu pra
+    ela. Aí a sequência inteira é abandonada e o fluxo cai no template
+    logo abaixo, que é o único jeito de alcançar essa pessoa.
+
+    ⚠️ Mandar QR e copia e cola por template não dá: template tem texto
+    fixo e aprovado. Quem resolve isso é o botão da tela de confirmação —
+    a cliente toca, manda a primeira mensagem, a janela abre, e aí o
+    `atendente.ts` dispara esta sequência inteira de graça.
+  */
+  if (evento === "confirmacao" && esperandoSinal(a) && metaConfigurada()) {
+    if (await enviarPedidoDeSinal(a)) return;
+  }
+
   // A confirmação da cliente vai COM BOTÕES: ela acabou de marcar e é o
   // momento em que ainda pode querer trocar alguma coisa. Botão é escolha
   // de lista — não obriga ninguém a escrever nem a gente a adivinhar.
   // O aviso da Karol não leva botão: ele leva o link do painel, que é onde
   // ela resolve de verdade.
-  const comBotoes = evento === "confirmacao";
+  //
+  // Quem está esperando o sinal não leva botão: "Confirmar" ali seria uma
+  // mentira — quem confirma é o PIX, não o toque dela.
+  const comBotoes = evento === "confirmacao" && !esperandoSinal(a);
 
   try {
     const resp = metaConfigurada()

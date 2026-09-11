@@ -64,10 +64,13 @@ describe("templates", () => {
       situacao: "pendente",
       valorCentavos: 10000,
     });
-    expect(pendente).toContain("Sinal para segurar o horário (50%)");
+    expect(pendente).toMatch(/sinal de \*R\$\s?50\*/);
     expect(pendente).toContain("18997525291");
     expect(pendente).toContain("Nubank");
-    expect(pendente).toMatch(/R\$\s?50/);
+    // o que faz a pessoa pagar: não é dinheiro a mais
+    expect(pendente).toContain("desconta do valor final");
+    // e a regra dela, dita sem rodeio
+    expect(pendente).toMatch(/não volta em caso de desistência/i);
   });
 
   it("cliente que marcou serviço barato não recebe PIX nenhum", () => {
@@ -85,15 +88,14 @@ describe("templates", () => {
    */
   it("aviso pra Karol pede o sinal num serviço acima do mínimo", () => {
     const t = textoParaKarol({ ...AG, situacao: "pendente", valorCentavos: 10000 });
-    expect(t).toMatch(/aguardando o sinal/i);
-    expect(t).toContain("Sinal a receber (50%)");
-    expect(t).toMatch(/R\$\s?50/);
+    expect(t).toMatch(/falta o sinal/i);
+    expect(t).toMatch(/sinal de \*R\$\s?50\*/);
   });
 
   it("NÃO pede sinal num serviço abaixo do mínimo, mesmo pendente", () => {
     const t = textoParaKarol({ ...AG, situacao: "pendente", valorCentavos: 3000 });
     expect(t).not.toMatch(/sinal/i);
-    expect(t).toContain("Novo agendamento pelo site");
+    expect(t).toContain("Novo agendamento");
   });
 });
 

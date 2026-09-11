@@ -14,13 +14,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * agenda de alguém".
  */
 
-vi.mock("./conversas", () => ({ abrirJanela: vi.fn(async () => {}) }));
+vi.mock("./conversas", () => ({
+  abrirJanela: vi.fn(async () => {}),
+  // janela já aberta: a remarcação acontece no meio de uma conversa, não
+  // na chegada de alguém vindo do site
+  janelaAberta: vi.fn(async () => true),
+}));
 vi.mock("./agendamentos", () => ({
   proximoAgendamentoDe: vi.fn(),
   remarcarAgendamento: vi.fn(async () => ({ ok: true })),
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
+  enviarPedidoDeSinal: vi.fn(async () => true),
+  esperandoSinal: vi.fn(() => false),
+  paraDados: vi.fn((a: unknown) => a),
   enviarTextoComBotoes: vi.fn(async () => true),
   enviarTextoComLista: vi.fn(async () => true),
   whatsappDaKarol: vi.fn(() => "5518997525291"),

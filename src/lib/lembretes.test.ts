@@ -15,7 +15,12 @@ import { mockBanco } from "../../test/mock-banco";
  */
 
 vi.mock("./banco", () => ({ banco: vi.fn(), bancoConfigurado: vi.fn(() => true) }));
-vi.mock("./notificacoes", () => ({ enviarEvento: vi.fn(async () => {}) }));
+// `paraDados` fica a de verdade: é ela que monta os dados que o teste
+// confere. Só o envio é trocado por um espião.
+vi.mock("./notificacoes", async (original) => ({
+  ...(await original<typeof import("./notificacoes")>()),
+  enviarEvento: vi.fn(async () => {}),
+}));
 
 import { banco } from "./banco";
 import { enviarEvento } from "./notificacoes";
