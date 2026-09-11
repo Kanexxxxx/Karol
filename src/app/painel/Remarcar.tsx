@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { remarcar, type EstadoRemarcar } from "./novo/acoes";
+import { BOTAO, CAMPO_CURTO, ROTULO_CAMPO } from "./estilos";
 
 const INICIAL: EstadoRemarcar = {};
 
@@ -30,58 +31,39 @@ export function Remarcar({
 
   if (!aberto) {
     return (
-      <button
-        type="button"
-        onClick={() => setAberto(true)}
-        className="inline-flex min-h-[44px] items-center border border-linha px-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
-      >
+      <button type="button" onClick={() => setAberto(true)} className={BOTAO.secundario}>
         Remarcar
       </button>
     );
   }
 
+  // `basis-full`: aberto, o formulário ocupa a linha inteira da faixa de
+  // botões em vez de se espremer ao lado deles — no celular os campos de
+  // data ficavam com 90 px e o dia não cabia.
   return (
-    <form action={acao} className="flex flex-wrap items-end gap-2">
+    <form action={acao} className="flex basis-full flex-wrap items-end gap-2 pt-1">
       <input type="hidden" name="id" value={id} />
-      <label className="flex flex-col gap-1">
-        <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-tinta-3">
-          Dia
-        </span>
-        <input
-          type="date"
-          name="dia"
-          defaultValue={diaAtual}
-          required
-          className="border border-linha bg-osso px-2.5 py-1.5 text-[14px]"
-        />
+      <label className="flex min-w-[9.5rem] flex-1 flex-col gap-1.5">
+        <span className={ROTULO_CAMPO}>Novo dia</span>
+        <input type="date" name="dia" defaultValue={diaAtual} required className={CAMPO_CURTO} />
       </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-tinta-3">
-          Hora
-        </span>
-        <input
-          type="time"
-          name="hora"
-          defaultValue={horaAtual}
-          required
-          className="border border-linha bg-osso px-2.5 py-1.5 text-[14px]"
-        />
+      <label className="flex w-[7.5rem] flex-col gap-1.5">
+        <span className={ROTULO_CAMPO}>Hora</span>
+        <input type="time" name="hora" defaultValue={horaAtual} required className={CAMPO_CURTO} />
       </label>
 
-      <button
-        type="submit"
-        disabled={enviando}
-        className="min-h-[34px] bg-ouro px-3.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-white disabled:opacity-60"
-      >
-        {enviando ? "…" : "Salvar"}
-      </button>
-      <button
-        type="button"
-        onClick={() => setAberto(false)}
-        className="min-h-[34px] px-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-tinta-3 hover:text-ouro"
-      >
-        Cancelar
-      </button>
+      <div className="flex gap-2">
+        <button type="submit" disabled={enviando} className={BOTAO.primario}>
+          {enviando ? "Salvando…" : "Salvar"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setAberto(false)}
+          className={BOTAO.fantasma}
+        >
+          Fechar
+        </button>
+      </div>
 
       {estado.erro && (
         <p role="alert" className="w-full text-[12.5px] text-[#9d3b2f]">
@@ -89,7 +71,9 @@ export function Remarcar({
         </p>
       )}
       {estado.okId === id && (
-        <p className="w-full text-[12.5px] text-ouro">Remarcado.</p>
+        <p role="status" className="w-full text-[12.5px] text-ouro">
+          Remarcado.
+        </p>
       )}
     </form>
   );

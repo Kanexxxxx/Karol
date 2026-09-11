@@ -1,10 +1,11 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { sessaoAtiva } from "@/lib/sessao";
 import { bancoConfigurado } from "@/lib/banco";
 import { listarBloqueios, type Bloqueio } from "@/lib/bloqueios";
 import { DIA_COM_ANO, DIA_E_HORA } from "@/lib/datas";
+import { CabecalhoPainel, LARGURA, RodapePainel } from "../Moldura";
+import { BOTAO, ROTULO_SECAO } from "../estilos";
 import { Formulario } from "./Formulario";
 import { apagarBloqueio } from "./acoes";
 
@@ -17,29 +18,32 @@ export default async function Bloqueios() {
   const bloqueios = bancoConfigurado() ? await listarBloqueios() : [];
 
   return (
-    <main className="min-h-dvh bg-osso">
-      <header className="border-b border-linha bg-papel">
-        <div className="mx-auto flex max-w-[720px] items-center justify-between gap-4 px-5 py-4">
-          <h1 className="font-titulo text-xl uppercase tracking-[0.14em]">Bloqueios</h1>
-          <Link
-            href="/painel"
-            className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
-          >
-            ← Agenda
-          </Link>
+    <main className="flex min-h-dvh flex-col bg-osso">
+      <CabecalhoPainel
+        titulo="Bloqueios"
+        detalhe={
+          bloqueios.length === 0
+            ? "Nenhum pela frente"
+            : bloqueios.length === 1
+              ? "1 pela frente"
+              : `${bloqueios.length} pela frente`
+        }
+        aba="bloqueios"
+      />
+
+      {/* Duas colunas na tela grande: fechar uma data e conferir as que já
+          estão fechadas acontecem juntas. No celular, uma embaixo da outra. */}
+      <div className={`${LARGURA} grid gap-8 py-6 sm:py-8 lg:grid-cols-2 lg:items-start`}>
+        <div className="flex flex-col gap-5">
+          <p className="text-[14px] leading-relaxed text-tinta-2">
+            Feche as janelas em que você não atende — férias, feriado, curso. O site
+            para de oferecer esses horários na hora.
+          </p>
+          <Formulario />
         </div>
-      </header>
 
-      <div className="mx-auto flex max-w-[720px] flex-col gap-8 px-5 py-8">
-        <p className="text-[14px] text-tinta-2">
-          Feche as janelas em que você não atende — férias, feriado, curso. O site
-          para de oferecer esses horários na hora.
-        </p>
-
-        <Formulario />
-
-        <section>
-          <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-ouro">
+        <section aria-labelledby="titulo-ativos">
+          <h2 id="titulo-ativos" className={`mb-3 border-b border-linha pb-2.5 ${ROTULO_SECAO}`}>
             Bloqueios ativos
           </h2>
 
@@ -52,16 +56,17 @@ export default async function Bloqueios() {
               {bloqueios.map((b) => (
                 <li
                   key={b.id}
-                  className="flex items-start justify-between gap-4 border border-linha bg-papel p-4"
+                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border border-linha border-l-[3px] border-l-ouro-claro bg-papel py-3 pr-3 pl-4"
                 >
-                  <div>
-                    <p className="font-titulo text-[18px] leading-tight">{b.motivo}</p>
-                    <p className="mt-0.5 text-[13px] text-tinta-2">{descrever(b)}</p>
+                  <div className="min-w-0">
+                    <p className="break-words font-titulo text-[20px] leading-tight">{b.motivo}</p>
+                    <p className="mt-0.5 text-[13px] text-tinta-2 lining-nums">{descrever(b)}</p>
                   </div>
                   <form action={apagarBloqueio.bind(null, b.id)}>
                     <button
                       type="submit"
-                      className="border border-linha px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-tinta-2 transition-colors hover:border-[#c98b80] hover:text-[#9d3b2f]"
+                      aria-label={`Remover o bloqueio “${b.motivo}”`}
+                      className={BOTAO.secundario}
                     >
                       Remover
                     </button>
@@ -72,6 +77,8 @@ export default async function Bloqueios() {
           )}
         </section>
       </div>
+
+      <RodapePainel />
     </main>
   );
 }
@@ -91,7 +98,7 @@ function descrever(b: Bloqueio): string {
 
 function Aviso({ children }: { children: React.ReactNode }) {
   return (
-    <p className="border border-linha bg-papel p-5 text-center text-[14px] text-tinta-2">
+    <p className="border border-dashed border-linha bg-papel p-5 text-center text-[14px] text-tinta-2">
       {children}
     </p>
   );

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { SituacaoAgendamento } from "@/lib/agendamentos";
 import { alterarSituacao, type EstadoPainel } from "./acoes";
+import { BOTAO } from "./estilos";
 
 /**
  * O tipo vem de `agendamentos.ts`, que é quem fala com o banco. Aqui havia
@@ -33,9 +34,9 @@ const CAMINHOS: Record<string, { valor: Situacao; rotulo: string; tom: "ok" | "n
 };
 
 const TOM = {
-  ok: "border-ouro bg-ouro text-white hover:opacity-90",
-  neutro: "border-linha text-tinta-2 hover:border-ouro-claro hover:text-ouro",
-  aviso: "border-[#d9b9b3] text-[#9d3b2f] hover:bg-[#f7ecea]",
+  ok: BOTAO.primario,
+  neutro: BOTAO.secundario,
+  aviso: BOTAO.aviso,
 } as const;
 
 export function AcoesAgendamento({
@@ -51,7 +52,7 @@ export function AcoesAgendamento({
   if (botoes.length === 0 && !estado.erro) return null;
 
   return (
-    <form action={acao} className="flex flex-wrap items-center gap-2">
+    <form action={acao} className="flex flex-wrap items-center gap-2" aria-busy={ocupado}>
       <input type="hidden" name="id" value={id} />
       {botoes.map((b) => (
         <button
@@ -60,13 +61,13 @@ export function AcoesAgendamento({
           name="situacao"
           value={b.valor}
           disabled={ocupado}
-          className={`inline-flex min-h-[44px] items-center border px-3.5 text-[10.5px] font-bold uppercase tracking-[0.14em] transition-colors disabled:opacity-50 ${TOM[b.tom]}`}
+          className={TOM[b.tom]}
         >
           {b.rotulo}
         </button>
       ))}
       {estado.erro && (
-        <span role="alert" className="text-[12px] text-[#9d3b2f]">
+        <span role="alert" className="w-full text-[12.5px] text-[#9d3b2f]">
           {estado.erro}
         </span>
       )}

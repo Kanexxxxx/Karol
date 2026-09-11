@@ -1,16 +1,26 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { FUSO } from "@/data/negocio";
 import { sessaoAtiva } from "@/lib/sessao";
 import { bancoConfigurado } from "@/lib/banco";
 import { agendaDaKarol, procurarAgendamentos, type Agendamento } from "@/lib/agendamentos";
 import { paraChave } from "@/lib/agenda";
-import { DIA_POR_EXTENSO } from "@/lib/datas";
+import { DIA_CURTO, DIA_POR_EXTENSO, HORA } from "@/lib/datas";
+import { Aguardando } from "./Aguardando";
 import { Cartao } from "./Cartao";
-import { sair } from "./acoes";
+import { Dia, emPe } from "./Dia";
+import { Indicador, Indicadores } from "./Indicadores";
+import { CabecalhoPainel, LARGURA, RodapePainel } from "./Moldura";
+import { BOTAO, CAMPO_BASE, FOCO, ROTULO_SECAO } from "./estilos";
 
 export const metadata: Metadata = { title: "Painel", robots: { index: false } };
 export const dynamic = "force-dynamic";
+
+const SO_SEMANA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: FUSO });
+
+/** Ainda vai acontecer e segura o horário. */
+const marcado = (a: Agendamento) => a.situacao === "confirmado" || a.situacao === "pendente";
 
 export default async function Painel({
   searchParams,
@@ -28,92 +38,124 @@ export default async function Painel({
   const achados =
     busca.length >= 3 && bancoConfigurado() ? await procurarAgendamentos(busca) : null;
 
-  const ativos = agendamentos.filter(
-    (a) => a.situacao === "confirmado" || a.situacao === "pendente",
-  );
-  const aguardando = agendamentos.filter((a) => a.situacao === "pendente").length;
+  /*
+    "Agora" é a hora do PEDIDO. A página é `force-dynamic` — cada abertura
+    renderiza de novo no servidor, então isto nunca congela num build. E é
+    no servidor de propósito: calcular no celular dela daria outro fuso e
+    erro de hidratação (ver o comentário do lembrete no `Cartao`).
+  */
+  const agora = new Date();
+  const dia = (desloca: number) =>
+    new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + desloca);
+  const chave = { ontem: paraChave(dia(-1)), hoje: paraChave(agora), amanha: paraChave(dia(1)) };
+
+  const deHoje = agendamentos.filter((a) => paraChave(a.inicio) === chave.hoje && emPe(a));
+  const restamHoje = deHoje.filter((a) => marcado(a) && a.inicio > agora).length;
+  const naSemana = agendamentos.filter(
+    (a) => emPe(a) && a.inicio >= dia(0) && a.inicio < dia(7),
+  ).length;
+  const pendentes = agendamentos.filter((a) => a.situacao === "pendente");
+  // A lista vem do banco ordenada por período: a primeira que ainda não
+  // começou é a próxima.
+  const proxima = agendamentos.find((a) => marcado(a) && a.inicio > agora);
+
+  const quando = (d: Date) => {
+    const k = paraChave(d);
+    if (k === chave.hoje) return "hoje";
+    if (k === chave.amanha) return "amanhã";
+    return DIA_CURTO.format(d);
+  };
 
   return (
-    <main className="min-h-dvh bg-osso">
-      <header className="border-b border-linha bg-papel">
-        <div className="mx-auto flex max-w-[900px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4">
-          <div>
-            <h1 className="font-titulo text-xl uppercase tracking-[0.14em]">Painel</h1>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3">
-              {ativos.length} na agenda
-              {aguardando > 0 && ` · ${aguardando} aguardando`}
-            </p>
-          </div>
-          {/*
-            `flex-wrap` aqui não é enfeite: são cinco itens numa linha, e sem
-            quebrar eles estouram a largura do celular — o "Sair" ficava
-            pendurado fora da faixa branca do cabeçalho, e a página rolava
-            de lado. A Karol usa o painel no telefone.
-          */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link
-              href="/painel/novo"
-              className="inline-flex min-h-[44px] items-center bg-ouro px-4 text-[10.5px] font-bold uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-90"
-            >
-              + Marcar
-            </Link>
-            <Link
-              href="/painel/relatorio"
-              className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
-            >
-              Relatório
-            </Link>
-            <Link
-              href="/painel/bloqueios"
-              className="inline-flex min-h-[44px] items-center text-[11px] font-semibold uppercase tracking-[0.16em] text-tinta-3 hover:text-ouro"
-            >
-              Bloqueios
-            </Link>
-            {/*
-              "Mensagens" saiu do menu dela a pedido do Kainã: a tela mostrava
-              números sem nome, um botão que o relógio automático já aperta
-              sozinho, e um diagnóstico técnico. Nada disso é pra Karol. A
-              página continua em /painel/notificacoes, pelo endereço, como
-              ferramenta de quem for consertar.
-            */}
-            <form action={sair}>
-              <button
-                type="submit"
-                className="inline-flex min-h-[44px] items-center border border-linha px-3.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
-              >
-                Sair
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
+    <main className="flex min-h-dvh flex-col bg-osso">
+      <CabecalhoPainel titulo="Agenda" detalhe={DIA_POR_EXTENSO.format(agora)} aba="agenda" />
 
-      <div className="mx-auto max-w-[900px] px-5 py-8">
+      <div className={`${LARGURA} flex flex-col gap-8 py-6 sm:py-8`}>
         <Busca valor={busca} />
 
         {!bancoConfigurado() ? (
           <Vazio texto="Banco não configurado. Preencha NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY." />
         ) : achados ? (
           <Resultados termo={busca} achados={achados} />
-        ) : porDia.length === 0 ? (
-          <Vazio texto="Nenhum agendamento nos próximos 60 dias." />
         ) : (
-          <div className="flex flex-col gap-9">
-            {porDia.map(({ chave, data, itens }) => (
-              <section key={chave}>
-                <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-ouro first-letter:uppercase">
-                  {DIA_POR_EXTENSO.format(data)}
-                </h2>
-                <ul className="flex flex-col gap-2.5">
-                  {itens.map((ag) => (
-                    <Cartao key={ag.id} ag={ag} />
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
+          <>
+            {/*
+              A ordem é a das perguntas que ela faz ao abrir o celular:
+              quem é a próxima, como está o dia, tem PIX pra conferir.
+              "Próxima" ocupa a linha toda no celular porque é a única com
+              nome — cortar o nome da cliente pra caber é pior que uma
+              linha a mais.
+            */}
+            <Indicadores
+              rotulo="Resumo da agenda"
+              className="grid-cols-3 sm:grid-cols-[1.7fr_1fr_1fr_1fr]"
+            >
+              <Indicador
+                className="col-span-3 sm:col-span-1"
+                rotulo="Próxima cliente"
+                valor={proxima ? HORA.format(proxima.inicio) : "—"}
+                nota={
+                  proxima ? (
+                    <>
+                      <span className="font-semibold text-tinta">{proxima.clienteNome}</span>
+                      {" · "}
+                      {quando(proxima.inicio)} · {proxima.servicoNome}
+                    </>
+                  ) : (
+                    "Nada marcado pela frente."
+                  )
+                }
+              />
+              <Indicador
+                rotulo="Hoje"
+                valor={deHoje.length}
+                nota={
+                  deHoje.length === 0
+                    ? "dia livre"
+                    : restamHoje === 0
+                      ? "nenhuma pela frente"
+                      : `${restamHoje} pela frente`
+                }
+              />
+              <Indicador rotulo="7 dias" valor={naSemana} nota="contando hoje" />
+              <Indicador
+                rotulo="Sinal"
+                valor={pendentes.length}
+                tom={pendentes.length > 0 ? "alerta" : "normal"}
+                href={pendentes.length > 0 ? "#aguardando" : undefined}
+                nota={pendentes.length > 0 ? "PIX pra conferir" : "nenhum pendente"}
+              />
+            </Indicadores>
+
+            <Aguardando itens={pendentes} />
+
+            {porDia.length === 0 ? (
+              <Vazio texto="Nenhum agendamento nos próximos 60 dias." />
+            ) : (
+              <div className="flex flex-col gap-10">
+                {porDia.map((d) => (
+                  <Dia
+                    key={d.chave}
+                    {...d}
+                    rotulo={
+                      d.chave === chave.hoje
+                        ? "Hoje"
+                        : d.chave === chave.amanha
+                          ? "Amanhã"
+                          : d.chave === chave.ontem
+                            ? "Ontem"
+                            : SO_SEMANA.format(d.data)
+                    }
+                    agora={d.chave === chave.hoje ? agora : null}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
+
+      <RodapePainel />
     </main>
   );
 }
@@ -132,27 +174,38 @@ export default async function Painel({
  */
 function Busca({ valor }: { valor: string }) {
   return (
-    <form method="get" className="mb-8 flex flex-wrap gap-2">
-      <input
-        type="search"
-        name="q"
-        defaultValue={valor}
-        maxLength={80}
-        placeholder="Nome ou telefone"
-        aria-label="Procurar agendamento por nome ou telefone"
-        className="min-h-[44px] min-w-0 flex-1 border border-linha bg-papel px-3.5 text-[15px] outline-none focus:border-ouro-claro"
-      />
-      <button
-        type="submit"
-        className="min-h-[44px] shrink-0 bg-ouro px-5 text-[10.5px] font-bold uppercase tracking-[0.16em] text-white transition-opacity hover:opacity-90"
-      >
+    <form method="get" role="search" className="flex flex-wrap gap-2">
+      <div className="relative min-w-0 flex-1 basis-48">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-tinta-3"
+        >
+          <circle cx="8.5" cy="8.5" r="5.75" />
+          <path d="m13 13 4.5 4.5" strokeLinecap="square" />
+        </svg>
+        {/* Texto de exemplo curto de propósito: "Procurar por nome ou
+            telefone" era cortado no meio da palavra num celular de 390 px. */}
+        <input
+          type="search"
+          name="q"
+          defaultValue={valor}
+          maxLength={80}
+          placeholder="Nome ou telefone"
+          aria-label="Procurar agendamento por nome ou telefone"
+          className={`${CAMPO_BASE} bg-papel pr-3 pl-11`}
+        />
+      </div>
+      {/* Sem altura própria: o item de flex estica até a altura da linha,
+          então o botão acompanha os 48 px do campo sozinho. */}
+      <button type="submit" className={BOTAO.primario}>
         Procurar
       </button>
       {valor && (
-        <Link
-          href="/painel"
-          className="inline-flex min-h-[44px] shrink-0 items-center border border-linha px-4 text-[10.5px] font-bold uppercase tracking-[0.16em] text-tinta-2 transition-colors hover:border-ouro-claro hover:text-ouro"
-        >
+        <Link href="/painel" className={BOTAO.secundario}>
           Limpar
         </Link>
       )}
@@ -170,15 +223,26 @@ function Resultados({ termo, achados }: { termo: string; achados: Agendamento[] 
   }
 
   return (
-    <section>
-      <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-ouro">
+    <section aria-labelledby="titulo-resultados">
+      <h2
+        id="titulo-resultados"
+        className={`mb-3 border-b border-linha pb-2.5 ${ROTULO_SECAO}`}
+      >
         {achados.length === 1 ? "1 resultado" : `${achados.length} resultados`} para “{termo}”
       </h2>
-      <ul className="flex flex-col gap-2.5">
-        {achados.map((ag) => (
-          <Cartao key={ag.id} ag={ag} comData />
+      <ul className="flex flex-col gap-3">
+        {achados.map((ag, i) => (
+          <Cartao key={ag.id} ag={ag} comData ordem={i} />
         ))}
       </ul>
+      <p className="mt-5">
+        <Link
+          href="/painel"
+          className={`inline-flex min-h-[44px] items-center text-[13px] text-tinta-2 underline decoration-linha underline-offset-4 hover:text-ouro ${FOCO}`}
+        >
+          ← Voltar pra agenda
+        </Link>
+      </p>
     </section>
   );
 }
@@ -201,7 +265,7 @@ function agruparPorDia(agendamentos: Agendamento[]) {
 
 function Vazio({ texto }: { texto: string }) {
   return (
-    <p className="border border-linha bg-papel p-6 text-center text-[14px] text-tinta-2">
+    <p className="border border-dashed border-linha bg-papel p-6 text-center text-[14px] text-tinta-2">
       {texto}
     </p>
   );
