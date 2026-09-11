@@ -1,5 +1,4 @@
-import { REGRAS } from "@/data/negocio";
-import { formatarPreco, pedeSinalPorValor } from "@/data/servicos";
+import { formatarPreco, sinalPorValor } from "@/data/servicos";
 import { paraChave } from "@/lib/agenda";
 import { podeLembrar, type Agendamento } from "@/lib/agendamentos";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
@@ -31,12 +30,11 @@ import { NUMERO } from "./estilos";
  *
  * Calculado do preço GRAVADO no agendamento, e não do serviço na tabela de
  * hoje: se o preço mudou depois que a cliente marcou, o PIX que ela recebeu
- * foi do valor antigo. É a mesma regra de `valorDoSinal` em
- * `data/servicos.ts` — lá ela pede o objeto do serviço, aqui só há o valor.
+ * foi do valor antigo. A conta mora em `sinalPorValor`
+ * (`data/servicos.ts`) — aqui não se refaz os 50%.
  */
 export function sinalDoAgendamento(ag: Pick<Agendamento, "servicoPreco">): number {
-  if (!pedeSinalPorValor(ag.servicoPreco)) return 0;
-  return Math.round((ag.servicoPreco * REGRAS.sinal.porcentagem) / 100);
+  return sinalPorValor(ag.servicoPreco);
 }
 
 /*

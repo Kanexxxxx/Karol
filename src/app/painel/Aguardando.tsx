@@ -35,12 +35,15 @@ export function Aguardando({ itens }: { itens: Agendamento[] }) {
           <span aria-hidden="true" className="size-2 bg-ouro motion-safe:animate-pulse" />
           Aguardando o sinal · {itens.length}
         </h2>
-        {/* O que acontece depois do toque vai escrito: a mensagem pra
-            cliente sai sozinha, e ela precisa saber disso pra não mandar
-            outra à mão. */}
+        {/* ⚠️ Esta frase já prometeu "a cliente recebe a confirmação no
+            WhatsApp". Não é sempre verdade: com a conversa fechada, a
+            mensagem só sai por template aprovado na Meta — e se falhar,
+            nada avisa. A Karol lendo a promessa deixaria de avisar a
+            cliente. O que o toque garante é o horário fechado; é isso
+            que fica dito. */}
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-tinta">
-          Chegou o comprovante do PIX? Toque em <b>Confirmar</b> e a cliente recebe a
-          confirmação no WhatsApp.
+          Chegou o comprovante do PIX? Toque em <b>Confirmar</b> e o horário fica
+          fechado no nome dela.
         </p>
       </div>
 

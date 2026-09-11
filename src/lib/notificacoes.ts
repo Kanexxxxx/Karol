@@ -1,7 +1,7 @@
 import "server-only";
 
 import { ANTES_DE_VIR, CIDADES, NEGOCIO, NOTIFICACOES, REGRAS, SITE_URL } from "@/data/negocio";
-import { formatarPreco, pedeSinalPorValor } from "@/data/servicos";
+import { formatarPreco, sinalPorValor } from "@/data/servicos";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import { brCodeDoSinal } from "./pix";
 import type { Agendamento } from "./agendamentos";
@@ -141,8 +141,7 @@ function quandoBonito(iso: string): string {
 
 /** O sinal deste agendamento, em centavos. 0 = não pede sinal. */
 export function sinalDoAgendamento(a: DadosAgendamento): number {
-  if (!pedeSinalPorValor(a.valorCentavos)) return 0;
-  return Math.round((a.valorCentavos * REGRAS.sinal.porcentagem) / 100);
+  return sinalPorValor(a.valorCentavos);
 }
 
 /** Está esperando o PIX pra fechar? */

@@ -175,7 +175,24 @@ export function precisaDeSinal(servico: Servico): boolean {
 }
 
 /** Quanto de sinal, em CENTAVOS. Zero quando o serviço não pede. */
+/**
+ * O sinal de um valor em centavos. Zero se o valor não pede sinal.
+ *
+ * ⚠️ É A ÚNICA CONTA DO SINAL NO PROJETO. Chegou a haver três cópias dela
+ * — aqui, nas mensagens do WhatsApp e no cartão do painel —, cada uma
+ * refazendo os 50% por conta própria. Três cópias de uma regra de dinheiro
+ * é como esta mesma regra já quebrou antes (a chave PIX virou `null` por
+ * uma duplicação). Quem precisar do sinal chama esta função.
+ *
+ * Recebe o valor e não o serviço porque o painel e as mensagens trabalham
+ * com o preço GRAVADO no agendamento: se a tabela mudar depois que a
+ * cliente marcou, o sinal dela continua sendo o do preço que ela viu.
+ */
+export function sinalPorValor(centavos: number): number {
+  if (!pedeSinalPorValor(centavos)) return 0;
+  return Math.round((centavos * REGRAS.sinal.porcentagem) / 100);
+}
+
 export function valorDoSinal(servico: Servico): number {
-  if (!precisaDeSinal(servico)) return 0;
-  return Math.round((servico.preco * 100 * REGRAS.sinal.porcentagem) / 100);
+  return sinalPorValor(servico.preco * 100);
 }
