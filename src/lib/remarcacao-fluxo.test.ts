@@ -26,7 +26,7 @@ vi.mock("./agendamentos", () => ({
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
-  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix" },
+  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback" },
   enviarPedidoDeSinal: vi.fn(async () => true),
   esperandoSinal: vi.fn(() => false),
   paraDados: vi.fn((a: unknown) => a),

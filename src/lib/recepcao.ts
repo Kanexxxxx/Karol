@@ -3,7 +3,7 @@ import "server-only";
 import { atender, type Desfecho } from "./atendente";
 import { assistente, decisaoDoBotao, PREFIXO_BOTAO, type DesfechoAssistente } from "./assistente";
 import { abrirJanela } from "./conversas";
-import { whatsappDaKarol } from "./notificacoes";
+import { BOTAO_TEMPLATE, whatsappDaKarol } from "./notificacoes";
 import type { MensagemRecebida } from "./webhook-meta";
 
 /**
@@ -29,6 +29,19 @@ import type { MensagemRecebida } from "./webhook-meta";
  * A decisão é pelo NÚMERO de quem mandou, que vem do payload assinado da
  * Meta e é conferido em `webhook-meta.ts` antes de chegar aqui.
  */
+
+/**
+ * Os botões que só existem em mensagem de CLIENTE — nos templates e na
+ * confirmação. Ver `BOTAO_TEMPLATE` e `BOTOES_CLIENTE` em notificacoes.ts.
+ */
+const BOTOES_DE_CLIENTE = new Set<string>([
+  BOTAO_TEMPLATE.confirmar,
+  BOTAO_TEMPLATE.remarcar,
+  BOTAO_TEMPLATE.falar,
+  BOTAO_TEMPLATE.pix,
+  BOTAO_TEMPLATE.feedback,
+  "cancelar",
+]);
 
 export type DesfechoRecepcao =
   | ({ quem: "cliente" } & Desfecho)
@@ -65,6 +78,22 @@ export async function receber(m: MensagemRecebida): Promise<DesfechoRecepcao> {
     funciona e foi testada com celular de verdade.
   */
   if (m.botao?.startsWith("k:")) {
+    return { quem: "cliente", ...(await atender(m)) };
+  }
+
+  /*
+    ⚠️ BOTÃO DE CLIENTE NUNCA VIRA CONVERSA COM A IA.
+
+    Aconteceu de verdade em 12/09: com `KAROL_WHATSAPP` apontando pro
+    número do Kainã, ele tocou em "Confirmar" numa mensagem de CLIENTE e
+    quem respondeu foi o assistente — "Prontinho, Karol! Design da Kaina
+    cancelado ✅". Não cancelou nada; só escreveu que sim.
+
+    A rota é por número, e o número era o mesmo pros dois papéis. Mas
+    estes payloads só existem em template de cliente: quem toca neles
+    está agindo como cliente, venha de onde vier. Vai pro atendimento.
+  */
+  if (m.botao && BOTOES_DE_CLIENTE.has(m.botao)) {
     return { quem: "cliente", ...(await atender(m)) };
   }
 

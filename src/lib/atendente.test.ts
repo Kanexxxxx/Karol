@@ -26,7 +26,7 @@ vi.mock("./agendamentos", () => ({
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
-  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix" },
+  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback" },
   enviarPedidoDeSinal: vi.fn(async () => true),
   esperandoSinal: vi.fn(() => false),
   paraDados: vi.fn((a: unknown) => a),
@@ -198,12 +198,27 @@ describe("cliente pede pra cancelar ou remarcar", () => {
 });
 
 describe("o que o robô NÃO faz", () => {
-  it("cala a boca em conversa de verdade — quem responde é a Karol", async () => {
+  it("não responde a pergunta de verdade — mas entrega ela pra Karol", async () => {
+    /*
+      O robô continua sem chutar resposta: chute em pergunta que ele não
+      entendeu é pior que silêncio.
+
+      O que mudou é o destino do silêncio. Este número é o chip da API e
+      não tem caixa de entrada: antes, "você atende homem também?" não
+      era respondida pelo robô E não era vista pela Karol. Agora ela
+      recebe a pergunta, com o telefone de quem perguntou.
+    */
     const r = await atender(mensagem("oi, você atende homem também?"));
-    expect(r).toEqual({ fez: "nada", motivo: "conversa-de-verdade" });
-    expect(enviados()).toEqual([]);
-    // nem consulta o banco: não há o que procurar
-    expect(acharMock).not.toHaveBeenCalled();
+
+    expect(r).toEqual({ fez: "repassou-pra-karol" });
+
+    const enviadas = enviados();
+    expect(enviadas).toHaveLength(1);
+    const [para, texto] = enviadas[0];
+    expect(para).toBe(KAROL);
+    expect(texto).toContain("atende homem também");
+    // a cliente não recebe resposta nenhuma do robô
+    expect(enviadas.filter(([p]) => p === CLIENTE)).toEqual([]);
   });
 
   it("não responde 'cancelar' de quem não tem horário marcado", async () => {
@@ -409,7 +424,8 @@ describe("os botões dos templates", () => {
     // janela aberta = ela já recebeu o link nesta conversa
     const r = await atender(mensagem("posso levar minha filha junto?"));
 
-    expect(r.fez).toBe("nada");
-    expect(enviarMock).not.toHaveBeenCalled();
+    expect(r.fez).toBe("repassou-pra-karol");
+    // a Karol recebe a pergunta; a cliente não recebe o link de novo
+    expect(enviados().map(([p]) => p)).toEqual([KAROL]);
   });
 });

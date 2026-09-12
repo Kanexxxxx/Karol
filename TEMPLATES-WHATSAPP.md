@@ -218,10 +218,14 @@ Tipo: **Ir para o site** (URL dinâmica)
 
 ## 4. `pedido_sinal`
 
-Sai no lugar da confirmação quando o serviço pede **sinal** (R$ 80 ou
+Sai no lugar da confirmação quando o serviço pede **entrada** (R$ 80 ou
 mais) e a cliente ainda não pagou. Sem este template, quem marcou uma
 brow lamination recebia "seu horário está **reservado**", com o preço
 cheio e sem uma palavra sobre o PIX — e não pagava.
+
+> A palavra que a CLIENTE lê é **entrada** — "sinal" era confuso. Do lado
+> da Karol (painel e avisos dela) continua "sinal", que foi a palavra que
+> ela mesma usou no formulário.
 
 O truque está no botão: quando a cliente toca em **Receber o PIX**, o
 toque é uma mensagem DELA, a janela de 24 h abre, e o site responde na hora
@@ -250,7 +254,7 @@ Oi, {{1}}! Recebi seu pedido de horário no Studio Karol Carvalho. 💛
 📅 {{3}}
 📍 {{4}}
 
-Pra garantir esse horário no seu nome, o sinal é de *{{5}}* — e ele desconta do valor final.
+Pra garantir esse horário no seu nome, a entrada é de *{{5}}* — e ela desconta do valor final.
 
 Toque em *Receber o PIX* aqui embaixo que eu te mando a chave e o QR Code com o valor já preenchido.
 ```
@@ -281,6 +285,217 @@ Tipo: **Resposta rápida** — **nesta ordem**
 
 ---
 
+## 5. `lembrete_30min`
+
+O empurrão pra sair de casa, ~30 min antes. Curto de propósito: quem
+recebe está se arrumando e lê pela prévia da notificação.
+
+| Campo | Valor |
+|---|---|
+| **Nome** | `lembrete_30min` |
+| **Categoria** | Utilidade |
+| **Idioma** | Português (BR) |
+
+### Cabeçalho
+Tipo: **Texto**
+
+```
+Seu horário é daqui a pouco ⏰
+```
+
+### Corpo
+
+```
+Oi, {{1}}! Passando só pra avisar que está chegando a hora. ✨
+
+🕐 {{2}}
+📍 {{3}}
+
+Te espero! 💛
+```
+
+### Rodapé
+
+```
+Studio Karol Carvalho
+```
+
+### Botões
+**Nenhum.** A pessoa está saindo de casa; botão aqui só atrapalha.
+
+### Exemplos
+
+| Variável | Exemplo |
+|---|---|
+| `{{1}}` | `Maria` |
+| `{{2}}` | `19:00` |
+| `{{3}}` | `Pereira Barreto — Rua Atlântico, 884 (Condomínio da Praia)` |
+
+---
+
+## 6. `pos_atendimento`
+
+Sai no dia seguinte ao atendimento. **Pergunta** o que a cliente achou —
+pedido do Kainã.
+
+⚠️ A resposta dela **não se perde**: o que a cliente escrever no número
+automático é repassado pro WhatsApp da Karol, com o telefone de quem
+escreveu. Sem esse repasse, perguntar seria pedir opinião pra uma caixa
+que ninguém abre.
+
+| Campo | Valor |
+|---|---|
+| **Nome** | `pos_atendimento` |
+| **Categoria** | Utilidade |
+| **Idioma** | Português (BR) |
+
+### Cabeçalho
+Tipo: **Texto**
+
+```
+Como foi? 💛
+```
+
+### Corpo
+
+```
+Oi, {{1}}! Foi muito bom te atender. 🥰
+
+Me conta: o que você achou do resultado? Pode responder aqui mesmo, do seu jeito — eu leio todas.
+
+E se ficar qualquer dúvida sobre os cuidados, é só me chamar.
+```
+
+### Rodapé
+
+```
+Studio Karol Carvalho
+```
+
+### Botões
+Tipo: **Resposta rápida** — **nesta ordem**
+
+| | Texto do botão |
+|---|---|
+| 1 | `💛 Amei` |
+| 2 | `💬 Falar com a Karol` |
+
+### Exemplos
+
+| Variável | Exemplo |
+|---|---|
+| `{{1}}` | `Maria` |
+
+---
+
+## 7. `horario_remarcado`
+
+Quando a **Karol** muda o horário de alguém pelo painel. Sem isto, a
+agenda dela dizia uma coisa e a cliente sabia outra — a pessoa aparecia
+no dia e na hora antigos.
+
+| Campo | Valor |
+|---|---|
+| **Nome** | `horario_remarcado` |
+| **Categoria** | Utilidade |
+| **Idioma** | Português (BR) |
+
+### Cabeçalho
+Tipo: **Texto**
+
+```
+Seu horário mudou 💛
+```
+
+### Corpo
+
+```
+Oi, {{1}}! Precisei mudar o seu horário, me desculpa. Ficou assim:
+
+💄 {{2}}
+📅 {{3}}
+📍 {{4}}
+
+Se esse novo horário não der, me avisa por aqui que a gente acha outro. 🤍
+```
+
+### Rodapé
+
+```
+Studio Karol Carvalho
+```
+
+### Botões
+Tipo: **Resposta rápida** — **nesta ordem**
+
+| | Texto do botão |
+|---|---|
+| 1 | `✅ Está bom` |
+| 2 | `📅 Preciso remarcar` |
+| 3 | `💬 Falar com a Karol` |
+
+### Exemplos
+
+| Variável | Exemplo |
+|---|---|
+| `{{1}}` | `Maria` |
+| `{{2}}` | `Design com henna` |
+| `{{3}}` | `quinta-feira, 17 de setembro às 19:00` |
+| `{{4}}` | `Pereira Barreto — Rua Atlântico, 884 (Condomínio da Praia)` |
+
+---
+
+## 8. `horario_cancelado`
+
+Quando a **Karol** cancela. A cliente não pode descobrir na porta.
+
+| Campo | Valor |
+|---|---|
+| **Nome** | `horario_cancelado` |
+| **Categoria** | Utilidade |
+| **Idioma** | Português (BR) |
+
+### Cabeçalho
+Tipo: **Texto**
+
+```
+Sobre o seu horário 🙏
+```
+
+### Corpo
+
+```
+Oi, {{1}}. Precisei cancelar o seu horário, me desculpa mesmo.
+
+Era o {{2}}, {{3}}.
+
+Me chama por aqui que a gente acha outro dia — tenho horário essa semana. 💛
+```
+
+### Rodapé
+
+```
+Studio Karol Carvalho
+```
+
+### Botões
+Tipo: **Resposta rápida** — **nesta ordem**
+
+| | Texto do botão |
+|---|---|
+| 1 | `📅 Quero remarcar` |
+| 2 | `💬 Falar com a Karol` |
+
+### Exemplos
+
+| Variável | Exemplo |
+|---|---|
+| `{{1}}` | `Maria` |
+| `{{2}}` | `Design com henna` |
+| `{{3}}` | `quinta-feira, 17 de setembro às 19:00` |
+
+---
+
 ## ⚠️ A ordem dos botões importa
 
 O site manda, junto com cada template, um **código escondido** pra cada
@@ -299,6 +514,10 @@ assim por diante. Então:
 | `confirmacao_agendamento` | confirmar | remarcar | falar |
 | `lembrete_vespera` | confirmar | remarcar | falar |
 | `pedido_sinal` | pix | falar | — |
+| `pos_atendimento` | feedback | falar | — |
+| `horario_remarcado` | confirmar | remarcar | falar |
+| `horario_cancelado` | remarcar | falar | — |
+| `lembrete_30min` | (sem botão) | — | — |
 
 **"Falar com a Karol" manda a cliente pro WhatsApp pessoal dela.** O número
 da API não tem caixa de entrada — ninguém lê o que chega nele. Por isso, quando
@@ -344,5 +563,5 @@ conversa.
 2. Status em **WhatsApp Manager → Modelos de mensagem**.
 3. Se reprovar, a Meta diz o motivo. O mais comum é a categoria: se ela
    jogar pra *marketing*, é porque achou tom de venda em algum lugar.
-4. Quando os quatro estiverem **Aprovados**, me avisa. O código já está ligado:
+4. Quando os **oito** estiverem **Aprovados**, me avisa. O código já está ligado:
    ele tenta mandar e, enquanto o template não existir, a Meta só recusa.

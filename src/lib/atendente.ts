@@ -30,6 +30,7 @@ import {
   registrarEscolha,
 } from "./remarcacao";
 import { linkWhatsapp } from "./whatsapp";
+import { formatarWhatsapp } from "./telefone";
 import { lerIntencao, type Intencao, type MensagemRecebida } from "./webhook-meta";
 
 /**
@@ -68,6 +69,7 @@ export type Desfecho =
   | { fez: "mandou-pro-site" }
   | { fez: "pediu-sinal"; valorCentavos: number }
   | { fez: "encaminhou-pra-karol" }
+  | { fez: "repassou-pra-karol" }
   | { fez: "avisou-karol"; pedido: "cancelar" | "remarcar" };
 
 export async function atender(m: MensagemRecebida): Promise<Desfecho> {
@@ -133,7 +135,13 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
     aberta — perdeu a mensagem, apagou, quer o QR outra vez. Pedido
     explícito: manda de novo.
   */
-  if (m.botao === BOTAO_TEMPLATE.pix) {
+  /*
+    ⚠️ O `m.botao &&` não é enfeite. Sem ele, `m.botao === BOTAO_TEMPLATE.x`
+    fica `undefined === undefined` quando a constante não chega — e TODA
+    mensagem de texto cai neste ramo. Aconteceu: mensagem comum de cliente
+    recebendo "que bom que você gostou!".
+  */
+  if (m.botao && m.botao === BOTAO_TEMPLATE.pix) {
     const pendente = await proximoAgendamentoDe(m.de);
     if (pendente && esperandoSinal(paraDados(pendente))) {
       await enviarPedidoDeSinal(paraDados(pendente));
@@ -149,7 +157,17 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
     webhook, e a Karol nunca lê. Então "falar com a Karol" aqui só pode
     ser uma coisa: entregar o WhatsApp de verdade dela.
   */
-  if (m.botao === BOTAO_TEMPLATE.falar) {
+  // "Amei", o botão do pós-atendimento.
+  if (m.botao && m.botao === BOTAO_TEMPLATE.feedback) {
+    await repassarParaKarol(m.de, m.texto || "(tocou em Amei)");
+    await enviarTexto(
+      m.de,
+      "Aaah, que bom que você gostou! 💛 Obrigada de verdade. Se quiser me contar mais, é só escrever aqui.",
+    );
+    return { fez: "repassou-pra-karol" };
+  }
+
+  if (m.botao && m.botao === BOTAO_TEMPLATE.falar) {
     await enviarTexto(m.de, encaminhamento());
     return { fez: "encaminhou-pra-karol" };
   }
@@ -169,11 +187,15 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
     repetir viraria spam.
   */
   if (intencao === "outro") {
+    // O robô não responde a pergunta — mas a Karol precisa VER que
+    // perguntaram. Sem isto, o pós-atendimento pergunta "o que você
+    // achou?" e a resposta morre num número que ninguém abre.
+    await repassarParaKarol(m.de, m.texto);
     if (chegandoAgora) {
       await enviarTexto(m.de, encaminhamento());
       return { fez: "encaminhou-pra-karol" };
     }
-    return { fez: "nada", motivo: "conversa-de-verdade" };
+    return { fez: "repassou-pra-karol" };
   }
 
   const ag = await proximoAgendamentoDe(m.de);
@@ -431,4 +453,30 @@ function encaminhamento(): string {
     `Pra falar com a Karol, é no WhatsApp dela: ${NEGOCIO.whatsapp.exibicao}`,
     linkWhatsapp("Oi Karol!"),
   ].join("\n");
+}
+
+/**
+ * Entrega pra Karol o que a cliente escreveu no número automático.
+ *
+ * ⚠️ Este número não tem caixa de entrada. Tudo o que chega nele e não é
+ * repassado some — e "some" incluía elogio, dúvida sobre cuidado e
+ * "cheguei, estou na porta".
+ *
+ * Nunca lança: quem chama é o webhook, e webhook que responde erro faz a
+ * Meta reenviar o evento. Se a janela dela estiver fechada, o envio falha
+ * em silêncio — o mesmo que já acontece com os outros avisos.
+ */
+async function repassarParaKarol(de: string, texto: string): Promise<void> {
+  await enviarTexto(
+    whatsappDaKarol(),
+    [
+      "💬 Uma cliente escreveu no número automático",
+      "",
+      formatarWhatsapp(de),
+      `"${texto.slice(0, 300)}"`,
+      "",
+      `Responder: https://wa.me/${de}`,
+      linkDoPainel(de),
+    ].join("\n"),
+  );
 }

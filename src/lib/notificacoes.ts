@@ -387,6 +387,12 @@ export function textoAgradecimento(a: DadosAgendamento): string {
   return [
     `Foi muito bom te atender, ${primeiroNome(a.cliente)}! 🥰`,
     "",
+    // ⚠️ Isto PERGUNTA, e não só agradece — pedido do Kainã. Uma pergunta
+    // só vale se a resposta chegar em alguém: o que a cliente escrever é
+    // repassado pra Karol por `atendente.ts`. Sem esse repasse, seria
+    // pedir opinião pra uma caixa que ninguém abre.
+    "Me conta: o que você achou do resultado? Pode responder aqui mesmo, do seu jeito — eu leio todas. 💛",
+    "",
     "Se ficar qualquer dúvida sobre os cuidados, é só me chamar por aqui.",
     "",
     `E se você gostou, me marca nas fotos: @${NEGOCIO.instagram.studio} 📸`,
@@ -511,6 +517,7 @@ export const BOTAO_TEMPLATE = {
   remarcar: "remarcar",
   falar: "falar",
   pix: "pix",
+  feedback: "feedback",
 } as const;
 
 /**
@@ -647,6 +654,77 @@ export function templateDoEvento(
             index: "0",
             parameters: [{ type: "text", text: a.whatsappCliente }],
           },
+        ],
+      };
+
+    /*
+      Os quatro abaixo entraram em 12/09. Sem template, eles só chegavam a
+      quem tinha escrito nas últimas 24 h — e quem marcou faz dias não
+      escreveu. O de meia hora antes e o pós-atendimento foram pedidos
+      pelo Kainã; remarcado e cancelado são mudanças que a Karol fez no
+      horário de alguém, e não chegar não é opção.
+    */
+    case "lembrete-curto":
+      return {
+        nome: "lembrete_30min",
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: primeiroNome(a.cliente) },
+              { type: "text", text: HORA.format(new Date(a.inicioISO)) },
+              { type: "text", text: `${a.cidade} — ${enderecoPorCidade(a.cidade)}` },
+            ],
+          },
+        ],
+      };
+
+    case "agradecimento":
+      return {
+        nome: "pos_atendimento",
+        components: [
+          {
+            type: "body",
+            parameters: [{ type: "text", text: primeiroNome(a.cliente) }],
+          },
+          ...botoesRapidos([BOTAO_TEMPLATE.feedback, BOTAO_TEMPLATE.falar]),
+        ],
+      };
+
+    case "remarcado":
+      return {
+        nome: "horario_remarcado",
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: primeiroNome(a.cliente) },
+              { type: "text", text: a.servico },
+              { type: "text", text: quando(a.inicioISO) },
+              { type: "text", text: `${a.cidade} — ${enderecoPorCidade(a.cidade)}` },
+            ],
+          },
+          ...botoesRapidos([
+            BOTAO_TEMPLATE.confirmar,
+            BOTAO_TEMPLATE.remarcar,
+            BOTAO_TEMPLATE.falar,
+          ]),
+        ],
+      };
+
+    case "cancelado":
+      return {
+        nome: "horario_cancelado",
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: primeiroNome(a.cliente) },
+              { type: "text", text: a.servico },
+              { type: "text", text: quando(a.inicioISO) },
+            ],
+          },
+          ...botoesRapidos([BOTAO_TEMPLATE.remarcar, BOTAO_TEMPLATE.falar]),
         ],
       };
 

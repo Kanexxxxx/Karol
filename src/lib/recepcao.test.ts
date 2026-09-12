@@ -21,7 +21,16 @@ vi.mock("./assistente", () => ({
   PREFIXO_BOTAO: "a:",
 }));
 vi.mock("./conversas", () => ({ abrirJanela: vi.fn(async () => {}) }));
-vi.mock("./notificacoes", () => ({ whatsappDaKarol: vi.fn(() => "5518997525291") }));
+vi.mock("./notificacoes", () => ({
+  whatsappDaKarol: vi.fn(() => "5518997525291"),
+  BOTAO_TEMPLATE: {
+    confirmar: "confirmar",
+    remarcar: "remarcar",
+    falar: "falar",
+    pix: "pix",
+    feedback: "feedback",
+  },
+}));
 
 import { atender } from "./atendente";
 import { assistente, decisaoDoBotao } from "./assistente";
@@ -112,5 +121,50 @@ describe("a janela de 24 h", () => {
   it("não abre duas vezes pra cliente — quem abre é o atendente", async () => {
     await receber(mensagem(CLIENTE, "oi"));
     expect(abrirJanela).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Botão de cliente nunca vira conversa com a IA.
+ *
+ * ⚠️ ISTO ACONTECEU DE VERDADE, em 12/09/2026. Com `KAROL_WHATSAPP`
+ * apontando pro número do Kainã (o desvio que existe pra testar sem
+ * incomodar a Karol), ele tocou em "Confirmar" numa mensagem de CLIENTE.
+ * A rota é pelo número, o número era o mesmo pros dois papéis, e o
+ * assistente respondeu "Prontinho, Karol! Design da Kaina cancelado ✅".
+ *
+ * Não cancelou nada — só escreveu que sim. É o pior tipo de erro que este
+ * projeto pode ter: a Karol lê que está feito e não está.
+ *
+ * Estes payloads só existem em template e em mensagem de cliente. Quem
+ * toca neles está agindo como cliente, venha de onde vier.
+ */
+describe("botão de cliente, mesmo vindo do número da Karol", () => {
+  for (const botao of ["confirmar", "remarcar", "cancelar", "pix", "falar", "feedback"]) {
+    it(`"${botao}" vai pro atendimento, nunca pro assistente`, async () => {
+      const r = await receber(mensagem(KAROL, "✅", botao));
+
+      expect(atender).toHaveBeenCalled();
+      expect(assistente).not.toHaveBeenCalled();
+      expect(decisaoDoBotao).not.toHaveBeenCalled();
+      expect(r.quem).toBe("cliente");
+    });
+  }
+
+  it("os botões DELA continuam indo pro assistente", async () => {
+    // o prefixo "a:" é o dos botões que o próprio assistente cria
+    const r = await receber(mensagem(KAROL, "✅", "a:1234"));
+
+    expect(decisaoDoBotao).toHaveBeenCalled();
+    expect(atender).not.toHaveBeenCalled();
+    expect(r.quem).toBe("karol");
+  });
+
+  it("texto solto dela continua indo pro assistente", async () => {
+    const r = await receber(mensagem(KAROL, "cancela a ana"));
+
+    expect(assistente).toHaveBeenCalled();
+    expect(atender).not.toHaveBeenCalled();
+    expect(r.quem).toBe("karol");
   });
 });
