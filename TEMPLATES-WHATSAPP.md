@@ -28,6 +28,9 @@ Aprendi na marra o que reprova um template:
   "promoção" jogam o template pra categoria *marketing*, que é mais cara e
   mais rígida. Os textos abaixo são puramente informativos de propósito.
 - **Emoji pode.** Negrito com `*asterisco*` e itálico com `_underline_` também.
+- **Cabeçalho não aceita emoji**, nem negrito, nem quebra de linha — só texto
+  puro. (Descoberto na marra em 12/09: o campo simplesmente não deixa colar o
+  emoji.) No CORPO o emoji funciona normalmente.
 - **Rodapé não aceita variável.**
 - **Os exemplos são obrigatórios.** A Meta testa o template com eles.
 
@@ -48,7 +51,7 @@ que abre a janela.
 Tipo: **Texto**
 
 ```
-Horário reservado ✨
+Horário reservado
 ```
 
 ### Corpo
@@ -108,7 +111,7 @@ dias e não escreveu nada desde então. Por isso precisa de template.
 Tipo: **Texto**
 
 ```
-Seu horário é amanhã 💛
+Seu horário é amanhã
 ```
 
 ### Corpo
@@ -167,7 +170,7 @@ inteiro, então a janela dela vive fechada.
 Tipo: **Texto**
 
 ```
-Novo agendamento 📅
+Novo agendamento
 ```
 
 ### Corpo
@@ -229,7 +232,7 @@ cheio e sem uma palavra sobre o PIX — e não pagava.
 
 O truque está no botão: quando a cliente toca em **Receber o PIX**, o
 toque é uma mensagem DELA, a janela de 24 h abre, e o site responde na hora
-com o texto do sinal, o **QR Code com o valor já preenchido** e o **copia e
+com o texto da entrada, o **QR Code com o valor já preenchido** e o **copia e
 cola** — tudo de graça, porque já está dentro da janela.
 
 | Campo | Valor |
@@ -242,21 +245,22 @@ cola** — tudo de graça, porque já está dentro da janela.
 Tipo: **Texto**
 
 ```
-Falta o sinal pra fechar ✨
+Pagamento da entrada pendente
 ```
 
 ### Corpo
 
 ```
-Oi, {{1}}! Recebi seu pedido de horário no Studio Karol Carvalho. 💛
+Oi, {{1}}. Recebi o seu pedido de horário e ele está aguardando o pagamento da entrada.
 
-💄 *{{2}}*
-📅 {{3}}
-📍 {{4}}
+Serviço: {{2}}
+Data: {{3}}
+Local: {{4}}
+Valor da entrada: {{5}}
 
-Pra garantir esse horário no seu nome, a entrada é de *{{5}}* — e ela desconta do valor final.
+A entrada desconta do valor final do atendimento.
 
-Toque em *Receber o PIX* aqui embaixo que eu te mando a chave e o QR Code com o valor já preenchido.
+Toque no botão abaixo para receber a chave PIX e o QR Code com o valor. Assim que o pagamento for confirmado, o horário fica reservado.
 ```
 
 ### Rodapé
@@ -270,8 +274,8 @@ Tipo: **Resposta rápida** — **nesta ordem**
 
 | | Texto do botão |
 |---|---|
-| 1 | `💳 Receber o PIX` |
-| 2 | `💬 Falar com a Karol` |
+| 1 | `Receber o PIX` |
+| 2 | `Falar com a Karol` |
 
 ### Exemplos
 
@@ -300,7 +304,7 @@ recebe está se arrumando e lê pela prévia da notificação.
 Tipo: **Texto**
 
 ```
-Seu horário é daqui a pouco ⏰
+Seu horário é daqui a pouco
 ```
 
 ### Corpo
@@ -353,7 +357,7 @@ que ninguém abre.
 Tipo: **Texto**
 
 ```
-Como foi? 💛
+Como foi?
 ```
 
 ### Corpo
@@ -404,7 +408,7 @@ no dia e na hora antigos.
 Tipo: **Texto**
 
 ```
-Seu horário mudou 💛
+Seu horário mudou
 ```
 
 ### Corpo
@@ -459,7 +463,7 @@ Quando a **Karol** cancela. A cliente não pode descobrir na porta.
 Tipo: **Texto**
 
 ```
-Sobre o seu horário 🙏
+Sobre o seu horário
 ```
 
 ### Corpo
@@ -495,6 +499,26 @@ Tipo: **Resposta rápida** — **nesta ordem**
 | `{{3}}` | `quinta-feira, 17 de setembro às 19:00` |
 
 ---
+
+## ⚠️ Utilidade x Marketing — o classificador da Meta
+
+Ao enviar, a Meta roda um classificador e pode dizer **"A categoria não
+corresponde"**, recomendando Marketing. **Não aceite.** Marketing custa cerca
+de oito vezes mais (R$ 0,31–0,39 contra R$ 0,04–0,08) e — o que é pior — não
+é entregue a quem desativou mensagens de marketing. O pedido de entrada
+simplesmente não chegaria em parte das clientes.
+
+Aconteceu em 12/09 com o `pedido_sinal`. O que dispara: **tom de oferta**.
+"Pra garantir esse horário no seu nome" soa a venda; "está aguardando o
+pagamento da entrada" é aviso sobre um pedido que já existe, que é a
+definição de utilidade.
+
+Receita quando ele reclamar:
+
+- Comece pelo fato ("Recebi o seu pedido", "Seu horário é amanhã").
+- Dados em lista seca: `Serviço:`, `Data:`, `Local:`, `Valor:`.
+- Nada de "garanta", "aproveite", "não perca", "vaga".
+- Menos emoji no corpo — nenhum já resolveu aqui.
 
 ## ⚠️ A ordem dos botões importa
 
