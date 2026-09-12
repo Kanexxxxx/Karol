@@ -21,6 +21,10 @@ import { BOTAO } from "./estilos";
 export function Aguardando({ itens }: { itens: Agendamento[] }) {
   if (itens.length === 0) return null;
 
+  // Tem alguém devendo PIX de verdade, ou é só o "ok" dela que falta?
+  // Serviço abaixo de R$ 80 não tem sinal — ver `sinalPorValor`.
+  const temSinal = itens.some((ag) => sinalDoAgendamento(ag) > 0);
+
   return (
     <section
       id="aguardando"
@@ -33,7 +37,7 @@ export function Aguardando({ itens }: { itens: Agendamento[] }) {
           className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-tinta"
         >
           <span aria-hidden="true" className="size-2 bg-ouro motion-safe:animate-pulse" />
-          Aguardando o sinal · {itens.length}
+          {temSinal ? "Aguardando o sinal" : "Aguardando você"} · {itens.length}
         </h2>
         {/* ⚠️ Esta frase já prometeu "a cliente recebe a confirmação no
             WhatsApp". Não é sempre verdade: com a conversa fechada, a
@@ -42,8 +46,17 @@ export function Aguardando({ itens }: { itens: Agendamento[] }) {
             cliente. O que o toque garante é o horário fechado; é isso
             que fica dito. */}
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-tinta">
-          Chegou o comprovante do PIX? Toque em <b>Confirmar</b> e o horário fica
-          fechado no nome dela.
+          {temSinal ? (
+            <>
+              Chegou o comprovante do PIX? Toque em <b>Confirmar</b> e o horário fica
+              fechado no nome dela.
+            </>
+          ) : (
+            <>
+              Esses horários estão presos esperando você. Toque em <b>Confirmar</b> e
+              ficam fechados no nome da cliente.
+            </>
+          )}
         </p>
       </div>
 
@@ -62,11 +75,17 @@ export function Aguardando({ itens }: { itens: Agendamento[] }) {
                 <p className="mt-0.5 text-[13px] text-tinta-2 lining-nums first-letter:uppercase">
                   {DIA_CURTO.format(ag.inicio)} · {HORA.format(ag.inicio)} · {ag.servicoNome}
                 </p>
-                {sinal > 0 && (
-                  <p className="mt-1 text-[13px] font-semibold text-tinta lining-nums">
-                    Sinal de {formatarPreco(sinal / 100)}
-                  </p>
-                )}
+                <p className="mt-1 text-[13px] font-semibold text-tinta lining-nums">
+                  {sinal > 0 ? (
+                    <>Sinal de {formatarPreco(sinal / 100)}</>
+                  ) : (
+                    // Sem isto, uma pendente barata ficava sem explicação
+                    // nenhuma no meio de uma caixa que fala de PIX.
+                    <span className="font-normal text-tinta-2">
+                      Sem sinal — só falta você confirmar
+                    </span>
+                  )}
+                </p>
               </div>
 
               {/* Confirmar vem primeiro: no celular os três botões quebram

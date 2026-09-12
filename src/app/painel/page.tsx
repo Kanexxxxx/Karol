@@ -11,6 +11,7 @@ import { Aguardando } from "./Aguardando";
 import { Cartao } from "./Cartao";
 import { Dia, emPe } from "./Dia";
 import { Indicador, Indicadores } from "./Indicadores";
+import { sinalDoAgendamento } from "./Cartao";
 import { CabecalhoPainel, LARGURA, RodapePainel } from "./Moldura";
 import { BOTAO, CAMPO_BASE, FOCO, ROTULO_SECAO } from "./estilos";
 
@@ -55,6 +56,15 @@ export default async function Painel({
     (a) => emPe(a) && a.inicio >= dia(0) && a.inicio < dia(7),
   ).length;
   const pendentes = agendamentos.filter((a) => a.situacao === "pendente");
+  /*
+    ⚠️ PENDENTE NÃO É SEMPRE "DEVE PIX".
+
+    Sinal só existe de R$ 80 pra cima. Um design de R$ 25 pendente (sobra
+    de quando tudo entrava pendente, ou aprovação manual ligada) não tem
+    comprovante nenhum pra conferir — e o painel mandava a Karol procurar
+    um PIX que nunca existiu.
+  */
+  const comSinal = pendentes.filter((a) => sinalDoAgendamento(a) > 0).length;
   // A lista vem do banco ordenada por período: a primeira que ainda não
   // começou é a próxima.
   const proxima = agendamentos.find((a) => marcado(a) && a.inicio > agora);
@@ -119,11 +129,17 @@ export default async function Painel({
               />
               <Indicador rotulo="7 dias" valor={naSemana} nota="contando hoje" />
               <Indicador
-                rotulo="Sinal"
+                rotulo={comSinal > 0 ? "Sinal" : "Pendentes"}
                 valor={pendentes.length}
                 tom={pendentes.length > 0 ? "alerta" : "normal"}
                 href={pendentes.length > 0 ? "#aguardando" : undefined}
-                nota={pendentes.length > 0 ? "PIX pra conferir" : "nenhum pendente"}
+                nota={
+                  pendentes.length === 0
+                    ? "nenhum pendente"
+                    : comSinal > 0
+                      ? "PIX pra conferir"
+                      : "esperando seu ok"
+                }
               />
             </Indicadores>
 
