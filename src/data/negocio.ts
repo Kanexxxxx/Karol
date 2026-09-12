@@ -127,7 +127,8 @@ const h = (hora: number, min = 0) => hora * 60 + min;
  * Atualizado com as respostas e confirmações em áudio da Karol (07/09/2026):
  * - Segunda a sexta em Pereira Barreto: das 7h às 11h e das 18h30 às 22h.
  * - Sábado em Bandeirantes D'Oeste: das 11h às 22h.
- * - Domingo em Pereira Barreto: dia inteiro (8h às 18h).
+ * - Domingo em Pereira Barreto: igual aos dias de semana — 7h às 11h e
+ *   18h30 às 22h (confirmado pelo Kainã em 12/09/2026).
  */
 export const EXPEDIENTE: Expediente[] = [
   // Pereira Barreto — Segunda a sexta (Manhã: 7h às 11h)
@@ -147,8 +148,12 @@ export const EXPEDIENTE: Expediente[] = [
   // Bandeirantes D'Oeste — Sábado (11h às 22h)
   { dia: 6, cidade: "bandeirantes", inicio: h(11), fim: h(22) },
 
-  // Pereira Barreto — Domingo (8h às 18h)
-  { dia: 0, cidade: "pereira-barreto", inicio: h(8), fim: h(18) },
+  // Pereira Barreto — Domingo: os MESMOS dois turnos dos dias de semana.
+  // Ela disse "domingo eu atendo o dia inteiro", e o Kainã confirmou em
+  // 12/09 que "o dia inteiro" é 7h–11h e 18h30–22h, igual ao resto.
+  // Antes estava 8h às 18h, que era chute meu.
+  { dia: 0, cidade: "pereira-barreto", inicio: h(7), fim: h(11) },
+  { dia: 0, cidade: "pereira-barreto", inicio: h(18, 30), fim: h(22) },
 ];
 
 export const REGRAS = {

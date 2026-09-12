@@ -281,6 +281,15 @@ function rotuloDeDias(dias: DiaSemana[]): string {
     ordenados.length === 5 && [1, 2, 3, 4, 5].every((d) => ordenados.includes(d as DiaSemana));
   if (ehSegASex) return "Seg a sex";
 
+  /*
+    Desde que o domingo passou a ter os mesmos turnos da semana, esta
+    função caía no último caso e escrevia "Seg, ter, qua, qui, sex, dom" —
+    seis abreviações seguidas que ninguém lê. Estes dois atalhos existem
+    porque são os agrupamentos que a agenda dela produz de verdade.
+  */
+  if (ordenados.length === 7) return "Todo dia";
+  if (ordenados.length === 6 && !ordenados.includes(6)) return "Seg a sex e domingo";
+
   return maiuscula(ordenados.map((d) => NOMES_DIA[d].slice(0, 3)).join(", "));
 }
 

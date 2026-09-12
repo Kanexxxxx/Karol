@@ -71,12 +71,15 @@ describe("expedienteDoDia e expedientesDoDia", () => {
     expect(expedienteDoDia(sabadoDistante())!.cidade).toBe("bandeirantes");
   });
 
-  it("domingo é em Pereira Barreto (8h–18h)", () => {
+  it("domingo é em Pereira Barreto, com os mesmos dois turnos da semana", () => {
+    // Ela disse "domingo eu atendo o dia inteiro", e o Kainã confirmou em
+    // 12/09/2026 que é 7h–11h e 18h30–22h, igual aos dias de semana.
     const dom = new Date(2099, 5, 7);
     while (dom.getDay() !== 0) dom.setDate(dom.getDate() + 1);
     const exp = expedientesDoDia(dom);
-    expect(exp).toHaveLength(1);
-    expect(exp[0]).toMatchObject({ cidade: "pereira-barreto", inicio: 8 * 60, fim: 18 * 60 });
+    expect(exp).toHaveLength(2);
+    expect(exp[0]).toMatchObject({ cidade: "pereira-barreto", inicio: 7 * 60, fim: 11 * 60 });
+    expect(exp[1]).toMatchObject({ cidade: "pereira-barreto", inicio: 18 * 60 + 30, fim: 22 * 60 });
   });
 });
 
@@ -360,13 +363,15 @@ describe("horarioDaCidade sai do EXPEDIENTE, não de texto escrito à mão", () 
     expect(horarioDaCidade("bandeirantes")).toBe("Sábado, 11h às 22h");
   });
 
-  it("cidade com turnos diferentes qualifica cada um pelo dia", () => {
+  it("junta os dias que têm o mesmo horário num rótulo legível", () => {
+    /*
+      Com o domingo igual à semana, a versão anterior desta função
+      escrevia "Seg, ter, qua, qui, sex, dom" — seis abreviações seguidas
+      que ninguém lê. E isto aparece no site, na seção "Onde fica".
+    */
     const t = horarioDaCidade("pereira-barreto");
-    expect(t).toContain("Seg a sex");
-    expect(t).toContain("7h às 11h");
-    expect(t).toContain("18h30 às 22h");
-    expect(t).toContain("Domingo");
-    expect(t).toContain("8h às 18h");
+    expect(t).toBe("Seg a sex e domingo, 7h às 11h e 18h30 às 22h");
+    expect(t).not.toMatch(/qua, qui/);
   });
 
   it("cada janela do EXPEDIENTE aparece no texto", () => {

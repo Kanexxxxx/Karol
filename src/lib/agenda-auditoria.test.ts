@@ -121,7 +121,7 @@ describe("varredura de todos os serviços, nos dois expedientes", () => {
     ).toEqual([]);
   });
 
-  it("domingo oferece atendimento em Pereira Barreto (8h às 18h)", () => {
+  it("domingo oferece atendimento em Pereira Barreto (7h–11h e 18h30–22h)", () => {
     const domingo = new Date(2026, 8, 13);
     const grade = gradeDoDia({
       data: domingo,
@@ -131,9 +131,9 @@ describe("varredura de todos os serviços, nos dois expedientes", () => {
       cidade: "pereira-barreto",
     });
     expect(grade.length).toBeGreaterThan(0);
-    expect(grade[0].rotulo).toBe("08:00");
+    expect(grade[0].rotulo).toBe("07:00");
     const ultimo = grade[grade.length - 1];
-    expect(ultimo.inicio + blocoNaAgenda(design)).toBeLessThanOrEqual(18 * 60);
+    expect(ultimo.inicio + blocoNaAgenda(design)).toBeLessThanOrEqual(22 * 60);
   });
 
   it("cada serviço cabe pelo menos uma vez no dia útil", () => {
