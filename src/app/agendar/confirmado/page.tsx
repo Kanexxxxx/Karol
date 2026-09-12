@@ -92,11 +92,11 @@ function Sucesso({
     <div className="mx-auto max-w-[620px]">
       <Rotulo>{esperandoPagamento ? "Quase lá" : "Tudo certo"}</Rotulo>
       <h1 className="mt-2.5 mb-3 font-titulo text-[clamp(32px,6vw,50px)] leading-[1.05] font-light">
-        {esperandoPagamento ? "Falta o sinal pra fechar" : "Horário confirmado"}
+        {esperandoPagamento ? "Falta a entrada pra fechar" : "Horário confirmado"}
       </h1>
       <p className="mb-8 text-tinta-2">
         {esperandoPagamento
-          ? `Seu horário está guardado até ${REGRAS.sinal.seguraAte}. Pague o sinal pelo QR abaixo — o valor já vai preenchido — e mande o comprovante pra Karol no WhatsApp. Assim que ela conferir, está fechado.`
+          ? `Seu horário está guardado até ${REGRAS.sinal.seguraAte}. Pague a entrada pelo QR abaixo — o valor já vai preenchido — e mande o comprovante pra Karol no WhatsApp. Assim que ela conferir, está fechado.`
           : "O horário já está reservado no seu nome. Anote os detalhes:"}
       </p>
 
@@ -112,7 +112,7 @@ function Sucesso({
         />
         {pedeSinal && (
           <Linha
-            rotulo={`Sinal (${REGRAS.sinal.porcentagem}%)`}
+            rotulo={`Entrada (${REGRAS.sinal.porcentagem}%)`}
             valor={formatarPreco(sinalCentavos / 100)}
             destaque
           />
@@ -199,7 +199,7 @@ function BlocoPix({ valorCentavos, id }: { valorCentavos: number; id: string }) 
   return (
     <div className="mt-7 border border-ouro/40 bg-ouro-fundo/40 p-5 sm:p-6">
       <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">
-        PIX do sinal · {valor}
+        PIX da entrada · {valor}
       </p>
 
       <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-start">
@@ -241,8 +241,8 @@ function BlocoPix({ valorCentavos, id }: { valorCentavos: number; id: string }) 
 
       {!REGRAS.sinal.devolve && (
         <p className="mt-4 border-t border-ouro/20 pt-3.5 text-[12.5px] leading-relaxed text-tinta-3">
-          O sinal desconta do valor final e não é devolvido em caso de
-          desistência — é ele que garante que o horário fica guardado só pra
+          A entrada desconta do valor final e não é devolvida em caso de
+          desistência — é ela que garante que o horário fica guardado só pra
           você. Se precisar mudar de dia, me chame antes que a gente ajeita.
         </p>
       )}

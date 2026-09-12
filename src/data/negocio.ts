@@ -201,10 +201,23 @@ export const REGRAS = {
      */
     minimoCentavos: 80 * 100,
 
-    chavePix: "18997525291",
+    /*
+      ⚠️ CHAVE DE TESTE — É A DO KAINÃ, NÃO A DA KAROL.
+      Trocada em 12/09/2026 a pedido dele, pra dar pra testar o pagamento
+      de ponta a ponta sem mexer no dinheiro dela.
+
+      ANTES DE ENTREGAR, VOLTAR PARA:
+        chavePix: "18997525291"
+        banco: "Nubank"
+        favorecido: "Karolaine Carvalho"
+
+      Enquanto isto estiver aqui, todo QR e todo copia e cola do site
+      apontam pra conta dele. Nada avisa sozinho — é este comentário.
+    */
+    chavePix: "16991557552",
     tipoChave: "Telefone",
-    banco: "Nubank",
-    favorecido: "Karolaine Carvalho",
+    banco: "Inter",
+    favorecido: "Kaina Rodrigues Pinto",
 
     /**
      * NÃO devolve. Resposta literal: "Não volta — é justamente pra ela não

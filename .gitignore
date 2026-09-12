@@ -49,3 +49,7 @@ capas/
 # Cópias de trabalho dos agentes do Claude Code (git worktree).
 # Um `git add -A` chegou a gravar uma delas como repositório embutido.
 .claude/worktrees/
+
+# Cópias do banco antes de limpezas. Nunca vão pro git: têm telefone de
+# cliente, e o repositório é público.
+backups/

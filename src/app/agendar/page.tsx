@@ -389,7 +389,7 @@ async function Confirmar({
               <>
                 <Linha rotulo="Valor total" valor={formatarPreco(servico.preco)} />
                 <Linha
-                  rotulo={`Sinal (${REGRAS.sinal.porcentagem}%)`}
+                  rotulo={`Entrada (${REGRAS.sinal.porcentagem}%)`}
                   valor={formatarPreco(valorDoSinal(servico) / 100)}
                   destaque
                 />
@@ -400,8 +400,8 @@ async function Confirmar({
           </dl>
           {precisaDeSinal(servico) && (
             <p className="mt-3 text-[12.5px] leading-relaxed text-tinta-3">
-              O sinal é pago por PIX logo depois de marcar e desconta do valor
-              final. É ele que segura o horário no seu nome.
+              A entrada é paga por PIX logo depois de marcar e desconta do
+              valor final. É ela que segura o horário no seu nome.
             </p>
           )}
 

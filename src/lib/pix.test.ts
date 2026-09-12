@@ -114,7 +114,10 @@ describe("o BR Code", () => {
   it("aponta pra chave e pro domínio do PIX", () => {
     const conta = desmontar(campos["26"]);
     expect(conta["00"]).toBe("br.gov.bcb.pix");
-    expect(conta["01"]).toBe("+5518997525291");
+    // Sai da fonte: a chave de teste é do Kainã hoje e volta a ser a da
+    // Karol antes de entregar. Teste que crava o número quebra na troca
+    // e não prova nada além de eu ter copiado o mesmo texto duas vezes.
+    expect(conta["01"]).toBe(normalizarChave(REGRAS.sinal.chavePix, REGRAS.sinal.tipoChave));
   });
 
   it("usa a chave que está em negocio.ts, e não uma cópia", () => {
@@ -128,7 +131,7 @@ describe("o BR Code", () => {
   it("declara real, Brasil e o favorecido", () => {
     expect(campos["53"]).toBe("986");
     expect(campos["58"]).toBe("BR");
-    expect(campos["59"]).toBe("Karolaine Carvalho");
+    expect(campos["59"]).toBe(REGRAS.sinal.favorecido);
     expect(campos["60"]).toBe("PEREIRA BARRETO");
   });
 

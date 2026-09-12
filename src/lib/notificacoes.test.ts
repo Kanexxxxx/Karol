@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { REGRAS } from "@/data/negocio";
 import {
   enviarEvento,
   enviarTemplatePelaMeta,
@@ -64,13 +66,18 @@ describe("templates", () => {
       situacao: "pendente",
       valorCentavos: 10000,
     });
-    expect(pendente).toMatch(/sinal de \*R\$\s?50\*/);
-    expect(pendente).toContain("18997525291");
-    expect(pendente).toContain("Nubank");
+    // A palavra que a CLIENTE lê é "entrada" — "sinal" ficou só do lado
+    // da Karol, que foi quem usou essa palavra no formulário.
+    expect(pendente).toMatch(/entrada de \*R\$\s?50\*/);
+    expect(pendente).not.toMatch(/sinal/i);
+    // Da fonte, não escrito à mão: hoje a chave é a de teste do Kainã e
+    // volta a ser a da Karol antes de entregar.
+    expect(pendente).toContain(REGRAS.sinal.chavePix);
+    expect(pendente).toContain(REGRAS.sinal.banco);
     // o que faz a pessoa pagar: não é dinheiro a mais
     expect(pendente).toContain("desconta do valor final");
     // e a regra dela, dita sem rodeio
-    expect(pendente).toMatch(/não volta em caso de desistência/i);
+    expect(pendente).toMatch(/A entrada não volta em caso de desistência/i);
   });
 
   it("cliente que marcou serviço barato não recebe PIX nenhum", () => {

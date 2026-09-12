@@ -303,8 +303,8 @@ export function textoDoSinal(a: DadosAgendamento): string {
     `📍 ${a.cidade}`,
     `💵 ${formatarPreco(a.valorCentavos / 100)} no total`,
     "",
-    `Pra esse horário ficar guardado no seu nome, peço um sinal de *${formatarPreco(sinal / 100)}*.`,
-    `Ele *desconta do valor final* — no dia você paga só os outros ${formatarPreco(resta / 100)}.`,
+    `Pra esse horário ficar guardado no seu nome, peço uma entrada de *${formatarPreco(sinal / 100)}*.`,
+    `Ela *desconta do valor final* — no dia você paga só os outros ${formatarPreco(resta / 100)}.`,
     "",
     `*PIX (${REGRAS.sinal.tipoChave.toLowerCase()}):* ${REGRAS.sinal.chavePix}`,
     `${REGRAS.sinal.favorecido} · ${REGRAS.sinal.banco}`,
@@ -315,7 +315,7 @@ export function textoDoSinal(a: DadosAgendamento): string {
     ...(REGRAS.sinal.devolve
       ? []
       : [
-          "_O sinal não volta em caso de desistência — é ele que garante que o horário não vai pra outra pessoa. Se precisar mudar de dia, me avisa antes que a gente ajeita._",
+          "_A entrada não volta em caso de desistência — é ela que garante que o horário não vai pra outra pessoa. Se precisar mudar de dia, me avisa antes que a gente ajeita._",
         ]),
   ].join("\n");
 }
