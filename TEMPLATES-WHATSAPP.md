@@ -253,14 +253,14 @@ Pagamento da entrada pendente
 ```
 Oi, {{1}}. Recebi o seu pedido de horário e ele está aguardando o pagamento da entrada.
 
-Serviço: {{2}}
-Data: {{3}}
-Local: {{4}}
-Valor da entrada: {{5}}
+💄 Serviço: {{2}}
+📅 Data: {{3}}
+📍 Local: {{4}}
+💰 Valor da entrada: {{5}}
 
 A entrada desconta do valor final do atendimento.
 
-Toque no botão abaixo para receber a chave PIX e o QR Code com o valor. Assim que o pagamento for confirmado, o horário fica reservado.
+Toque no botão abaixo para receber a chave PIX e o QR Code com o valor. Assim que o pagamento for confirmado, o horário fica reservado. 💛
 ```
 
 ### Rodapé
@@ -518,7 +518,8 @@ Receita quando ele reclamar:
 - Comece pelo fato ("Recebi o seu pedido", "Seu horário é amanhã").
 - Dados em lista seca: `Serviço:`, `Data:`, `Local:`, `Valor:`.
 - Nada de "garanta", "aproveite", "não perca", "vaga".
-- Menos emoji no corpo — nenhum já resolveu aqui.
+- Emoji no CORPO é permitido e não foi o problema — o que pesa é o tom. (No
+  cabeçalho é que não entra emoji nenhum.)
 
 ## ⚠️ A ordem dos botões importa
 
