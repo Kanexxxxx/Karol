@@ -29,6 +29,9 @@ vi.mock("./notificacoes", () => ({
     falar: "falar",
     pix: "pix",
     feedback: "feedback",
+    notaOtimo: "nota_otimo",
+    notaBom: "nota_bom",
+    notaRuim: "nota_ruim",
   },
 }));
 

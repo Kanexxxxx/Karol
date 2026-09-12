@@ -26,7 +26,7 @@ vi.mock("./agendamentos", () => ({
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
-  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback" },
+  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback", notaOtimo: "nota_otimo", notaBom: "nota_bom", notaRuim: "nota_ruim" },
   enviarPedidoDeSinal: vi.fn(async () => true),
   esperandoSinal: vi.fn(() => false),
   paraDados: vi.fn((a: unknown) => a),
@@ -427,5 +427,47 @@ describe("os botões dos templates", () => {
     expect(r.fez).toBe("repassou-pra-karol");
     // a Karol recebe a pergunta; a cliente não recebe o link de novo
     expect(enviados().map(([p]) => p)).toEqual([KAROL]);
+  });
+});
+
+/**
+ * A avaliação do pós-atendimento.
+ *
+ * O Kainã pediu "o que todo mundo tem: uma avaliação". Pergunta aberta
+ * quase ninguém responde; três botões, a maioria toca.
+ *
+ * ⚠️ O caso que mais importa é a nota RUIM. Cliente insatisfeita respondendo
+ * a um robô simpático é como se perde uma cliente sem nem ficar sabendo — a
+ * Karol precisa receber isso marcado.
+ */
+describe("a avaliação depois do atendimento", () => {
+  beforeEach(() => {
+    vi.mocked(janelaAberta).mockResolvedValue(true);
+    vi.mocked(esperandoSinal).mockReturnValue(false);
+  });
+
+  const casos = [
+    ["nota_otimo", /alegria/i, /AMOU/],
+    ["nota_bom", /que bom/i, /Achou bom/],
+    ["nota_ruim", /quero acertar/i, /NÃO gostou/],
+  ] as const;
+
+  for (const [botao, esperaCliente, esperaKarol] of casos) {
+    it(`"${botao}": responde a cliente e avisa a Karol`, async () => {
+      const r = await atender({ ...mensagem("⭐"), botao });
+
+      expect(r.fez).toBe("repassou-pra-karol");
+
+      const paraCliente = enviados().find(([p]) => p === CLIENTE)?.[1] ?? "";
+      const paraKarol = enviados().find(([p]) => p === KAROL)?.[1] ?? "";
+      expect(paraCliente).toMatch(esperaCliente);
+      expect(paraKarol).toMatch(esperaKarol);
+    });
+  }
+
+  it("a nota ruim não recebe a mesma resposta alegre da boa", async () => {
+    await atender({ ...mensagem("⭐"), botao: "nota_ruim" });
+    const paraCliente = enviados().find(([p]) => p === CLIENTE)![1];
+    expect(paraCliente).not.toMatch(/alegria|que bom/i);
   });
 });

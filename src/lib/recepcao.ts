@@ -40,6 +40,9 @@ const BOTOES_DE_CLIENTE = new Set<string>([
   BOTAO_TEMPLATE.falar,
   BOTAO_TEMPLATE.pix,
   BOTAO_TEMPLATE.feedback,
+  BOTAO_TEMPLATE.notaOtimo,
+  BOTAO_TEMPLATE.notaBom,
+  BOTAO_TEMPLATE.notaRuim,
   "cancelar",
 ]);
 

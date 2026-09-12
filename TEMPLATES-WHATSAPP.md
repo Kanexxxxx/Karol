@@ -32,6 +32,10 @@ Aprendi na marra o que reprova um template:
   puro. (Descoberto na marra em 12/09: o campo simplesmente não deixa colar o
   emoji.) No CORPO o emoji funciona normalmente.
 - **Rodapé não aceita variável.**
+- **A validade padrão é de 10 MINUTOS.** Se você não ligar o "período de
+  validade personalizado", uma cliente com o celular sem sinal por 10 minutos
+  simplesmente não recebe. Use **12 horas** em todos — menos no
+  `lembrete_30min`, onde curto é o certo.
 - **Os exemplos são obrigatórios.** A Meta testa o template com eles.
 
 ---
@@ -312,8 +316,8 @@ Seu horário é daqui a pouco
 ```
 Oi, {{1}}! Passando só pra avisar que está chegando a hora. ✨
 
-🕐 {{2}}
-📍 {{3}}
+🕐 Horário: {{2}}
+📍 Local: {{3}}
 
 Te espero! 💛
 ```
@@ -326,6 +330,13 @@ Studio Karol Carvalho
 
 ### Botões
 **Nenhum.** A pessoa está saindo de casa; botão aqui só atrapalha.
+
+### ⚠️ Validade: CURTA (30 min a 1 h)
+
+Este é o único dos oito que não leva 12 horas. Se o celular dela estiver
+desligado e a mensagem for entregue duas horas depois, ela chega quando o
+atendimento já acabou — pior do que não chegar. Com validade curta, a Meta
+descarta e ainda não cobra.
 
 ### Exemplos
 
@@ -365,9 +376,7 @@ Como foi?
 ```
 Oi, {{1}}! Foi muito bom te atender. 🥰
 
-Me conta: o que você achou do resultado? Pode responder aqui mesmo, do seu jeito — eu leio todas.
-
-E se ficar qualquer dúvida sobre os cuidados, é só me chamar.
+Me conta o que você achou? É só tocar num botão aqui embaixo — e se quiser escrever, melhor ainda. 💛
 ```
 
 ### Rodapé
@@ -381,8 +390,17 @@ Tipo: **Resposta rápida** — **nesta ordem**
 
 | | Texto do botão |
 |---|---|
-| 1 | `💛 Amei` |
-| 2 | `💬 Falar com a Karol` |
+| 1 | `Amei o resultado` |
+| 2 | `Gostei` |
+| 3 | `Pode melhorar` |
+
+⚠️ Três, e não quatro: a partir do quarto botão a Meta vira tudo numa
+lista, que quase ninguém abre. "Falar com a Karol" não faz falta aqui —
+qualquer texto que a cliente escrever é repassado pra ela do mesmo jeito.
+
+Cada nota tem resposta diferente, e a ruim chega pra Karol marcada com
+⚠️ — cliente insatisfeita respondendo a um robô simpático é como se perde
+uma cliente sem nem ficar sabendo.
 
 ### Exemplos
 
@@ -539,7 +557,7 @@ assim por diante. Então:
 | `confirmacao_agendamento` | confirmar | remarcar | falar |
 | `lembrete_vespera` | confirmar | remarcar | falar |
 | `pedido_sinal` | pix | falar | — |
-| `pos_atendimento` | feedback | falar | — |
+| `pos_atendimento` | nota_otimo | nota_bom | nota_ruim |
 | `horario_remarcado` | confirmar | remarcar | falar |
 | `horario_cancelado` | remarcar | falar | — |
 | `lembrete_30min` | (sem botão) | — | — |

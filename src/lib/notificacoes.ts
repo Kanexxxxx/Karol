@@ -518,6 +518,10 @@ export const BOTAO_TEMPLATE = {
   falar: "falar",
   pix: "pix",
   feedback: "feedback",
+  // A avaliação do pós-atendimento, um toque só.
+  notaOtimo: "nota_otimo",
+  notaBom: "nota_bom",
+  notaRuim: "nota_ruim",
 } as const;
 
 /**
@@ -687,7 +691,20 @@ export function templateDoEvento(
             type: "body",
             parameters: [{ type: "text", text: primeiroNome(a.cliente) }],
           },
-          ...botoesRapidos([BOTAO_TEMPLATE.feedback, BOTAO_TEMPLATE.falar]),
+          /*
+            Três notas, e não uma pergunta aberta. Pergunta aberta quase
+            ninguém responde; botão de nota, a maioria toca. Três é o
+            limite: a partir do quarto a Meta transforma os botões numa
+            lista, que quase ninguém abre.
+
+            "Falar com a Karol" não cabe mais aqui e não faz falta: o que
+            a cliente escrever de texto é repassado pra ela do mesmo jeito.
+          */
+          ...botoesRapidos([
+            BOTAO_TEMPLATE.notaOtimo,
+            BOTAO_TEMPLATE.notaBom,
+            BOTAO_TEMPLATE.notaRuim,
+          ]),
         ],
       };
 

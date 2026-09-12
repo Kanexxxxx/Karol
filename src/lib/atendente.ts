@@ -157,7 +157,27 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
     webhook, e a Karol nunca lê. Então "falar com a Karol" aqui só pode
     ser uma coisa: entregar o WhatsApp de verdade dela.
   */
-  // "Amei", o botão do pós-atendimento.
+  /*
+    A AVALIAÇÃO do pós-atendimento.
+
+    As chaves são as strings literais, e não `BOTAO_TEMPLATE.x`, de
+    propósito: é o payload que veio da Meta que está sendo procurado aqui,
+    e comparar com uma constante que pode chegar indefinida já causou um
+    bug neste arquivo (toda mensagem caindo no ramo errado).
+
+    A nota ruim recebe resposta diferente — e chega na Karol com aviso.
+    Cliente insatisfeita respondendo a um robô simpático é como se perde
+    uma cliente sem nem saber.
+  */
+  const nota = m.botao ? NOTAS[m.botao] : undefined;
+  if (nota) {
+    await repassarParaKarol(m.de, `${nota.aviso} (avaliação do atendimento)`);
+    await enviarTexto(m.de, nota.resposta);
+    return { fez: "repassou-pra-karol" };
+  }
+
+  // "Amei", o botão antigo do pós-atendimento. Fica por compatibilidade:
+  // template aprovado na Meta não muda sozinho quando o código muda.
   if (m.botao && m.botao === BOTAO_TEMPLATE.feedback) {
     await repassarParaKarol(m.de, m.texto || "(tocou em Amei)");
     await enviarTexto(
@@ -466,6 +486,25 @@ function encaminhamento(): string {
  * Meta reenviar o evento. Se a janela dela estiver fechada, o envio falha
  * em silêncio — o mesmo que já acontece com os outros avisos.
  */
+/** O que cada botão de avaliação responde, e o que a Karol lê. */
+const NOTAS: Record<string, { resposta: string; aviso: string }> = {
+  nota_otimo: {
+    resposta:
+      "Aaah, que alegria ler isso! 💛 Obrigada de verdade. Se quiser me contar mais, escreve aqui.",
+    aviso: "⭐ AMOU o resultado",
+  },
+  nota_bom: {
+    resposta:
+      "Que bom que você gostou! 💛 Se tiver alguma coisa que eu possa melhorar, me conta aqui — eu leio tudo.",
+    aviso: "🙂 Achou bom",
+  },
+  nota_ruim: {
+    resposta:
+      "Poxa, obrigada por me falar — sério. Me conta aqui o que não ficou bom que eu quero acertar com você. 💛",
+    aviso: "⚠️ NÃO gostou — vale falar com ela",
+  },
+};
+
 async function repassarParaKarol(de: string, texto: string): Promise<void> {
   await enviarTexto(
     whatsappDaKarol(),
