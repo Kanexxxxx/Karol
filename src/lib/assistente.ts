@@ -4,6 +4,7 @@ import { CIDADES, NEGOCIO, SITE_URL, type CidadeId } from "@/data/negocio";
 import { SERVICOS, buscarServico, formatarPreco } from "@/data/servicos";
 import {
   agendaDaKarol,
+  gradeDoDiaNaAgenda,
   buscarAgendamento,
   criarAgendamentoNoPainel,
   horariosDoDia,
@@ -726,12 +727,80 @@ export async function assistente(
 }
 
 /** Guarda a proposta e manda os dois botões. */
+/**
+ * O horário proposto existe mesmo na agenda dela?
+ *
+ * ⚠️ ATÉ AQUI, QUEM SEGURAVA ISSO ERA UMA FRASE NO ROTEIRO DA IA.
+ *
+ * `remarcarAgendamento` e `criarAgendamentoNoPainel` conferem formato,
+ * serviço e sobreposição — mas não o expediente nem os bloqueios. Então
+ * "passa a Ana pra domingo às 3h" virava proposta, ela tocava em
+ * Confirmar, e gravava. Pelo critério deste projeto, prompt não é
+ * validação: o modelo é quem propõe, e é dele que a gente se protege.
+ *
+ * A conferência é a própria grade do dia — a mesma que o site usa. Ela já
+ * embute expediente, bloqueio, intervalo e o que está ocupado; se o
+ * horário não estiver livre lá, ele não existe.
+ *
+ * ⚠️ Só do lado do ASSISTENTE. No painel, a Karol continua podendo
+ * encaixar fora do horário: lá quem digita é ela, sabendo o que quer.
+ */
+async function problemaComOHorario(
+  ferramenta: string,
+  args: Record<string, unknown>,
+): Promise<string | null> {
+  let servicoId: string | undefined;
+  let dia: string | undefined;
+  let hora: string | undefined;
+
+  if (ferramenta === "marcar") {
+    servicoId = String(args.servico_id ?? "");
+    dia = String(args.dia ?? "");
+    hora = String(args.hora ?? "");
+  } else if (ferramenta === "remarcar") {
+    const ag = await porId(args.id);
+    if (!ag) return null; // quem reclama disso é a execução
+    servicoId = ag.servicoId;
+    dia = String(args.dia ?? "");
+    hora = String(args.hora ?? "");
+  } else {
+    return null;
+  }
+
+  const servico = buscarServico(servicoId);
+  if (!servico || !/^\d{4}-\d{2}-\d{2}$/.test(dia) || !/^\d{2}:\d{2}$/.test(hora)) return null;
+
+  const cidade = cidadeDoDia(dia, hora);
+  if (!cidade) {
+    return `Nesse dia você não atende. ${CIDADES["pereira-barreto"].nome}: ${horarioDaCidade("pereira-barreto")}. ${CIDADES.bandeirantes.nome}: ${horarioDaCidade("bandeirantes")}.`;
+  }
+
+  const [h, m] = hora.split(":").map(Number);
+  const minutos = h * 60 + m;
+  const grade = await gradeDoDiaNaAgenda(servico, dia);
+  const vaga = grade.find((v) => v.inicio === minutos);
+
+  if (!vaga) {
+    return `${hora} não cabe nesse dia — em ${CIDADES[cidade].nome} o horário é ${horarioDaCidade(cidade)}. Quer que eu veja os livres?`;
+  }
+  if (!vaga.livre) {
+    return `${hora} desse dia já está ocupado. Quer que eu veja os livres?`;
+  }
+  return null;
+}
+
 async function propor(
   de: string,
   pedido: string,
   ferramenta: string,
   args: Record<string, unknown>,
 ): Promise<DesfechoAssistente> {
+  const problema = await problemaComOHorario(ferramenta, args);
+  if (problema) {
+    await enviarTexto(de, problema);
+    return { fez: "nada", motivo: "sem-resposta" };
+  }
+
   const descricao = await descrever(ferramenta, args);
 
   if (!descricao) {

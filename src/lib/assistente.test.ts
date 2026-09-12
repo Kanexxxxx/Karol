@@ -52,18 +52,35 @@ vi.mock("./agendamentos", () => ({
   mudarSituacao: vi.fn(async () => ({ ok: true })),
   remarcarAgendamento: vi.fn(async () => ({ ok: true })),
   criarAgendamentoNoPainel: vi.fn(async () => ({ ok: true, id: "x" })),
+  // A grade do dia: é ela que diz se o horário existe e está livre. Por
+  // padrão, o expediente de Pereira inteiro e tudo livre — os testes que
+  // precisam de ocupado dizem isso na hora.
+  gradeDoDiaNaAgenda: vi.fn(async () => {
+    const vagas = [];
+    for (const [de, ate] of [
+      [7 * 60, 11 * 60],
+      [18 * 60 + 30, 22 * 60],
+    ]) {
+      for (let m = de; m + 50 <= ate; m += 15) {
+        const hh = String(Math.floor(m / 60)).padStart(2, "0");
+        const mm = String(m % 60).padStart(2, "0");
+        vagas.push({
+          inicio: m,
+          rotulo: `${hh}:${mm}`,
+          cidade: "pereira-barreto",
+          livre: true,
+        });
+      }
+    }
+    return vagas;
+  }),
 }));
 vi.mock("./bloqueios", () => ({ criarBloqueio: vi.fn(async () => ({ ok: true })) }));
 
 import { perguntar } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
 import { guardarAcao, reservarAcao } from "./acoes-pendentes";
-import {
-  buscarAgendamento,
-  mudarSituacao,
-  procurarAgendamentos,
-  remarcarAgendamento,
-} from "./agendamentos";
+import { buscarAgendamento, gradeDoDiaNaAgenda, mudarSituacao, procurarAgendamentos, remarcarAgendamento } from "./agendamentos";
 import { criarBloqueio } from "./bloqueios";
 import { assistente, cidadeDoDia, decisaoDoBotao } from "./assistente";
 
@@ -403,5 +420,104 @@ describe("a cidade sai do EXPEDIENTE, não de uma tabela escrita à mão", () =>
   it("dia de semana é Pereira Barreto, nos dois turnos", () => {
     expect(cidadeDoDia("2026-09-14", "08:00")).toBe("pereira-barreto");
     expect(cidadeDoDia("2026-09-14", "19:00")).toBe("pereira-barreto");
+  });
+});
+
+/**
+ * O horário é conferido na agenda ANTES de virar botão.
+ *
+ * ⚠️ Até 12/09 quem segurava isto era uma FRASE no roteiro da IA. As
+ * funções de escrita conferem formato, serviço e sobreposição — não o
+ * expediente nem os bloqueios. Então "passa a Ana pra domingo às 3h"
+ * virava proposta, ela tocava em Confirmar, e gravava.
+ *
+ * Prompt não é validação: quem propõe é o modelo, e é dele que a gente se
+ * protege.
+ */
+describe("horário impossível não vira proposta", () => {
+  const OK = { role: "assistant" as const, content: null };
+
+  it("recusa hora fora do expediente, sem criar botão", async () => {
+    perguntarMock.mockResolvedValueOnce({
+      ...OK,
+      texto: null,
+      chamadas: [
+        {
+          id: "c1",
+          type: "function" as const,
+          function: {
+            name: "marcar",
+            arguments: JSON.stringify({
+              nome: "Ana",
+              servico_id: "design-simples",
+              dia: "2026-09-13",
+              hora: "03:00",
+            }),
+          },
+        },
+      ],
+    });
+
+    const r = await assistente(KAROL, "marca a ana domingo 3h");
+
+    expect(guardarAcao).not.toHaveBeenCalled();
+    expect(r).toEqual({ fez: "nada", motivo: "sem-resposta" });
+  });
+
+  it("recusa horário já ocupado, sem criar botão", async () => {
+    vi.mocked(gradeDoDiaNaAgenda).mockResolvedValueOnce([
+      { inicio: 8 * 60, rotulo: "08:00", cidade: "pereira-barreto", livre: false },
+    ]);
+    perguntarMock.mockResolvedValueOnce({
+      ...OK,
+      texto: null,
+      chamadas: [
+        {
+          id: "c1",
+          type: "function" as const,
+          function: {
+            name: "marcar",
+            arguments: JSON.stringify({
+              nome: "Ana",
+              servico_id: "design-simples",
+              dia: "2026-09-14",
+              hora: "08:00",
+            }),
+          },
+        },
+      ],
+    });
+
+    const r = await assistente(KAROL, "marca a ana segunda 8h");
+
+    expect(guardarAcao).not.toHaveBeenCalled();
+    expect(r).toEqual({ fez: "nada", motivo: "sem-resposta" });
+  });
+
+  it("horário livre continua virando proposta", async () => {
+    perguntarMock.mockResolvedValueOnce({
+      ...OK,
+      texto: null,
+      chamadas: [
+        {
+          id: "c1",
+          type: "function" as const,
+          function: {
+            name: "marcar",
+            arguments: JSON.stringify({
+              nome: "Ana",
+              servico_id: "design-simples",
+              dia: "2026-09-14",
+              hora: "07:00",
+            }),
+          },
+        },
+      ],
+    });
+
+    const r = await assistente(KAROL, "marca a ana segunda 7h");
+
+    expect(guardarAcao).toHaveBeenCalledTimes(1);
+    expect(r).toEqual({ fez: "propos", ferramenta: "marcar" });
   });
 });

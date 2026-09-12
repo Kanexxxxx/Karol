@@ -39,6 +39,26 @@ export async function guardarAcao(
   const bd = banco();
   if (!bd) return null;
 
+  /*
+    Antes de guardar a nova, marca as vencidas dela.
+  
+    O valor 'expirada' existia no tipo e no CHECK da tabela e NADA no
+    projeto o escrevia — as propostas venciam e ficavam "aguardando" pra
+    sempre. Não era falha de segurança (o filtro de validade já impede a
+    execução), mas o índice parcial das abertas crescia sem parar e a
+    coluna deixava de distinguir o que ela RECUSOU do que só venceu.
+  
+    Aqui, e não num cron: quem propõe é sempre a mesma pessoa, então
+    varrer as dela na hora de criar outra chega no mesmo lugar sem
+    infraestrutura nova.
+  */
+  await bd
+    .from("acoes_pendentes")
+    .update({ situacao: "expirada" })
+    .eq("whatsapp", a.whatsapp)
+    .eq("situacao", "aguardando")
+    .lt("expira_em", new Date().toISOString());
+
   const { data, error } = await bd
     .from("acoes_pendentes")
     .insert({
