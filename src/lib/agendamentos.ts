@@ -740,6 +740,51 @@ export function horaEmMinutos(hora: string): number | null {
  * A segurança contra choque continua sendo a mesma do site: a restrição
  * `sem_choque` no banco. Ela é quem recusa sobreposição, aqui e lá.
  */
+/**
+ * O horário cabe no expediente, e não está bloqueado?
+ *
+ * ⚠️ ISTO VALE PRO PAINEL TAMBÉM, por decisão do Kainã em 12/09.
+ *
+ * Uma auditoria apontou que nem `criarAgendamentoNoPainel` nem
+ * `remarcarAgendamento` olhavam o expediente: elas conferem formato,
+ * serviço e sobreposição, e o resto ficava por conta de quem chamava. No
+ * assistente isso era grave (quem propõe é um modelo), mas no painel
+ * também: um toque errado marcava alguém às 3 da manhã, ou em cima de uma
+ * viagem já bloqueada, sem nada reclamar.
+ *
+ * ⚠️ O QUE ISTO **NÃO** PROÍBE: encaixe fora da grade de 15 em 15. Ela
+ * pode marcar 07:07 — só não pode marcar fora do turno. Tem um teste
+ * guardando isso, porque é o ponto do formulário do painel.
+ */
+async function foraDoExpediente(
+  inicio: Date,
+  fim: Date,
+  cidade?: CidadeId,
+): Promise<string | null> {
+  const emMinutos = (d: Date) => d.getHours() * 60 + d.getMinutes();
+  const inicioMin = emMinutos(inicio);
+  const fimMin = inicioMin + Math.round((fim.getTime() - inicio.getTime()) / 60000);
+
+  const turnos = expedientesDoDia(inicio).filter((t) => !cidade || t.cidade === cidade);
+  const cabe = turnos.some((t) => inicioMin >= t.inicio && fimMin <= t.fim);
+  if (!cabe) {
+    return turnos.length === 0
+      ? "Nesse dia não tem expediente nessa cidade."
+      : "Esse horário fica fora do expediente do dia.";
+  }
+
+  const bd = banco();
+  if (!bd) return null;
+  const { data } = await bd
+    .from("bloqueios")
+    .select("motivo")
+    .overlaps("periodo", montarPeriodo(inicio, fim))
+    .limit(1);
+
+  const bloqueio = data?.[0] as { motivo?: string } | undefined;
+  return bloqueio ? `Esse horário está bloqueado (${bloqueio.motivo ?? "sem motivo"}).` : null;
+}
+
 export async function criarAgendamentoNoPainel(dados: {
   servicoId: string;
   cidade: CidadeId;
@@ -773,6 +818,9 @@ export async function criarAgendamentoNoPainel(dados: {
 
   const { inicio, fim } = periodoDe(dados.chaveDia, horaMin, servico);
   if (Number.isNaN(inicio.getTime())) return { ok: false, erro: "Data inválida." };
+
+  const fora = await foraDoExpediente(inicio, fim, dados.cidade);
+  if (fora) return { ok: false, erro: fora };
 
   const { data, error } = await bd
     .from("agendamentos")
@@ -851,6 +899,12 @@ export async function remarcarAgendamento(
 
   const { inicio, fim } = periodoDe(chaveDia, horaMin, servico);
   if (Number.isNaN(inicio.getTime())) return { ok: false, erro: "Data inválida." };
+
+  // A cidade vem gravada pelo NOME no agendamento; o expediente fala em id.
+  const cidadeId = (Object.entries(CIDADES).find(([, c]) => c.nome === atual.cidade)?.[0] ??
+    undefined) as CidadeId | undefined;
+  const fora = await foraDoExpediente(inicio, fim, cidadeId);
+  if (fora) return { ok: false, erro: fora };
 
   const { error } = await bd
     .from("agendamentos")

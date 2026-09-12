@@ -257,6 +257,35 @@ describe("criarAgendamentoNoPainel", () => {
     expect(r.ok).toBe(true);
   });
 
+  /**
+   * ⚠️ EXPEDIENTE VALE PRO PAINEL TAMBÉM, decisão do Kainã em 12/09.
+   *
+   * Uma auditoria apontou que nem o painel nem o assistente olhavam o
+   * expediente na hora de gravar. No assistente era grave (quem propõe é
+   * um modelo); no painel, um toque errado marcava alguém às 3 da manhã
+   * sem nada reclamar.
+   */
+  it("recusa horário fora do expediente, sem gravar nada", async () => {
+    const m = usarBanco({ insert: () => ({ data: { id: "nao-deveria" } }) });
+    const r = await criarAgendamentoNoPainel({ ...base, hora: "03:00" });
+
+    expect(r.ok).toBe(false);
+    expect(r.erro).toMatch(/fora do expediente/i);
+    expect(m.chamadas.find((c) => c.op === "insert")).toBeUndefined();
+  });
+
+  it("recusa horário em cima de um bloqueio", async () => {
+    const m = usarBanco({
+      select: (tabela) => (tabela === "bloqueios" ? { data: [{ motivo: "viagem" }] } : { data: [] }),
+      insert: () => ({ data: { id: "nao-deveria" } }),
+    });
+    const r = await criarAgendamentoNoPainel(base);
+
+    expect(r.ok).toBe(false);
+    expect(r.erro).toMatch(/bloqueado.*viagem/i);
+    expect(m.chamadas.find((c) => c.op === "insert")).toBeUndefined();
+  });
+
   it("sem WhatsApp usa o número da própria Karol, que o banco exige", async () => {
     const m = usarBanco({ insert: () => ({ data: { id: "x" } }) });
     await criarAgendamentoNoPainel({ ...base, whatsapp: "" });
