@@ -1120,6 +1120,41 @@ guarda.
 
 ---
 
+### Etapa 19 — 12/09/2026: entrada, oito templates e a fronteira dos botões
+
+- **"Sinal" virou "entrada"** onde a CLIENTE lê (site e mensagens). Do lado
+  da Karol continua "sinal", palavra dela. Pedido do Kainã: o nome antigo
+  confundia.
+- **PIX de teste**: chave, banco e favorecido são os do Kainã (Inter)
+  enquanto durar o teste. ⚠️ Voltar antes de entregar — ver o aviso em
+  `data/negocio.ts`.
+- **Domingo** passou a ter os mesmos turnos da semana (7h–11h e 18h30–22h);
+  o 8h–18h era chute. Com seis dias iguais, o rótulo do site virou "Seg a
+  sex e domingo".
+- **Reservas apagadas** a pedido dele — 12 agendamentos e 1 remarcação, todos
+  de teste. Cópia em `backups/`, fora do git.
+- **Oito templates** (eram quatro): entraram `lembrete_30min`,
+  `pos_atendimento`, `horario_remarcado` e `horario_cancelado`.
+- **O pós-atendimento PERGUNTA** o que a cliente achou, e a resposta chega:
+  o que ela escrever no número da API é repassado pro WhatsApp da Karol.
+- **Botão de cliente nunca mais vira conversa com a IA.** Ver abaixo.
+- **Dicionário do assistente** muito maior (gíria, áudio transcrito, pedido
+  duplo, horário vago) e o que ele NÃO faz: não manda mensagem pra cliente.
+  Conferido contra o DeepSeek real, 12 de 12.
+
+⚠️ **O bug que a foto do WhatsApp dele mostrou.** Com `KAROL_WHATSAPP`
+apontando pro número dele, ele tocou em "Confirmar" numa mensagem de
+CLIENTE e o ASSISTENTE respondeu "Prontinho, Karol! Design da Kaina
+cancelado ✅" — sem ter cancelado nada. A rota é pelo número, e o número
+era o mesmo pros dois papéis. Agora os payloads de cliente vão pro
+atendimento venham de onde vierem, com seis testes travando.
+
+Junto saiu um defeito meu: `m.botao === BOTAO_TEMPLATE.pix` vira
+`undefined === undefined` quando a constante não chega, e toda mensagem de
+texto caía nesse ramo.
+
+---
+
 ## 8. O que falta
 
 > Atualizado em 11/09/2026. A etapa 18 (seção 7) diz o que mudou.
