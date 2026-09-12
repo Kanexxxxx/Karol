@@ -4,6 +4,7 @@ import "./globals.css";
 import { NEGOCIO, SITE_URL } from "@/data/negocio";
 import { Revelar } from "@/components/Revelar";
 import { Carregando } from "@/components/Carregando";
+import { AoTopo } from "@/components/AoTopo";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <Carregando />
+        <AoTopo />
         {children}
         <Revelar />
       </body>
