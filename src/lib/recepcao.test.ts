@@ -23,6 +23,7 @@ vi.mock("./assistente", () => ({
 vi.mock("./conversas", () => ({ abrirJanela: vi.fn(async () => {}) }));
 vi.mock("./notificacoes", () => ({
   whatsappDaKarol: vi.fn(() => "5518997525291"),
+  enviarTexto: vi.fn(async () => true),
   BOTAO_TEMPLATE: {
     confirmar: "confirmar",
     remarcar: "remarcar",
@@ -177,6 +178,13 @@ describe("botão de cliente, mesmo vindo do número da Karol", () => {
     expect(decisaoDoBotao).toHaveBeenCalled();
     expect(atender).not.toHaveBeenCalled();
     expect(r.quem).toBe("karol");
+  });
+
+  it("foto do número dela não vira conversa com a IA", async () => {
+    const r = await receber({ ...mensagem(KAROL, ""), midiaId: "media-1", tipoMidia: "image" });
+
+    expect(assistente).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ quem: "karol", fez: "nada", motivo: "mandou-foto" });
   });
 
   it("texto solto dela continua indo pro assistente", async () => {

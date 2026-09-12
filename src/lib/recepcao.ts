@@ -3,7 +3,7 @@ import "server-only";
 import { atender, type Desfecho } from "./atendente";
 import { assistente, decisaoDoBotao, PREFIXO_BOTAO, type DesfechoAssistente } from "./assistente";
 import { abrirJanela } from "./conversas";
-import { BOTAO_TEMPLATE, whatsappDaKarol } from "./notificacoes";
+import { BOTAO_TEMPLATE, enviarTexto, whatsappDaKarol } from "./notificacoes";
 import type { MensagemRecebida } from "./webhook-meta";
 
 /**
@@ -115,6 +115,24 @@ export async function receber(m: MensagemRecebida): Promise<DesfechoRecepcao> {
 
   if (m.botao?.startsWith(PREFIXO_BOTAO)) {
     return { quem: "karol", ...(await decisaoDoBotao(m.de, m.botao)) };
+  }
+
+  /*
+    Foto vinda do número DELA.
+
+    Comprovante é sempre da cliente, e o caminho dele é o atendimento —
+    que reenvia pra Karol. Uma foto chegando pelo número dela cairia no
+    assistente com texto vazio, e o modelo responderia qualquer coisa.
+
+    Isto aparece bastante enquanto `KAROL_WHATSAPP` estiver apontando pro
+    número do Kainã, que é quando um telefone só faz os dois papéis.
+  */
+  if (m.midiaId) {
+    await enviarTexto(
+      m.de,
+      "Não consigo abrir foto por aqui 😅 Se for o comprovante de uma cliente, ela precisa mandar do número dela — aí eu te repasso na hora.",
+    );
+    return { quem: "karol", fez: "nada", motivo: "mandou-foto" };
   }
 
   return { quem: "karol", ...(await assistente(m.de, m.texto)) };

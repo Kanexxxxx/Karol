@@ -69,7 +69,7 @@ export type DesfechoAssistente =
   | { fez: "executou"; ferramenta: string; ok: boolean }
   | { fez: "recusou" }
   | { fez: "esqueceu" }
-  | { fez: "nada"; motivo: "sem-ia" | "sem-resposta" | "acao-expirada" };
+  | { fez: "nada"; motivo: "sem-ia" | "sem-resposta" | "acao-expirada" | "mandou-foto" };
 
 /* ------------------------------------------------------------------ */
 /* As ferramentas que o modelo pode chamar                             */
