@@ -266,36 +266,43 @@ function Curva() {
  * metade do texto novo entrava e metade do velho ficava — e o resultado
  * era a página dizendo a mesma coisa duas vezes, que é justamente do que o
  * Kainã reclamou.
+ *
+ * ⚠️ E O NARRADOR NÃO APARECE AQUI. A versão de 11/09 escrevia "Perguntei
+ * a ela qual é o diferencial" e "o motivo dela é bom demais pra
+ * parafrasear" — quem escreveu o site invadindo a página que leva o nome
+ * dela. O Kainã leu e disse que estava vergonhoso; estava. Título de
+ * piada também saiu ("A cliente que saiu chorando — de bem"). O que ela
+ * queria é limpo: frase curta, fato, sem comentário de quem digitou.
  */
 const CAPITULOS = [
   {
     rotulo: "O começo",
-    titulo: "Foi a mãe dela que deu o empurrão",
+    titulo: "Começou em 2021",
     texto: [
-      "Em 2021 a Karol já fazia maquiagem e dava aula. Foi a mãe quem apontou o óbvio que ela não estava vendo: juntar sobrancelha com maquiagem era o jeito de crescer sem trocar de profissão.",
-      "Ela travou. E o motivo dela é bom demais pra parafrasear: maquiagem, se a cliente não gostar, é só lavar o rosto. Sobrancelha é outra história — o erro fica no rosto da pessoa por semanas.",
-      "Fez o curso mesmo com medo. Depois treinou de graça em seis amigas, uma atrás da outra, até ter coragem de cobrar da primeira cliente. Está nisso desde então.",
+      "Karol já trabalhava com maquiagem e dava aula quando a mãe sugeriu juntar sobrancelha ao que ela fazia.",
+      "Ela hesitou. Maquiagem sai com água; sobrancelha fica no rosto por semanas.",
+      "Fez o curso mesmo assim, treinou em seis amigas e só então atendeu a primeira cliente.",
     ],
     citacao: NEGOCIO.lemaCurso,
     fundo: "bg-papel",
   },
   {
     rotulo: "O que ela faz diferente",
-    titulo: "A cliente que saiu chorando — de bem",
+    titulo: "O que ela faz diferente",
     texto: [
-      "Perguntei a ela qual é o diferencial dela, esperando ouvir alguma técnica. A resposta foi: a disponibilidade, e o atendimento.",
-      "O atendimento de que ela mais se lembra não tem nada a ver com sobrancelha. Uma cliente começou a desabafar sobre o próprio passado no meio do procedimento, e as duas foram conversando. No fim ela chorou — não pelo espelho, pela conversa.",
-      "É o que acontece quando alguém senta na cadeira e ninguém está esperando na porta pra entrar depois.",
+      "Perguntada sobre o próprio diferencial, ela não cita técnica: cita disponibilidade e atendimento.",
+      "O atendimento de que mais se lembra começou como qualquer outro. No meio do procedimento a cliente passou a falar da própria vida, e as duas conversaram até o fim. Ela saiu chorando — pela conversa.",
+      "É o que cabe acontecer quando não há ninguém esperando na porta.",
     ],
     citacao: NEGOCIO.lema,
     fundo: "bg-creme",
   },
   {
     rotulo: "A mão dela",
-    titulo: "Quatro cursos e uma henna de confiança",
+    titulo: "Formação e materiais",
     texto: [
-      "O primeiro curso foi aqui mesmo, em Pereira Barreto. Depois vieram mais três de maquiagem, todos online, e o de design de sobrancelha também na própria cidade.",
-      "Na henna ela não troca: Lá Benig. Palavra dela — “minha henna queridinha para sobrancelhas”. Em maquiagem ela circula entre várias marcas, mas a henna é uma só.",
+      "O primeiro curso foi em Pereira Barreto. Depois vieram três de maquiagem, online, e o de design de sobrancelha, também na cidade.",
+      "Na henna, uma marca só: Lá Benig. Em maquiagem, varia.",
     ],
     citacao: null,
     fundo: "bg-ouro-fundo",

@@ -80,7 +80,18 @@ export async function receber(m: MensagemRecebida): Promise<DesfechoRecepcao> {
     Mandar isso pro assistente quebraria a remarcação pelo WhatsApp, que já
     funciona e foi testada com celular de verdade.
   */
-  if (m.botao?.startsWith("k:")) {
+  /*
+    ⚠️ O `h:` ENTROU AQUI EM 12/09, e faltava desde sempre.
+
+    `h:` é a cliente escolhendo um horário na LISTA de remarcação. O
+    Kainã testou de verdade: escolheu um horário na lista e quem
+    respondeu foi o assistente — "esse horário tá livre, quer que eu
+    marque alguém aí?" —, tratando a escolha dela como pergunta da Karol.
+
+    A recepção desviava só o `k:`. Os dois prefixos são do mesmo fluxo de
+    remarcação, e os dois moram no `atendente.ts`.
+  */
+  if (m.botao?.startsWith("k:") || m.botao?.startsWith("h:")) {
     return { quem: "cliente", ...(await atender(m)) };
   }
 

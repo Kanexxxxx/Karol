@@ -154,6 +154,20 @@ describe("botão de cliente, mesmo vindo do número da Karol", () => {
     });
   }
 
+  it("escolher horário na lista de remarcação vai pro atendimento", async () => {
+    /*
+      Aconteceu no teste real de 12/09: o Kainã escolheu um horário na
+      lista e o ASSISTENTE respondeu "esse horário tá livre, quer que eu
+      marque alguém aí?" — tratando a escolha da cliente como pergunta da
+      Karol. A recepção desviava só o `k:`; o `h:` é do mesmo fluxo.
+    */
+    const r = await receber(mensagem(KAROL, "dom, 13/09 09:00", "h:2"));
+
+    expect(atender).toHaveBeenCalled();
+    expect(assistente).not.toHaveBeenCalled();
+    expect(r.quem).toBe("cliente");
+  });
+
   it("os botões DELA continuam indo pro assistente", async () => {
     // o prefixo "a:" é o dos botões que o próprio assistente cria
     const r = await receber(mensagem(KAROL, "✅", "a:1234"));

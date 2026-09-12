@@ -259,7 +259,10 @@ async function oferecerHorarios(ag: Agendamento, m: MensagemRecebida): Promise<D
   await enviarTextoComLista(
     m.de,
     [
-      `Sem problema! Seu horário hoje é ${DIA_HORA_POR_EXTENSO.format(ag.inicio)}.`,
+      // ⚠️ "hoje" aqui queria dizer "o de agora", e a cliente lia como o
+      // dia. O Kainã viu num sábado: "Seu horário hoje é domingo, 13 de
+      // setembro" — a frase se contradizendo em sete palavras.
+      `Sem problema! Seu horário atual é ${DIA_HORA_POR_EXTENSO.format(ag.inicio)}.`,
       "",
       `Estes são os próximos livres pra ${ag.servicoNome}. Escolha um e eu confirmo com a ${primeiroNome(NEGOCIO.profissional)}. 💛`,
     ].join("\n"),
