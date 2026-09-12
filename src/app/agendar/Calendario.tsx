@@ -179,38 +179,58 @@ function Dia({ dia, base }: { dia: DiaDoMes; base: string }) {
   );
 }
 
+/*
+  A LEGENDA.
+
+  ⚠️ Cada amostra é uma célula de verdade, com o MESMO número nas quatro.
+  O que muda entre elas é só o estado — que é justamente o que a legenda
+  ensina a reconhecer. Com números diferentes o olho compara o número; com
+  quadradinhos pequenos e abstratos (a versão anterior) não compara nada,
+  porque não se parecem com o calendário que está logo acima.
+
+  As classes de estado são as MESMAS do componente `Dia`. Se um dia mudar
+  de cor lá em cima e não mudar aqui, a legenda vira mentira.
+*/
+const RISCADO =
+  "[background:linear-gradient(to_top_right,transparent_calc(50%-0.5px),var(--color-linha)_calc(50%-0.5px),var(--color-linha)_calc(50%+0.5px),transparent_calc(50%+0.5px))]";
+
+const AMOSTRA = "grid size-7 place-items-center border border-linha/60 text-[12px] tabular-nums";
+
 function Legenda() {
   return (
-    <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-linha px-3 py-3 text-[11px] text-tinta-3">
-      <li className="flex items-center gap-1.5">
-        {/* ⚠️ A amostra tem que ser igual à célula. Era borda DOURADA,
-            e nenhum dia do calendário tem borda dourada — os livres têm
-            borda cinza e número escuro. A legenda ensinava a procurar uma
-            coisa que não existia. */}
-        <span aria-hidden="true" className="grid size-3.5 place-items-center border border-linha bg-papel text-[8px] font-bold text-tinta">
-          1
-        </span>
-        livre
-      </li>
-      <li className="flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-2.5 border border-linha bg-creme/50" />
-        cheio
-      </li>
-      <li className="flex items-center gap-1.5">
-        <span
-          aria-hidden="true"
-          className="size-2.5 border border-linha [background:linear-gradient(to_top_right,transparent_calc(50%-0.5px),var(--color-linha)_calc(50%-0.5px),var(--color-linha)_calc(50%+0.5px),transparent_calc(50%+0.5px))]"
-        />
-        já passou
-      </li>
-      <li className="flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-2.5 border border-linha bg-papel opacity-45" />
-        {/* "nesta cidade": sábado aparece apagado em Pereira Barreto, mas
-            ela atende sábado — em Bandeirantes. "Não atende" sozinho dizia
-            que ela não trabalha sábado, e quem lê isso fecha a aba. */}
-        não atende nesta cidade
-      </li>
+    <ul className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-linha px-4 py-4 text-[12px] text-tinta-2 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-7">
+      <Marca rotulo="livre" classe={`${AMOSTRA} bg-papel font-medium text-tinta`} />
+      <Marca
+        rotulo="cheio"
+        classe={`${AMOSTRA} bg-creme/50 text-tinta-3 line-through decoration-tinta-3/60`}
+      />
+      <Marca rotulo="já passou" classe={`${AMOSTRA} text-tinta-3/40 ${RISCADO}`} />
+      <Marca
+        rotulo="não atende nesta cidade"
+        classe={`${AMOSTRA} text-tinta-3/45`}
+        // No celular, em duas colunas, esta é a única que não cabe numa só.
+        largo
+      />
     </ul>
+  );
+}
+
+function Marca({
+  rotulo,
+  classe,
+  largo = false,
+}: {
+  rotulo: string;
+  classe: string;
+  largo?: boolean;
+}) {
+  return (
+    <li className={`flex items-center gap-2 ${largo ? "col-span-2 sm:col-span-1" : ""}`}>
+      <span aria-hidden="true" className={classe}>
+        12
+      </span>
+      {rotulo}
+    </li>
   );
 }
 

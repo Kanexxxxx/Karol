@@ -29,7 +29,7 @@ export const metadata: Metadata = {
  * que cada um faz internamente com o dado. Está escrito o que é verdade
  * sobre ESTE site.
  */
-const ATUALIZADO = "11 de setembro de 2026";
+const ATUALIZADO = "12 de setembro de 2026";
 
 export default function Privacidade() {
   return (
@@ -73,18 +73,16 @@ export default function Privacidade() {
               </ul>
               <p>
                 O site <b>não</b> usa cookies de rastreamento, ferramentas de
-                análise nem redes de anúncio. O único cookie que existe é o de
-                login do painel, e ele só é criado pra própria Karol.
+                análise nem redes de anúncio.
               </p>
             </Secao>
 
-            <Secao titulo="Pagamento do sinal">
+            <Secao titulo="Pagamento da entrada">
               <p>
-                Alguns serviços pedem um sinal por PIX. O pagamento é feito no
-                app do seu banco, direto pra conta da Karol — o site só mostra a
-                chave e o QR Code com o valor. <b>Nenhum dado bancário seu passa
-                pelo site ou fica guardado nele.</b> O comprovante que você manda
-                pelo WhatsApp fica na conversa, como qualquer outra mensagem.
+                Alguns serviços pedem uma entrada por PIX. O pagamento é feito
+                no app do seu banco, direto pra conta da Karol — o site só mostra
+                a chave e o QR Code com o valor. <b>Nenhum dado bancário seu passa
+                pelo site ou fica guardado nele.</b>
               </p>
             </Secao>
 
@@ -105,15 +103,13 @@ export default function Privacidade() {
                 pra fazer o serviço deles:
               </p>
               <ul>
-                <li><b>Supabase</b> — o banco de dados onde a agenda fica guardada;</li>
-                <li><b>Vercel</b> — onde o site fica hospedado;</li>
+                <li><b>Supabase</b> e <b>Vercel</b> — onde a agenda fica guardada e o site fica no ar;</li>
                 <li><b>Meta (WhatsApp)</b> — que entrega as mensagens de confirmação e lembrete;</li>
                 <li>
-                  <b>DeepSeek</b> — um assistente de inteligência artificial que a
-                  Karol usa pra consultar e organizar a própria agenda pelo
-                  WhatsApp. Quando ela pergunta algo, nome, telefone e horário
-                  das clientes daquele dia podem ser enviados a ele pra montar a
-                  resposta.
+                  <b>DeepSeek</b> — o assistente de inteligência artificial que a
+                  Karol usa pra organizar a agenda dela. Quando ela pergunta algo
+                  sobre um dia, o nome e o horário de quem tem hora marcada podem
+                  ser enviados pra montar a resposta.
                 </li>
               </ul>
               <p>
@@ -151,9 +147,8 @@ export default function Privacidade() {
 
             <Secao titulo="Segurança">
               <p>
-                A agenda só é acessível pelo painel, com senha, e a conexão com o
-                site é sempre criptografada (HTTPS). O banco de dados não aceita
-                leitura pública: só o servidor do site consegue consultar.
+                A conexão com o site é sempre criptografada, e a sua agenda só
+                pode ser vista pela Karol.
               </p>
             </Secao>
 
