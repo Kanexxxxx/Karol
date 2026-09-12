@@ -64,7 +64,7 @@ import {
   remarcarAgendamento,
 } from "./agendamentos";
 import { criarBloqueio } from "./bloqueios";
-import { assistente, decisaoDoBotao } from "./assistente";
+import { assistente, cidadeDoDia, decisaoDoBotao } from "./assistente";
 
 const perguntarMock = vi.mocked(perguntar);
 const procurarMock = vi.mocked(procurarAgendamentos);
@@ -340,5 +340,35 @@ describe("a escrita mora num lugar só", () => {
     // uma na definição (`async function executar(`) e uma em decisaoDoBotao
     expect(chamadas).toHaveLength(2);
     expect(corpoDe("decisaoDoBotao")).toContain("executar(");
+  });
+});
+
+/**
+ * Em que cidade ela está naquele dia.
+ *
+ * ⚠️ Isto era uma tabela escrita à mão: seg–sex Pereira, sábado
+ * Bandeirantes, domingo NADA. Quando o domingo entrou no expediente em
+ * 12/09, essa tabela não acompanhou — e o estrago era do pior tipo: o
+ * assistente OFERECIA domingo (porque a busca de horários lê o
+ * `EXPEDIENTE` de verdade), montava a proposta, e só depois de a Karol
+ * tocar em Confirmar respondia "nesse dia você não atende".
+ *
+ * Ela fazia tudo certo e ouvia uma frase falsa sobre o próprio negócio.
+ * Agora a cidade sai do `EXPEDIENTE`, que é a mesma fonte do site.
+ */
+describe("a cidade sai do EXPEDIENTE, não de uma tabela escrita à mão", () => {
+  it("domingo é Pereira Barreto, e não 'não atende'", () => {
+    // 2026-09-13 é domingo
+    expect(cidadeDoDia("2026-09-13")).toBe("pereira-barreto");
+    expect(cidadeDoDia("2026-09-13", "19:00")).toBe("pereira-barreto");
+  });
+
+  it("sábado é Bandeirantes", () => {
+    expect(cidadeDoDia("2026-09-19", "14:00")).toBe("bandeirantes");
+  });
+
+  it("dia de semana é Pereira Barreto, nos dois turnos", () => {
+    expect(cidadeDoDia("2026-09-14", "08:00")).toBe("pereira-barreto");
+    expect(cidadeDoDia("2026-09-14", "19:00")).toBe("pereira-barreto");
   });
 });

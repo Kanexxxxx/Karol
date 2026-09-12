@@ -19,7 +19,7 @@ import { DIA_HORA_POR_EXTENSO, DIA_POR_EXTENSO, HORA } from "./datas";
 import { buscarAcao, fecharAcao, guardarAcao } from "./acoes-pendentes";
 import { iaConfigurada, lerArgumentos, perguntar, type Ferramenta, type Mensagem } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
-import { horarioDaCidade, paraChave } from "./agenda";
+import { expedientesDoDia, horarioDaCidade, paraChave } from "./agenda";
 import { formatarWhatsapp, normalizarWhatsapp } from "./telefone";
 
 /**
@@ -521,6 +521,12 @@ async function descrever(
       const hora = String(args.hora ?? "");
       if (!servico || nomeCliente.length < 2) return null;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || !/^\d{2}:\d{2}$/.test(hora)) return null;
+      /*
+        ⚠️ Dia sem expediente é recusado AQUI, e não depois do toque dela.
+        Antes a proposta virava botão, ela tocava em Confirmar e só então
+        ouvia "nesse dia você não atende" — depois de ter feito tudo certo.
+      */
+      if (!cidadeDoDia(dia, hora)) return null;
 
       const tel = String(args.whatsapp ?? "").trim();
       return [
@@ -573,7 +579,7 @@ async function executar(
 
     case "marcar": {
       const dia = String(args.dia);
-      const cidade = cidadeDoDia(dia);
+      const cidade = cidadeDoDia(dia, String(args.hora));
       if (!cidade) return { ok: false, erro: "Nesse dia você não atende." };
 
       const r = await criarAgendamentoNoPainel({
@@ -600,12 +606,22 @@ async function executar(
  * seria deixá-la marcar cliente na cidade errada, que é o erro nº 1 que
  * este projeto inteiro foi desenhado pra evitar.
  */
-function cidadeDoDia(chave: string): CidadeId | null {
-  const dia = new Date(`${chave}T12:00:00`).getDay();
-  if (dia >= 1 && dia <= 5) return "pereira-barreto";
-  if (dia === 6) return "bandeirantes";
-  return null;
+export function cidadeDoDia(chave: string, hora?: string): CidadeId | null {
+  const turnos = expedientesDoDia(new Date(`${chave}T12:00:00`));
+  if (turnos.length === 0) return null;
+
+  // Dia com dois turnos: a cidade é a do turno que contém a hora. Hoje os
+  // dois turnos de Pereira são da mesma cidade, mas amanhã podem não ser.
+  if (hora && /^\d{2}:\d{2}$/.test(hora)) {
+    const [h, m] = hora.split(":").map(Number);
+    const minutos = h * 60 + m;
+    const turno = turnos.find((t) => minutos >= t.inicio && minutos < t.fim);
+    if (turno) return turno.cidade;
+  }
+
+  return turnos[0].cidade;
 }
+
 
 /* ------------------------------------------------------------------ */
 /* A conversa                                                          */
