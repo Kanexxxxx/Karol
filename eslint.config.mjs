@@ -12,6 +12,16 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+
+    /*
+      As cópias de trabalho dos agentes (git worktree).
+
+      Cada uma é o projeto inteiro de novo, com `.next` dentro. Sem esta
+      linha o lint entra lá e acusa milhares de problemas que são só o
+      mesmo código contado duas vezes — foi o que aconteceu: 6386
+      "problemas" numa árvore limpa.
+    */
+    ".claude/**",
   ]),
 ]);
 

@@ -1087,6 +1087,20 @@ identificador em inglês do projeto → `data-revelando`.
   e o botão "Falar com a Karol", recebem o WhatsApp pessoal dela.
 - O site não mandava **nenhum cabeçalho de segurança**. Agora manda seis.
 
+**O painel redesenhado (11/09):** um menu só nas três telas, faixa de
+resumo no topo (próxima cliente, hoje, 7 dias, sinais a conferir), caixa
+"Aguardando o sinal" com Confirmar/Recusar, cartão com a hora numa coluna
+própria, "Hoje/Amanhã" nos dias e uma linha marcando o agora. Feito por um
+agente numa cópia separada, a partir do código real das bibliotecas do
+uiverse.io, reactbits.dev e 21st.dev. Na revisão saíram três coisas: a
+conta do sinal duplicada (virou `sinalPorValor`, uma só), uma frase que
+prometia confirmação automática no WhatsApp que nem sempre é verdade, e o
+telefone da cliente com 20 px de toque.
+
+⚠️ A caixa "Aguardando o sinal" só foi vista com dados de mentira — não
+há reserva real esperando sinal ainda. Vale olhar na primeira de R$ 80 ou
+mais.
+
 **O que entrou:** o sinal inteiro (seção 6.5); todas as mensagens
 reescritas; o vidro no cabeçalho e no rodapé; as legendas do agendamento
 (o sinal no resumo antes de confirmar, a legenda do calendário, "Setembro
