@@ -434,9 +434,9 @@ Seu horário mudou
 ```
 Oi, {{1}}! Precisei mudar o seu horário, me desculpa. Ficou assim:
 
-💄 {{2}}
-📅 {{3}}
-📍 {{4}}
+💄 Serviço: {{2}}
+📅 Novo horário: {{3}}
+📍 Local: {{4}}
 
 Se esse novo horário não der, me avisa por aqui que a gente acha outro. 🤍
 ```
@@ -489,9 +489,10 @@ Sobre o seu horário
 ```
 Oi, {{1}}. Precisei cancelar o seu horário, me desculpa mesmo.
 
-Era o {{2}}, {{3}}.
+💄 Serviço: {{2}}
+📅 Era: {{3}}
 
-Me chama por aqui que a gente acha outro dia — tenho horário essa semana. 💛
+Me chama por aqui que a gente acha outro dia. 💛
 ```
 
 ### Rodapé
