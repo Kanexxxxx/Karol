@@ -109,3 +109,35 @@ describe("removerBloqueio", () => {
     expect(m.chamadas.find((c) => c.op === "delete")?.tabela).toBe("bloqueios");
   });
 });
+
+/**
+ * O teto do período.
+ *
+ * Achado numa auditoria: não havia limite. "Bloquear de 2026 a 2036" era
+ * aceito. O risco não é a Karol digitar isso — é a proposta vir do
+ * assistente, e modelo de linguagem erra ano com facilidade.
+ */
+describe("o tamanho do bloqueio", () => {
+  it("recusa período maior que um ano, sem tocar no banco", async () => {
+    const m = usarBanco({});
+    const r = await criarBloqueio({
+      dataInicio: "2026-01-01",
+      dataFim: "2036-01-01",
+      motivo: "viagem",
+    });
+    expect(r.ok).toBe(false);
+    expect(r.erro).toMatch(/longo demais/i);
+    expect(m.chamadas).toHaveLength(0);
+  });
+
+  it("aceita uma viagem de duas semanas", async () => {
+    usarBanco({});
+    const r = await criarBloqueio({
+      dataInicio: "2026-01-01",
+      dataFim: "2026-01-15",
+      motivo: "viagem",
+    });
+    // o que importa é não parar no teto — duas semanas é uma viagem normal
+    expect(r.erro ?? "").not.toMatch(/longo demais/i);
+  });
+});

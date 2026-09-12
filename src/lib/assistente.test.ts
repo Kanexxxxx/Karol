@@ -39,7 +39,8 @@ vi.mock("./conversas", () => ({
 }));
 vi.mock("./acoes-pendentes", () => ({
   guardarAcao: vi.fn(async () => "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
-  buscarAcao: vi.fn(),
+  reservarAcao: vi.fn(),
+  registrarResultado: vi.fn(async () => {}),
   fecharAcao: vi.fn(async () => {}),
 }));
 vi.mock("./agendamentos", () => ({
@@ -56,7 +57,7 @@ vi.mock("./bloqueios", () => ({ criarBloqueio: vi.fn(async () => ({ ok: true }))
 
 import { perguntar } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
-import { buscarAcao, guardarAcao } from "./acoes-pendentes";
+import { guardarAcao, reservarAcao } from "./acoes-pendentes";
 import {
   buscarAgendamento,
   mudarSituacao,
@@ -69,7 +70,7 @@ import { assistente, cidadeDoDia, decisaoDoBotao } from "./assistente";
 const perguntarMock = vi.mocked(perguntar);
 const procurarMock = vi.mocked(procurarAgendamentos);
 const buscarMock = vi.mocked(buscarAgendamento);
-const buscarAcaoMock = vi.mocked(buscarAcao);
+const reservarAcaoMock = vi.mocked(reservarAcao);
 
 const KAROL = "5518997525291";
 const ID = "8c6377a1-9f2b-4c3d-8e1a-5d6e7f809a0b";
@@ -193,7 +194,7 @@ describe("o que o modelo dizer NÃO muda a agenda", () => {
 
 describe("o toque dela é que executa", () => {
   it("confirmar executa a ação guardada", async () => {
-    buscarAcaoMock.mockResolvedValue({
+    reservarAcaoMock.mockResolvedValue({
       id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
       whatsapp: KAROL,
       ferramenta: "mudar_situacao",
@@ -208,7 +209,7 @@ describe("o toque dela é que executa", () => {
   });
 
   it("recusar não executa nada", async () => {
-    buscarAcaoMock.mockResolvedValue({
+    reservarAcaoMock.mockResolvedValue({
       id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
       whatsapp: KAROL,
       ferramenta: "mudar_situacao",
@@ -223,17 +224,49 @@ describe("o toque dela é que executa", () => {
   });
 
   /**
-   * `buscarAcao` confere número, situação e validade. Aqui ele devolve
-   * `null` — ação velha, já usada, ou de outro número — e nada pode
+   * `reservarAcao` confere número, situação e validade E reserva, tudo
+   * numa operação. Aqui ele devolve `null` — ação velha, já usada, de
+   * outro número, ou tomada por um toque anterior — e nada pode
    * acontecer a partir disso.
    */
   it("botão de ação que não vale mais não executa nada", async () => {
-    buscarAcaoMock.mockResolvedValue(null);
+    reservarAcaoMock.mockResolvedValue(null);
 
     const r = await decisaoDoBotao(KAROL, "a:ok:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
 
     expect(mudarSituacao).not.toHaveBeenCalled();
     expect(r).toEqual({ fez: "nada", motivo: "acao-expirada" });
+  });
+
+  /**
+   * ⚠️ TOQUE DUPLO EXECUTA UMA VEZ SÓ.
+   *
+   * No WhatsApp isso acontece o tempo todo: a pessoa toca, não vê
+   * resposta na hora, e toca de novo. Antes o código PROCURAVA a ação e
+   * só depois a fechava — duas operações, e entre elas cabia o segundo
+   * toque. Com `marcar` isso criava dois agendamentos; com `bloquear`,
+   * dois bloqueios.
+   *
+   * Agora a reserva é uma operação só: o banco muda a linha apenas se
+   * ela ainda estiver aguardando. O segundo toque recebe `null`.
+   */
+  it("dois toques no mesmo botão executam uma vez só", async () => {
+    const acao = {
+      id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      whatsapp: KAROL,
+      ferramenta: "mudar_situacao",
+      argumentos: { id: ID, situacao: "cancelado" },
+      descricao: "CANCELAR o horário de Larissa Souza",
+    };
+    reservarAcaoMock.mockResolvedValueOnce(acao).mockResolvedValueOnce(null);
+
+    const botao = "a:ok:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const primeiro = await decisaoDoBotao(KAROL, botao);
+    const segundo = await decisaoDoBotao(KAROL, botao);
+
+    expect(mudarSituacao).toHaveBeenCalledTimes(1);
+    expect(primeiro).toEqual({ fez: "executou", ferramenta: "mudar_situacao", ok: true });
+    expect(segundo).toEqual({ fez: "nada", motivo: "acao-expirada" });
   });
 });
 

@@ -5,8 +5,9 @@
 > internet boa, não precisa lembrar de senha — é a mesma conversa do
 > WhatsApp que ela já usa o dia inteiro.
 >
-> Ligar são **duas coisas**: rodar a migração 05 e pôr a chave do DeepSeek
-> na Vercel. O resto do código já está no ar.
+> Ligar era **duas coisas**; virou uma. A migração 05 já está aplicada
+> (conferido no banco). Resta a chave do DeepSeek na Vercel — e, pelo teste
+> de 12/09, ela parece estar lá: o assistente respondeu em produção.
 
 ---
 
@@ -165,7 +166,7 @@ de quem estiver em uso.
 
 Os testes que seguram tudo isso estão em `lib/assistente.test.ts` (18
 casos, incluindo um que lê o texto do arquivo e prova que a escrita só
-acontece depois do botão) e `lib/recepcao.test.ts` (9 casos de
+acontece depois do botão) e `lib/recepcao.test.ts` (20 casos de
 roteamento).
 
 ---

@@ -16,7 +16,7 @@ import {
 import { criarBloqueio } from "./bloqueios";
 import { guardarFalas, historicoDe, limparHistorico } from "./conversas";
 import { DIA_HORA_POR_EXTENSO, DIA_POR_EXTENSO, HORA } from "./datas";
-import { buscarAcao, fecharAcao, guardarAcao } from "./acoes-pendentes";
+import { guardarAcao, registrarResultado, reservarAcao } from "./acoes-pendentes";
 import { iaConfigurada, lerArgumentos, perguntar, type Ferramenta, type Mensagem } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
 import { expedientesDoDia, horarioDaCidade, paraChave } from "./agenda";
@@ -774,7 +774,17 @@ export async function decisaoDoBotao(
   botao: string,
 ): Promise<DesfechoAssistente> {
   const [, acaoTocada, id] = botao.split(":");
-  const pendente = await buscarAcao(id ?? "", de);
+
+  /*
+    A reserva é a própria conferência: uma operação só, que muda a
+    situação e devolve a ação. Se voltar vazio, ou a ação não existe, ou
+    alguém já pegou — o segundo toque de um toque duplo cai aqui.
+  */
+  const pendente = await reservarAcao(
+    id ?? "",
+    de,
+    acaoTocada === "ok" ? "feita" : "recusada",
+  );
 
   if (!pendente) {
     await enviarTexto(
@@ -785,13 +795,12 @@ export async function decisaoDoBotao(
   }
 
   if (acaoTocada !== "ok") {
-    await fecharAcao(pendente.id, "recusada");
     await enviarTexto(de, "Beleza, não mexi em nada. 💛");
     return { fez: "recusou" };
   }
 
   const r = await executar(pendente.ferramenta, pendente.argumentos);
-  await fecharAcao(pendente.id, "feita", r.ok ? "ok" : r.erro);
+  await registrarResultado(pendente.id, r.ok ? "ok" : (r.erro ?? "erro desconhecido"));
 
   await enviarTexto(
     de,

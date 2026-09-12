@@ -74,6 +74,21 @@ export async function criarBloqueio(dados: {
     return { ok: false, erro: "A data final é antes da inicial." };
   }
 
+  /*
+    ⚠️ TETO DE UM ANO.
+
+    Não havia teto: "bloquear de 2026 a 2036" seria aceito e executado, e
+    a agenda fecharia por dez anos. O risco não é ela digitar isso — é a
+    proposta vir de um modelo de linguagem, que erra ano com facilidade
+    ("dia 20" virando 2020). Fechar a agenda é o lado seguro do erro, mas
+    dez anos de agenda fechada só se descobre quando ninguém consegue
+    marcar.
+  */
+  const DIA_MS = 24 * 60 * 60 * 1000;
+  if ((df.getTime() - di.getTime()) / DIA_MS > 366) {
+    return { ok: false, erro: "Esse período é longo demais (máximo de um ano)." };
+  }
+
   const temHora = Boolean(dados.horaInicio || dados.horaFim);
   let inicio: Date;
   let fim: Date;

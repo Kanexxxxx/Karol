@@ -398,15 +398,18 @@ bloqueios na etapa 11 — a lição virou regra.
 |---|---|---|---|
 | `agendamentos` | os atendimentos. `sem_choque` impede sobreposição | `schema.sql` | ✅ |
 | `bloqueios` | férias, feriado, compromisso | `schema.sql` | ✅ |
-| `conversas` | a janela de 24 h de cada número **e a memória do assistente** | `migracao-02` · `05` | ✅ / ⛔ |
+| `conversas` | a janela de 24 h de cada número **e a memória do assistente** | `migracao-02` · `05` | ✅ |
 | `remarcacoes` | pedido de remarcação em andamento | `migracao-03` | ✅ |
-| `acoes_pendentes` | o que a IA propôs e espera o toque da Karol | `migracao-05` | ⛔ |
+| `acoes_pendentes` | o que a IA propôs e espera o toque da Karol | `migracao-05` | ✅ |
 
-E a coluna `avisado_30min_em` em `agendamentos` (`migracao-04`, ⛔).
+E a coluna `avisado_30min_em` em `agendamentos` (`migracao-04`, ✅).
 
 Todas com RLS ligado e **zero policies** — só a chave de serviço passa.
 
-⛔ **As migrações 04 e 05 ainda NÃO foram rodadas em produção.** Ver 8.7.
+✅ **As migrações 04 e 05 ESTÃO aplicadas** — conferido lendo o banco em
+11/09/2026. Foram rodadas à mão, por isso não aparecem na lista de
+migrações do Supabase. Três lugares deste guia diziam o contrário até
+12/09, e uma auditoria pegou a contradição.
 
 ### 6.2 Armadilhas do Next 16 que já morderam
 
@@ -1280,8 +1283,8 @@ pendente — o site continua no ar e nada dá erro. Elas só não acontecem.
 
 | O quê | Onde | Sem isso |
 |---|---|---|
-| Rodar `migracao-04-lembrete-30min.sql` | SQL Editor do Supabase | o lembrete de 30 min não sai |
-| Rodar `migracao-05-assistente.sql` | SQL Editor do Supabase | o assistente da Karol não guarda nada e não responde |
+| ~~Rodar `migracao-04` e `05`~~ | — | **já aplicadas** (conferido no banco em 11/09) |
+
 | `DEEPSEEK_API_KEY` na Vercel | Environment Variables | o assistente se cala e responde com o link do painel |
 | Cron externo de 10 min | cron-job.org | ver 8.3 |
 | Os 3 templates da Meta | WhatsApp Manager | ver 8.2. O código de envio JÁ EXISTE e cai neles sozinho quando a Meta recusa com `131047` |

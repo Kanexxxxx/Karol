@@ -99,6 +99,62 @@ export async function buscarAcao(
 }
 
 /** Fecha a ação. `resultado` fica gravado pro log. */
+/**
+ * RESERVA a ação: só uma pessoa consegue, e é quem executa.
+ *
+ * ⚠️ Isto existe por causa de uma corrida real. Antes o código PROCURAVA
+ * a ação e só depois a fechava — duas operações separadas. Entre uma e
+ * outra cabe um segundo toque, e no WhatsApp o toque duplo acontece o
+ * tempo todo (a pessoa toca, não vê resposta na hora, toca de novo).
+ *
+ * Com `marcar`, isso criava dois agendamentos; com `bloquear`, dois
+ * bloqueios. O dedupe do webhook não cobre: ele é por id de mensagem, e
+ * dois toques genuínos são duas mensagens diferentes.
+ *
+ * Aqui é UMA operação: o banco atualiza a linha só se ela ainda estiver
+ * `aguardando`, e devolve o que atualizou. O segundo toque não encontra
+ * nada e vai embora sem fazer nada.
+ */
+export async function reservarAcao(
+  id: string,
+  whatsapp: string,
+  situacao: "feita" | "recusada",
+): Promise<AcaoPendente | null> {
+  const bd = banco();
+  if (!bd) return null;
+  if (!/^[0-9a-f-]{32,36}$/i.test(id)) return null;
+
+  const { data } = await bd
+    .from("acoes_pendentes")
+    .update({ situacao })
+    .eq("id", id)
+    .eq("whatsapp", whatsapp)
+    .eq("situacao", "aguardando")
+    .gte("expira_em", new Date().toISOString())
+    .select("*")
+    .maybeSingle();
+
+  if (!data) return null;
+
+  return {
+    id: data.id as string,
+    whatsapp: data.whatsapp as string,
+    ferramenta: data.ferramenta as string,
+    argumentos: (data.argumentos as Record<string, unknown>) ?? {},
+    descricao: data.descricao as string,
+  };
+}
+
+/** Anota como terminou. A situação já foi decidida na reserva. */
+export async function registrarResultado(id: string, resultado: string): Promise<void> {
+  const bd = banco();
+  if (!bd) return;
+  await bd
+    .from("acoes_pendentes")
+    .update({ resultado: resultado.slice(0, 500) })
+    .eq("id", id);
+}
+
 export async function fecharAcao(
   id: string,
   situacao: "feita" | "recusada" | "expirada",
