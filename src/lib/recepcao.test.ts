@@ -32,6 +32,8 @@ vi.mock("./notificacoes", () => ({
     notaOtimo: "nota_otimo",
     notaBom: "nota_bom",
     notaRuim: "nota_ruim",
+    pixQr: "pix_qr",
+    pixCodigo: "pix_codigo",
   },
 }));
 

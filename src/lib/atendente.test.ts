@@ -26,8 +26,11 @@ vi.mock("./agendamentos", () => ({
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
-  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback", notaOtimo: "nota_otimo", notaBom: "nota_bom", notaRuim: "nota_ruim" },
+  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback", notaOtimo: "nota_otimo", notaBom: "nota_bom", notaRuim: "nota_ruim", pixQr: "pix_qr", pixCodigo: "pix_codigo" },
   enviarPedidoDeSinal: vi.fn(async () => true),
+  enviarQrDoSinal: vi.fn(async () => true),
+  enviarCodigoDoSinal: vi.fn(async () => true),
+  reenviarMidia: vi.fn(async () => true),
   esperandoSinal: vi.fn(() => false),
   paraDados: vi.fn((a: unknown) => a),
   enviarTextoComBotoes: vi.fn(async () => true),
@@ -48,7 +51,14 @@ vi.mock("./remarcacao", () => ({
 
 import { abrirJanela, janelaAberta } from "./conversas";
 import { proximoAgendamentoDe } from "./agendamentos";
-import { enviarPedidoDeSinal, enviarTexto, esperandoSinal } from "./notificacoes";
+import {
+  enviarCodigoDoSinal,
+  enviarPedidoDeSinal,
+  enviarQrDoSinal,
+  enviarTexto,
+  esperandoSinal,
+  reenviarMidia,
+} from "./notificacoes";
 import { atender } from "./atendente";
 
 const abrirMock = vi.mocked(abrirJanela);
@@ -469,5 +479,62 @@ describe("a avaliação depois do atendimento", () => {
     await atender({ ...mensagem("⭐"), botao: "nota_ruim" });
     const paraCliente = enviados().find(([p]) => p === CLIENTE)![1];
     expect(paraCliente).not.toMatch(/alegria|que bom/i);
+  });
+});
+
+/**
+ * O comprovante e as duas formas de receber o PIX.
+ *
+ * O Kainã pediu as duas coisas depois de testar no celular: "não enviar o
+ * QR code ou copia e cola, mas colocar duas opções de qual ele vai
+ * querer", e "o cliente manda o comprovante direto para a assistente e o
+ * assistente manda para ela".
+ */
+describe("o pagamento pelo WhatsApp", () => {
+  beforeEach(() => {
+    vi.mocked(janelaAberta).mockResolvedValue(true);
+    vi.mocked(esperandoSinal).mockReturnValue(true);
+    acharMock.mockResolvedValue({ ...agendamentoFalso(), situacao: "pendente" });
+  });
+
+  it("'QR Code' manda só o QR", async () => {
+    const r = await atender({ ...mensagem("QR Code"), botao: "pix_qr" });
+    expect(enviarQrDoSinal).toHaveBeenCalledTimes(1);
+    expect(enviarCodigoDoSinal).not.toHaveBeenCalled();
+    expect(r.fez).toBe("pediu-sinal");
+  });
+
+  it("'Copia e cola' manda só o código", async () => {
+    const r = await atender({ ...mensagem("Copia e cola"), botao: "pix_codigo" });
+    expect(enviarCodigoDoSinal).toHaveBeenCalledTimes(1);
+    expect(enviarQrDoSinal).not.toHaveBeenCalled();
+    expect(r.fez).toBe("pediu-sinal");
+  });
+
+  it("a foto do comprovante é repassada pra Karol, e a cliente recebe recibo", async () => {
+    /*
+      ⚠️ Isto sumia. O webhook lia texto e botão e ignorava foto — e
+      comprovante de PIX é foto. A cliente mandava, ninguém via, e ela
+      ficava esperando a confirmação.
+    */
+    const r = await atender({ ...mensagem(""), midiaId: "media-123", tipoMidia: "image" });
+
+    expect(r.fez).toBe("recebeu-comprovante");
+    expect(reenviarMidia).toHaveBeenCalledTimes(1);
+
+    const [para, tipo, id, legenda] = vi.mocked(reenviarMidia).mock.calls[0];
+    expect(para).toBe(KAROL);
+    expect(tipo).toBe("image");
+    expect(id).toBe("media-123");
+    expect(legenda).toContain("Comprovante");
+    expect(legenda).toContain("Maria da Silva");
+
+    const paraCliente = enviados().find(([p]) => p === CLIENTE)?.[1] ?? "";
+    expect(paraCliente).toMatch(/recebi/i);
+  });
+
+  it("o PDF do comprovante também passa", async () => {
+    await atender({ ...mensagem(""), midiaId: "doc-9", tipoMidia: "document" });
+    expect(vi.mocked(reenviarMidia).mock.calls[0][1]).toBe("document");
   });
 });

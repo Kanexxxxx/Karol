@@ -27,6 +27,22 @@ export const NEGOCIO = {
     exibicao: "(18) 99752-5291",
   },
 
+  /**
+   * O número da API (o "assistente"), que RECEBE.
+   *
+   * Não é o celular dela: é o chip da Cloud API, que não tem aplicativo e
+   * ninguém abre. Serve pra uma coisa que o pessoal não faz: receber o
+   * comprovante do PIX e repassar pra ela, junto com o nome de quem
+   * mandou e o link do painel. Ver `atender` em lib/atendente.ts.
+   *
+   * O número pessoal continua sendo o do site inteiro — este só aparece
+   * no botão do comprovante.
+   */
+  whatsappAutomatico: {
+    numero: "5516920088473",
+    exibicao: "(16) 92008-8473",
+  },
+
   instagram: {
     studio: "studio_karol_carvalho_",
     pessoal: "karolcarvalhomakeup_",

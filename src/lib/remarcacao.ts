@@ -86,6 +86,35 @@ function linhaParaRemarcacao(r: Record<string, unknown>): Remarcacao {
  * dia, então oferecer sábado em Bandeirantes pra quem marcou em Pereira
  * Barreto seria mandar a pessoa pra outra cidade sem avisar.
  */
+/**
+ * No máximo DOIS horários por dia, e de partes diferentes do dia.
+ *
+ * ⚠️ Antes isto pegava os primeiros livres em ordem — e os primeiros
+ * livres de um dia são 08:30, 08:45, 09:00, 09:15... A lista chegava na
+ * cliente com sete variações de quinze minutos da mesma manhã e um
+ * horário do dia seguinte no fim. Isso não é oferecer escolha; é oferecer
+ * o mesmo horário sete vezes, e ainda gastar as oito vagas da lista num
+ * dia só. O Kainã viu na conversa de teste.
+ *
+ * Com dois por dia, as oito vagas cobrem quatro dias. E os dois são de
+ * turnos diferentes quando existem os dois — quem não pode de manhã
+ * precisa ver uma opção de noite, não outra manhã.
+ */
+function espalharNoDia<T extends { inicio: number }>(livres: T[]): T[] {
+  if (livres.length <= 1) return livres;
+
+  const MEIO_DIA = 12 * 60;
+  const cedo = livres.find((v) => v.inicio < MEIO_DIA);
+  const tarde = livres.find((v) => v.inicio >= MEIO_DIA);
+  if (cedo && tarde) return [cedo, tarde];
+
+  // Um turno só: o primeiro e outro pelo menos 90 min depois, pra os dois
+  // não serem o mesmo horário com outro nome.
+  const primeiro = livres[0];
+  const distante = livres.find((v) => v.inicio >= primeiro.inicio + 90);
+  return distante ? [primeiro, distante] : [primeiro];
+}
+
 export async function horariosParaOferecer(ag: Agendamento): Promise<Opcao[]> {
   const servico = buscarServico(ag.servicoId);
   if (!servico) return [];
@@ -101,17 +130,20 @@ export async function horariosParaOferecer(ag: Agendamento): Promise<Opcao[]> {
     data.setDate(dia.getDate() + i);
     const grade = await gradeDoDiaNaAgenda(servico, paraChave(data));
 
-    for (const vaga of grade) {
-      if (opcoes.length >= MAX_OPCOES) break;
-      if (!vaga.livre) continue;
-      if (cidadeId && vaga.cidade !== cidadeId) continue;
-
+    const livres = grade.filter((vaga) => {
+      if (!vaga.livre) return false;
+      if (cidadeId && vaga.cidade !== cidadeId) return false;
       const quando = new Date(data);
       quando.setHours(0, vaga.inicio, 0, 0);
       // Não oferecer o horário que ela já tem: escolher o mesmo não é
       // remarcar, e confirmá-lo bateria na trava do banco contra ela mesma.
-      if (quando.getTime() === ag.inicio.getTime()) continue;
+      return quando.getTime() !== ag.inicio.getTime();
+    });
 
+    for (const vaga of espalharNoDia(livres)) {
+      if (opcoes.length >= MAX_OPCOES) break;
+      const quando = new Date(data);
+      quando.setHours(0, vaga.inicio, 0, 0);
       opcoes.push({ inicioISO: quando.toISOString(), rotulo: rotuloCurto(quando) });
     }
   }

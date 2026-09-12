@@ -44,6 +44,9 @@ function Topo() {
 
   const voltando = useRef(false);
   const primeira = useRef(true);
+  const rotaAnterior = useRef<string | null>(null);
+  /** Onde a pessoa estava em cada rota já visitada nesta aba. */
+  const posicoes = useRef(new Map<string, number>());
 
   useEffect(() => {
     const aoVoltar = () => {
@@ -53,17 +56,58 @@ function Topo() {
     return () => window.removeEventListener("popstate", aoVoltar);
   }, []);
 
+  /*
+    O F5 também começa no topo.
+
+    Por padrão o navegador devolve a rolagem ao recarregar. Numa página de
+    passos isso quer dizer: apertar F5 no meio do agendamento e reaparecer
+    olhando o rodapé — foi o que o Kainã viu.
+
+    ⚠️ E foi por isso que a devolução do VOLTAR virou trabalho nosso, logo
+    abaixo. Desligar a restauração do navegador conserta o F5 e quebra o
+    voltar junto: medido no navegador, o voltar passou a cair em 0 em vez
+    de devolver os 750 px onde a pessoa estava. O roteador do Next não
+    cobre esse buraco.
+  */
   useEffect(() => {
+    if (!("scrollRestoration" in history)) return;
+    history.scrollRestoration = "manual";
+    if (!window.location.hash) window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
+    /*
+      A rolagem de agora ainda é a da tela ANTERIOR: o navegador só a
+      muda quando alguém manda. Então este é o momento de anotar onde a
+      pessoa estava antes de sair.
+    */
+    const anterior = rotaAnterior.current;
+    if (anterior !== null && anterior !== rota) {
+      posicoes.current.set(anterior, window.scrollY);
+    }
+    rotaAnterior.current = rota;
+
     if (primeira.current) {
       primeira.current = false;
       return;
     }
+
     if (voltando.current) {
       voltando.current = false;
+      const guardada = posicoes.current.get(rota) ?? 0;
+      /*
+        Duas tentativas: a primeira acontece antes de o conteúdo novo ter
+        altura, e o navegador corta a rolagem no que couber. A segunda,
+        no quadro seguinte, já encontra a página inteira.
+      */
+      window.scrollTo({ top: guardada, left: 0, behavior: "instant" });
+      requestAnimationFrame(() =>
+        window.scrollTo({ top: guardada, left: 0, behavior: "instant" }),
+      );
       return;
     }
-    if (window.location.hash) return;
 
+    if (window.location.hash) return;
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [rota]);
 

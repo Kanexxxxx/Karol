@@ -68,12 +68,15 @@ describe("templates", () => {
     });
     // A palavra que a CLIENTE lê é "entrada" — "sinal" ficou só do lado
     // da Karol, que foi quem usou essa palavra no formulário.
-    expect(pendente).toMatch(/entrada de \*R\$\s?50\*/);
+    expect(pendente).toMatch(/entrada é de \*R\$\s?50\*/);
     expect(pendente).not.toMatch(/sinal/i);
-    // Da fonte, não escrito à mão: hoje a chave é a de teste do Kainã e
-    // volta a ser a da Karol antes de entregar.
-    expect(pendente).toContain(REGRAS.sinal.chavePix);
-    expect(pendente).toContain(REGRAS.sinal.banco);
+    // Pergunta COMO ela quer receber, em vez de despejar tudo de uma vez.
+    // Eram três mensagens seguidas (texto, QR e código); o Kainã disse que
+    // era informação demais pra cliente, e era.
+    expect(pendente).toMatch(/Como você prefere receber o PIX/);
+    // ⚠️ A CHAVE NÃO VEM MAIS AQUI. Ela chega depois, no formato que a
+    // cliente escolher no botão — QR Code ou copia e cola.
+    expect(pendente).not.toContain(REGRAS.sinal.chavePix);
     // o que faz a pessoa pagar: não é dinheiro a mais
     expect(pendente).toContain("desconta do valor final");
     // e a regra dela, dita sem rodeio

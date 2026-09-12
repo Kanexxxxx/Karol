@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BarraMobile, Cabecalho } from "@/components/Cabecalho";
+import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env, Rotulo } from "@/components/ui";
 import { ANTES_DE_VIR, NEGOCIO, REGRAS } from "@/data/negocio";
@@ -26,13 +26,14 @@ export default async function Confirmado({
   return (
     <>
       <Cabecalho />
-      <main className="flex-1 bg-osso pb-24 lg:pb-0">
+      <main className="flex-1 bg-osso pb-12 lg:pb-0">
         <Env className="py-14 lg:py-20">
           {!agendamento ? <NaoEncontrado /> : <Sucesso agendamento={agendamento} />}
         </Env>
       </main>
       <Rodape />
-      <BarraMobile />
+      {/* Sem a barra "Agendar meu horário" aqui: quem acabou de marcar não
+          precisa marcar de novo, e no celular ela cobria o QR do PIX. */}
     </>
   );
 }
@@ -87,6 +88,19 @@ function Sucesso({
   const recado = linkWhatsapp(
     `Oi Karol! Acabei de agendar pelo site: ${agendamento.servicoNome}, ${dia} às ${hora}, em ${agendamento.cidade}. Sou ${agendamento.clienteNome}.`,
   );
+
+  /*
+    ⚠️ QUEM ESPERA PAGAR VAI PRO NÚMERO AUTOMÁTICO, e não pro celular dela.
+
+    É o número que RECEBE: a foto do comprovante chega lá, o sistema
+    repassa pra Karol com o nome de quem mandou e o link do painel, e a
+    cliente ganha um "recebi" na hora. Pedido do Kainã — antes o
+    comprovante ia direto pro pessoal dela e ela tinha que achar de quem
+    era no meio da conversa.
+  */
+  const paraComprovante = `https://wa.me/${NEGOCIO.whatsappAutomatico.numero}?text=${encodeURIComponent(
+    `Oi! Sou ${agendamento.clienteNome}. Acabei de pagar a entrada do meu horário de ${agendamento.servicoNome}, ${dia} às ${hora}.`,
+  )}`;
 
   return (
     <div className="mx-auto max-w-[620px]">
@@ -145,7 +159,7 @@ function Sucesso({
 
       <div className="mt-8 flex flex-wrap gap-3">
         <a
-          href={recado}
+          href={esperandoPagamento ? paraComprovante : recado}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex min-h-[50px] items-center justify-center bg-ouro px-7 py-4 text-[11.5px] font-bold uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-90"
@@ -183,67 +197,47 @@ function Sucesso({
  */
 function BlocoPix({ valorCentavos, id }: { valorCentavos: number; id: string }) {
   /*
-    O BR Code com o valor DENTRO (campo 54). Escaneado, o app do banco
-    abre com o valor já preenchido — a cliente não digita, então não erra.
-    O identificador é o do agendamento: aparece no extrato da Karol e liga
-    o PIX a quem pagou.
+    ⚠️ ESTE BLOCO JÁ FOI O DOBRO DISTO.
 
-    O SVG é gerado aqui mesmo, no servidor, a partir de `lib/qr.ts` — que
-    só emite coordenadas e as duas cores abaixo. Não existe texto da
-    cliente dentro dele, por isso o `dangerouslySetInnerHTML` é seguro.
+    Tinha o QR, o copia e cola, a chave escrita, o banco, o favorecido e um
+    segundo botão de copiar. O Kainã olhou e disse que era informação
+    demais pra cliente — e era: quem escaneia não precisa da chave, e quem
+    cola o código também não. Sobrou o essencial, e a chave continua
+    dentro do código copiado.
+
+    O BR Code carrega o valor (campo 54), então o app do banco abre com
+    R$ 40 preenchido e a cliente não digita nada.
   */
   const codigo = brCodeDoSinal(valorCentavos, id);
   const svg = qrParaSvg(codigo, { nivel: "M", escuro: "#332b22", claro: "#ffffff" });
   const valor = formatarPreco(valorCentavos / 100);
 
   return (
-    <div className="mt-7 border border-ouro/40 bg-ouro-fundo/40 p-5 sm:p-6">
+    <div className="mt-7 border border-ouro/40 bg-ouro-fundo/40 p-5 text-center sm:p-6">
       <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-ouro">
         PIX da entrada · {valor}
       </p>
 
-      <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-start">
-        <div
-          role="img"
-          aria-label={`QR Code do PIX de ${valor}`}
-          className="mx-auto w-[184px] shrink-0 border border-linha bg-white p-1 sm:mx-0"
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
+      <div
+        role="img"
+        aria-label={`QR Code do PIX de ${valor}`}
+        className="mx-auto mt-4 w-[208px] border border-linha bg-white p-1"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
 
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] text-tinta-2">
-            Abra o app do seu banco, escolha <strong>PIX › Ler QR Code</strong> e aponte a
-            câmera. O valor de <strong>{valor}</strong> já vai preenchido.
-          </p>
+      <p className="mx-auto mt-4 max-w-[36ch] text-[14px] text-tinta-2">
+        Abra o app do seu banco e aponte a câmera. O valor já vai preenchido.
+      </p>
 
-          <p className="mt-4 text-[13px] text-tinta-3">
-            Está pagando pelo mesmo celular? Copie o código e cole em{" "}
-            <strong>PIX Copia e Cola</strong>:
-          </p>
-          <div className="mt-2">
-            <CopiarPix texto={codigo} rotulo="Copiar código PIX" rotuloCopiado="Código copiado ✓" />
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-5 border-t border-ouro/20 pt-4">
-        <p className="text-[13px] text-tinta-2">
-          Prefere digitar? Chave ({REGRAS.sinal.tipoChave.toLowerCase()}):{" "}
-          <strong className="font-mono font-semibold text-tinta">{REGRAS.sinal.chavePix}</strong>
-        </p>
-        <p className="mt-1 text-[12.5px] text-tinta-3">
-          {REGRAS.sinal.favorecido} · {REGRAS.sinal.banco}
-        </p>
-        <div className="mt-3">
-          <CopiarPix texto={REGRAS.sinal.chavePix} rotulo="Copiar chave" rotuloCopiado="Chave copiada ✓" />
-        </div>
+      <div className="mt-4 flex justify-center">
+        <CopiarPix texto={codigo} rotulo="Copiar código PIX" rotuloCopiado="Código copiado ✓" />
       </div>
 
       {!REGRAS.sinal.devolve && (
-        <p className="mt-4 border-t border-ouro/20 pt-3.5 text-[12.5px] leading-relaxed text-tinta-3">
+        <p className="mx-auto mt-5 max-w-[44ch] border-t border-ouro/20 pt-4 text-[12.5px] leading-relaxed text-tinta-3">
           A entrada desconta do valor final e não é devolvida em caso de
-          desistência — é ela que garante que o horário fica guardado só pra
-          você. Se precisar mudar de dia, me chame antes que a gente ajeita.
+          desistência. Se precisar mudar de dia, me chame antes que a gente
+          ajeita.
         </p>
       )}
     </div>

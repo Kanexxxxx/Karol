@@ -296,26 +296,16 @@ export function textoDoSinal(a: DadosAgendamento): string {
   const resta = a.valorCentavos - sinal;
 
   return [
-    `Oi, ${primeiroNome(a.cliente)}! Recebi seu pedido de horário ✨`,
+    `Oi, ${primeiroNome(a.cliente)}! Pra fechar o seu horário, a entrada é de *${formatarPreco(sinal / 100)}*.`,
+    `Ela desconta do valor final — no dia você paga só os outros ${formatarPreco(resta / 100)}.`,
     "",
-    `💄 ${a.servico}`,
-    `🗓️ ${quandoBonito(a.inicioISO)}`,
-    `📍 ${a.cidade}`,
-    `💵 ${formatarPreco(a.valorCentavos / 100)} no total`,
+    "Como você prefere receber o PIX?",
     "",
-    `Pra esse horário ficar guardado no seu nome, peço uma entrada de *${formatarPreco(sinal / 100)}*.`,
-    `Ela *desconta do valor final* — no dia você paga só os outros ${formatarPreco(resta / 100)}.`,
-    "",
-    `*PIX (${REGRAS.sinal.tipoChave.toLowerCase()}):* ${REGRAS.sinal.chavePix}`,
-    `${REGRAS.sinal.favorecido} · ${REGRAS.sinal.banco}`,
-    "",
-    "Me manda o comprovante aqui que eu confirmo na hora 💛",
-    "",
-    `_Guardo o horário até ${REGRAS.sinal.seguraAte}._`,
+    "_Depois é só mandar o comprovante aqui mesmo._",
     ...(REGRAS.sinal.devolve
       ? []
       : [
-          "_A entrada não volta em caso de desistência — é ela que garante que o horário não vai pra outra pessoa. Se precisar mudar de dia, me avisa antes que a gente ajeita._",
+          `_Guardo o horário até ${REGRAS.sinal.seguraAte}. A entrada não volta em caso de desistência — é ela que garante que o horário não vai pra outra pessoa._`,
         ]),
   ].join("\n");
 }
@@ -522,6 +512,9 @@ export const BOTAO_TEMPLATE = {
   notaOtimo: "nota_otimo",
   notaBom: "nota_bom",
   notaRuim: "nota_ruim",
+  // Como ela quer receber o PIX. Ver `enviarPedidoDeSinal`.
+  pixQr: "pix_qr",
+  pixCodigo: "pix_codigo",
 } as const;
 
 /**
@@ -1033,14 +1026,74 @@ export async function enviarPedidoDeSinal(a: DadosAgendamento): Promise<boolean>
   const sinal = sinalDoAgendamento(a);
   if (sinal <= 0) return false;
 
-  const foiOTexto = await enviarTexto(a.whatsappCliente, textoDoSinal(a));
+  return enviarTextoComBotoes(a.whatsappCliente, textoDoSinal(a), [
+    { id: BOTAO_TEMPLATE.pixQr, titulo: "QR Code" },
+    { id: BOTAO_TEMPLATE.pixCodigo, titulo: "Copia e cola" },
+  ]);
+}
 
-  await enviarImagem(a.whatsappCliente, linkDoQrPix(a.id), legendaDoQr(a));
+/** O QR com o valor, como imagem. Só quando ela pedir. */
+export async function enviarQrDoSinal(a: DadosAgendamento): Promise<boolean> {
+  if (sinalDoAgendamento(a) <= 0) return false;
+  return enviarImagem(a.whatsappCliente, linkDoQrPix(a.id), legendaDoQr(a));
+}
 
-  await enviarTexto(a.whatsappCliente, AVISO_COPIA_E_COLA);
-  await enviarTexto(a.whatsappCliente, brCodeDoSinal(sinal, a.id));
+/**
+ * O "copia e cola", SOZINHO numa mensagem.
+ *
+ * Sem uma palavra em volta, de propósito: assim a pessoa segura o dedo,
+ * toca em copiar e leva a mensagem inteira. Com texto junto ela tem que
+ * selecionar na mão, e código de PIX copiado pela metade não abre no
+ * banco — só dá "código inválido" e a sensação de que o erro é da Karol.
+ */
+export async function enviarCodigoDoSinal(a: DadosAgendamento): Promise<boolean> {
+  const sinal = sinalDoAgendamento(a);
+  if (sinal <= 0) return false;
+  return enviarTexto(a.whatsappCliente, brCodeDoSinal(sinal, a.id));
+}
 
-  return foiOTexto;
+/**
+ * Reenvia pra Karol a foto que a cliente mandou, sem baixar nada.
+ *
+ * A Meta aceita `image: { id }` com o id que veio no webhook — a mídia já
+ * está no servidor dela. É o que faz o comprovante chegar na Karol em vez
+ * de morrer no número automático.
+ */
+export async function reenviarMidia(
+  para: string,
+  tipo: "image" | "document",
+  midiaId: string,
+  legenda: string,
+): Promise<boolean> {
+  if (!metaConfigurada()) return false;
+  try {
+    const resp = await fetch(
+      `https://graph.facebook.com/v23.0/${process.env.META_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${process.env.META_TOKEN}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: para,
+          type: tipo,
+          [tipo]: { id: midiaId, caption: legenda.slice(0, 1024) },
+        }),
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+      console.error(`reenvio de mídia pro ${para}: ${resp.status} ${detalhe.slice(0, 300)}`);
+    }
+    return resp.ok;
+  } catch (e) {
+    console.error(`reenvio de mídia pro ${para} falhou:`, e);
+    return false;
+  }
 }
 
 export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise<void> {

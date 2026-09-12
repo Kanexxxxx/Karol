@@ -26,7 +26,7 @@ vi.mock("./agendamentos", () => ({
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
-  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback", notaOtimo: "nota_otimo", notaBom: "nota_bom", notaRuim: "nota_ruim" },
+  BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback", notaOtimo: "nota_otimo", notaBom: "nota_bom", notaRuim: "nota_ruim", pixQr: "pix_qr", pixCodigo: "pix_codigo" },
   enviarPedidoDeSinal: vi.fn(async () => true),
   esperandoSinal: vi.fn(() => false),
   paraDados: vi.fn((a: unknown) => a),

@@ -43,6 +43,8 @@ const BOTOES_DE_CLIENTE = new Set<string>([
   BOTAO_TEMPLATE.notaOtimo,
   BOTAO_TEMPLATE.notaBom,
   BOTAO_TEMPLATE.notaRuim,
+  BOTAO_TEMPLATE.pixQr,
+  BOTAO_TEMPLATE.pixCodigo,
   "cancelar",
 ]);
 

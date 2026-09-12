@@ -10,7 +10,10 @@ import { abrirJanela, janelaAberta } from "./conversas";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import {
   BOTAO_TEMPLATE,
+  enviarCodigoDoSinal,
   enviarPedidoDeSinal,
+  enviarQrDoSinal,
+  reenviarMidia,
   enviarTexto,
   enviarTextoComBotoes,
   enviarTextoComLista,
@@ -70,6 +73,7 @@ export type Desfecho =
   | { fez: "pediu-sinal"; valorCentavos: number }
   | { fez: "encaminhou-pra-karol" }
   | { fez: "repassou-pra-karol" }
+  | { fez: "recebeu-comprovante" }
   | { fez: "avisou-karol"; pedido: "cancelar" | "remarcar" };
 
 export async function atender(m: MensagemRecebida): Promise<Desfecho> {
@@ -126,6 +130,55 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
 
   // A cliente escolheu um horário na lista de remarcação.
   if (m.botao?.startsWith("h:")) return escolhaDaCliente(m);
+
+  /*
+    O COMPROVANTE.
+
+    ⚠️ Foto mandada pra cá sumia. O webhook lia texto e botão e ignorava o
+    resto — e comprovante de PIX é foto. A cliente mandava, ninguém via, e
+    ela ficava esperando uma confirmação que não vinha.
+
+    O reenvio usa o id da mídia que veio no webhook: a Meta já tem o
+    arquivo, então nada é baixado nem hospedado aqui.
+  */
+  if (m.midiaId) {
+    const ag = await proximoAgendamentoDe(m.de);
+    const quem = ag ? ag.clienteNome : formatarWhatsapp(m.de);
+    const oQue = ag ? `${ag.servicoNome} — ${DIA_HORA_POR_EXTENSO.format(ag.inicio)}` : "";
+
+    await reenviarMidia(
+      whatsappDaKarol(),
+      m.tipoMidia ?? "image",
+      m.midiaId,
+      [`📎 Comprovante de ${quem}`, oQue, formatarWhatsapp(m.de), linkDoPainel(m.de)]
+        .filter(Boolean)
+        .join("\n"),
+    );
+    await enviarTexto(
+      m.de,
+      "Recebi, obrigada! 💛 Vou conferir e te confirmo por aqui.",
+    );
+    return { fez: "recebeu-comprovante" };
+  }
+
+  /*
+    Como ela quer receber o PIX: QR ou copia e cola.
+
+    Um de cada vez, e só o que ela pediu. Antes saíam três mensagens
+    seguidas (texto, QR e código) — o Kainã leu e disse que era
+    informação demais pra cliente, e é.
+  */
+  if (m.botao && (m.botao === BOTAO_TEMPLATE.pixQr || m.botao === BOTAO_TEMPLATE.pixCodigo)) {
+    const pendente = await proximoAgendamentoDe(m.de);
+    if (pendente) {
+      const dados = paraDados(pendente);
+      if (esperandoSinal(dados)) {
+        if (m.botao === BOTAO_TEMPLATE.pixQr) await enviarQrDoSinal(dados);
+        else await enviarCodigoDoSinal(dados);
+        return { fez: "pediu-sinal", valorCentavos: dados.valorCentavos };
+      }
+    }
+  }
 
   /*
     "Receber o PIX", o botão do template `pedido_sinal`.

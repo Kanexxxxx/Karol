@@ -29,6 +29,18 @@ export type MensagemRecebida = {
    * precisa ser adivinhada. Quando existe, `lerIntencao` decide por ele.
    */
   botao?: string;
+  /**
+   * O id da FOTO (ou PDF) que ela mandou, quando mandou uma.
+   *
+   * ⚠️ Sem isto o comprovante do PIX sumia. O webhook lia texto e botão e
+   * ignorava o resto — e comprovante é foto. A cliente mandava, ninguém
+   * via, e ela ficava esperando a confirmação.
+   *
+   * O id serve pra REENVIAR a mesma mídia pra Karol sem baixar nem
+   * hospedar nada: a Meta aceita `image: { id }` no envio.
+   */
+  midiaId?: string;
+  tipoMidia?: "image" | "document";
 };
 
 /**
@@ -121,6 +133,8 @@ export function lerMensagem(payload: unknown): MensagemRecebida | null {
           };
           // toque em botão de TEMPLATE (formato diferente, mesma ideia)
           button?: { payload?: unknown; text?: unknown };
+          image?: { id?: unknown; caption?: unknown };
+          document?: { id?: unknown; caption?: unknown };
         };
         if (typeof msg.from !== "string" || typeof msg.id !== "string") continue;
 
@@ -154,6 +168,24 @@ export function lerMensagem(payload: unknown): MensagemRecebida | null {
             ...base,
             botao: r.id,
             texto: typeof r.title === "string" ? r.title : r.id,
+          };
+        }
+
+        // Foto ou PDF — quase sempre o comprovante do PIX.
+        if (msg.type === "image" && typeof msg.image?.id === "string") {
+          return {
+            ...base,
+            texto: typeof msg.image.caption === "string" ? msg.image.caption : "",
+            midiaId: msg.image.id,
+            tipoMidia: "image",
+          };
+        }
+        if (msg.type === "document" && typeof msg.document?.id === "string") {
+          return {
+            ...base,
+            texto: typeof msg.document.caption === "string" ? msg.document.caption : "",
+            midiaId: msg.document.id,
+            tipoMidia: "document",
           };
         }
 
