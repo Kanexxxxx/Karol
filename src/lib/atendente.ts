@@ -34,6 +34,7 @@ import {
 } from "./remarcacao";
 import { linkWhatsapp } from "./whatsapp";
 import { formatarWhatsapp } from "./telefone";
+import { analisarComprovante } from "./comprovante";
 import { lerIntencao, type Intencao, type MensagemRecebida } from "./webhook-meta";
 
 /**
@@ -146,17 +147,40 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
     const quem = ag ? ag.clienteNome : formatarWhatsapp(m.de);
     const oQue = ag ? `${ag.servicoNome} — ${DIA_HORA_POR_EXTENSO.format(ag.inicio)}` : "";
 
+    /*
+      ⚠️ NEM TODA FOTO É COMPROVANTE, e até 13/09 todas eram tratadas como
+      se fossem. A cliente mandava a sobrancelha que queria copiar, e a
+      Karol lia "📎 Comprovante de Fulana" numa foto de sobrancelha.
+
+      `analisarComprovante` mostra a imagem pro modelo e pergunta. Ele erra
+      pro lado seguro: dúvida vira comprovante, e qualquer falha (sem
+      chave, sem token, imagem grande, modelo que não enxerga) vira
+      "nao-sei", tratado igual ao comportamento antigo. Legenda errada
+      aborrece; comprovante que não chega na Karol deixa cliente sem
+      horário depois de ter pago.
+    */
+    const pareceOutraCoisa = (await analisarComprovante(m.midiaId)) === "outra-coisa";
+
     await reenviarMidia(
       whatsappDaKarol(),
       m.tipoMidia ?? "image",
       m.midiaId,
-      [`📎 Comprovante de ${quem}`, oQue, formatarWhatsapp(m.de), linkDoPainel(m.de)]
+      [
+        pareceOutraCoisa
+          ? `📎 Foto de ${quem} — não parece comprovante`
+          : `📎 Comprovante de ${quem}`,
+        oQue,
+        formatarWhatsapp(m.de),
+        linkDoPainel(m.de),
+      ]
         .filter(Boolean)
         .join("\n"),
     );
     await enviarTexto(
       m.de,
-      "Recebi, obrigada! 💛 Vou conferir e te confirmo por aqui.",
+      pareceOutraCoisa
+        ? "Recebi sua foto! 💛 Já mandei pra Karol dar uma olhada."
+        : "Recebi, obrigada! 💛 Vou conferir e te confirmo por aqui.",
     );
     return { fez: "recebeu-comprovante" };
   }
@@ -272,7 +296,7 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
   }
 
   const ag = await proximoAgendamentoDe(m.de);
-  if (!ag) return semAgendamento(m, intencao);
+  if (!ag) return semAgendamento(m, intencao, Boolean(m.botao));
 
   switch (intencao) {
     case "confirmar":
@@ -449,7 +473,31 @@ async function decisaoDaKarol(m: MensagemRecebida): Promise<Desfecho> {
  * ⚠️ Esta resposta já foi um bug caro: com o número gravado sem DDI, ela
  * caía em quem TINHA acabado de marcar. Ver `lib/telefone.ts`.
  */
-async function semAgendamento(m: MensagemRecebida, intencao: Intencao): Promise<Desfecho> {
+async function semAgendamento(
+  m: MensagemRecebida,
+  intencao: Intencao,
+  veioDeBotao = false,
+): Promise<Desfecho> {
+  /*
+    ⚠️ REMARCAR VINDO DE BOTÃO É OUTRA COISA, e responder é obrigatório.
+
+    O texto acima vale pra quem ESCREVEU "remarcar" — aí sim é quase
+    sempre número trocado. Mas desde 13/09 existe um botão "📅 Remarcar"
+    numa mensagem que a gente mesmo manda: a de horário solto por falta de
+    pagamento. Quando ela toca, o agendamento JÁ FOI cancelado, então não
+    há o que remarcar — e sem esta saída o toque dela cairia no silêncio.
+
+    Botão que a gente ofereceu e não faz nada é pior que botão nenhum: ela
+    tocou porque a nossa mensagem mandou tocar.
+  */
+  if (veioDeBotao && intencao === "remarcar") {
+    await enviarTexto(
+      m.de,
+      `Esse horário já voltou pra agenda, então some da minha lista aqui. Pra escolher outro é rapidinho: ${SITE_URL}/agendar 💛`,
+    );
+    return { fez: "mandou-pro-site" };
+  }
+
   if (intencao !== "confirmar") return { fez: "nada", motivo: "sem-agendamento" };
 
   await enviarTexto(

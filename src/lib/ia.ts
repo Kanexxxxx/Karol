@@ -50,9 +50,25 @@ const TIMEOUT_MS = 20_000;
 
 export type Papel = "system" | "user" | "assistant" | "tool";
 
+/**
+ * O conteúdo de uma mensagem.
+ *
+ * Quase sempre é texto puro. A forma em LISTA existe pra mandar imagem
+ * junto — é assim que a análise de comprovante pergunta "isto é um
+ * comprovante?" mostrando a foto (ver `comprovante.ts`).
+ *
+ * ⚠️ Nem todo modelo enxerga. Medido em 13/09/2026: `deepseek-flash` sim,
+ * `deepseek-v4-pro` não. Quem manda imagem tem que aguentar a resposta
+ * "não consigo ver" sem quebrar.
+ */
+export type Conteudo =
+  | string
+  | null
+  | ({ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } })[];
+
 export type Mensagem = {
   role: Papel;
-  content: string | null;
+  content: Conteudo;
   /*
     ⚠️ O RACIOCÍNIO PRECISA VOLTAR JUNTO, E NÃO É OPCIONAL.
 

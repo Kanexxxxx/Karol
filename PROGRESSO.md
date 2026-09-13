@@ -1248,6 +1248,60 @@ o conserto de propósito pra ver o teste reprovar. 386 testes passando.
 
 ---
 
+### Etapa 21 — 13/09/2026: o que a Karol decidiu, e a foto que o modelo lê
+
+Duas decisões dela e três pedidos do Kainã, todos no mesmo dia.
+
+**"pode ser 30 minutos e pode ser por pix diretamente pra mim".** Está na
+etapa anterior o que isso mudou no prazo. O segundo pedaço cancela um
+trabalho inteiro: **não vai ter gateway de pagamento.** Nada de Mercado
+Pago, Asaas, taxa de R$ 0,99 a R$ 2, nem a pesquisa de cadastro sem CNPJ.
+O PIX é direto na conta dela, que é como o site já faz.
+
+**A mensagem de quem não pagou ganhou dois botões:** *Remarcar* e *Falar*.
+Sem "Confirmar" — o horário já foi embora, e um botão de confirmar
+prometeria o que não existe mais.
+
+⚠️ E o botão *Remarcar* não funcionava. O agendamento já foi cancelado
+quando a mensagem sai, então `proximoAgendamentoDe` não acha nada e o
+fluxo caía num `{ fez: "nada" }` silencioso. **Botão que a gente ofereceu
+e não faz nada é pior que botão nenhum**, porque ela tocou porque a nossa
+mensagem mandou tocar. Agora responde mandando pro site. Só quando vem de
+BOTÃO: quem digita "remarcar" sem ter horário continua sendo ignorado, que
+era a regra antiga e continua certa.
+
+**"O sistema tem que entender que ela já pagou" — já entendia.** Fui
+conferir antes de construir: o painel tem **Reativar** pra horário
+cancelado, e o que a Karol cria pelo painel entra como `confirmado`
+(padrão do banco), sem pedir pagamento. Os dois caminhos que ela precisa
+já existem. Nada foi construído.
+
+**A foto: o modelo em produção enxerga.** O Kainã pediu que a IA conferisse
+se a foto é mesmo um comprovante — "vai que a pessoa manda outra coisa".
+Antes de prometer, medi:
+
+| | enxerga imagem? |
+|---|---|
+| `deepseek-flash` (o de produção) | **sim** — 4 de 4 em imagens que não dava pra adivinhar |
+| `deepseek-v4-pro` | não — responde "NAO VEJO" com a imagem na frente |
+
+Mais um motivo pra não trocar pro `v4-pro`, além do preço e do tempo.
+
+`lib/comprovante.ts` baixa a mídia da Meta (duas chamadas: o id vira URL, a
+URL exige o token) e pergunta ao modelo. Conferido contra a API com fotos
+de verdade do próprio projeto — três fotos de trabalho e retrato, três
+acertos em "OUTRA". ⚠️ **Não testei com um comprovante de verdade**, que
+não existe no repositório; o que está provado é o lado do falso positivo,
+que é o caso que ele descreveu.
+
+Tudo erra pro lado seguro: dúvida vira comprovante, e qualquer falha (sem
+chave, sem token, PDF, imagem acima de 4 MB, modelo que não enxerga) vira
+`nao-sei`, tratado exatamente como antes desta análise existir. Legenda
+errada aborrece a Karol por dois segundos; comprovante que não chega
+deixa cliente sem horário depois de ter pago.
+
+---
+
 ## 8. O que falta
 
 > Atualizado em 11/09/2026. A etapa 18 (seção 7) diz o que mudou.

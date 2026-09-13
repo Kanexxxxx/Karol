@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * Karol respondeu no briefing que a cliente não desmarca sozinha.
  */
 
+vi.mock("./comprovante", () => ({ analisarComprovante: vi.fn(async () => "nao-sei") }));
 vi.mock("./conversas", () => ({
   abrirJanela: vi.fn(async () => {}),
   // Por padrão a janela JÁ está aberta: a cliente é alguém que já conversou
@@ -59,6 +60,7 @@ import {
   esperandoSinal,
   reenviarMidia,
 } from "./notificacoes";
+import { analisarComprovante } from "./comprovante";
 import { atender } from "./atendente";
 
 const abrirMock = vi.mocked(abrirJanela);
@@ -535,5 +537,40 @@ describe("o pagamento pelo WhatsApp", () => {
   it("o PDF do comprovante também passa", async () => {
     await atender({ ...mensagem(""), midiaId: "doc-9", tipoMidia: "document" });
     expect(vi.mocked(reenviarMidia).mock.calls[0][1]).toBe("document");
+  });
+
+  /*
+    ⚠️ NEM TODA FOTO É COMPROVANTE. A cliente manda a sobrancelha que quer
+    copiar, e até 13/09 a Karol lia "📎 Comprovante de Fulana" numa foto de
+    sobrancelha — e a cliente ouvia "vou conferir e te confirmo", que pra
+    quem mandou uma referência não quer dizer nada.
+  */
+  it("foto que não é comprovante chega pra Karol dizendo que não é", async () => {
+    vi.mocked(analisarComprovante).mockResolvedValueOnce("outra-coisa");
+
+    await atender({ ...mensagem(""), midiaId: "media-9", tipoMidia: "image" });
+
+    const legenda = vi.mocked(reenviarMidia).mock.calls[0][3];
+    expect(legenda).toContain("não parece comprovante");
+    expect(legenda).toContain("Maria da Silva");
+
+    // E a cliente não ouve promessa de conferir pagamento nenhum.
+    const paraCliente = enviados().find(([p]) => p === CLIENTE)?.[1] ?? "";
+    expect(paraCliente).not.toMatch(/confirmo/i);
+  });
+
+  /*
+    ⚠️ NA DÚVIDA, COMPROVANTE. Sem chave, sem token, modelo que não
+    enxerga, imagem grande demais: tudo vira "nao-sei", e "nao-sei" tem
+    que se comportar exatamente como antes desta análise existir. Legenda
+    errada aborrece; comprovante que não chega deixa cliente sem horário
+    depois de ter pago.
+  */
+  it.each(["nao-sei", "comprovante"] as const)("veredito %s repassa como comprovante", async (v) => {
+    vi.mocked(analisarComprovante).mockResolvedValueOnce(v);
+
+    await atender({ ...mensagem(""), midiaId: "media-9", tipoMidia: "image" });
+
+    expect(vi.mocked(reenviarMidia).mock.calls[0][3]).toContain("Comprovante");
   });
 });

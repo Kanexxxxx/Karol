@@ -766,6 +766,23 @@ export const BOTOES_CLIENTE = [
 ] as const;
 
 /**
+ * Os botões de quem perdeu o horário por não pagar a entrada no prazo.
+ *
+ * ⚠️ NÃO TEM "CONFIRMAR" AQUI, e a ausência é o ponto. O horário já voltou
+ * pra agenda; um botão de confirmar prometeria uma coisa que não existe
+ * mais.
+ *
+ * São os dois caminhos que sobraram de verdade, e eles cobrem os dois
+ * tipos de pessoa que leem essa mensagem: quem esqueceu de pagar quer
+ * **remarcar**, e quem pagou no minuto 31 precisa **falar com a Karol** —
+ * porque o dinheiro já saiu e só ela resolve isso.
+ */
+export const BOTOES_SINAL_VENCIDO = [
+  { id: "remarcar", titulo: "📅 Remarcar" },
+  { id: "falar", titulo: "💬 Falar" },
+] as const;
+
+/**
  * Manda texto com botões de resposta rápida.
  *
  * ⚠️ Só funciona **dentro da janela de 24 h**, igual ao texto livre. Fora
@@ -1140,12 +1157,18 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
   //
   // Quem está esperando o sinal não leva botão: "Confirmar" ali seria uma
   // mentira — quem confirma é o PIX, não o toque dela.
-  const comBotoes = evento === "confirmacao" && !esperandoSinal(a);
+  const comBotoes = (evento === "confirmacao" && !esperandoSinal(a)) || evento === "sinal-vencido";
+
+  /*
+    Quem perdeu o horário por não pagar recebe outros dois botões — sem
+    "Confirmar", que não faz sentido pra um horário que já foi embora.
+  */
+  const botoes = evento === "sinal-vencido" ? BOTOES_SINAL_VENCIDO : BOTOES_CLIENTE;
 
   try {
     const resp = metaConfigurada()
       ? comBotoes
-        ? await enviarComBotoes(para, texto, BOTOES_CLIENTE)
+        ? await enviarComBotoes(para, texto, botoes)
         : await enviarPelaMeta(para, texto)
       : await enviarPeloWebhook(webhook!, evento, a, para, texto);
 
