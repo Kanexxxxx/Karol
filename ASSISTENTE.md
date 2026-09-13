@@ -98,7 +98,7 @@ O que segura o gasto no código:
 - a memória guarda **30** falas, não a conversa inteira;
 - o roteiro não muda dentro do dia, então a API o cobra pelo preço de
   cache — 1/50;
-- `max_tokens: 700` na resposta.
+- `max_tokens: 3000` na resposta — inclui o pensamento do modelo, e 700 era pouco a ponto de emudecer o assistente.
 
 ---
 
