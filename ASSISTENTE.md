@@ -140,39 +140,57 @@ vez. Ver `PROGRESSO.md`, seção 8.1.
 
 ## Qual modelo atende ela, e por quê
 
-⚠️ **`deepseek-chat` não é mais o que o nome sugere.** Perguntando a lista
-pra própria API em 12/09/2026, os modelos que existem hoje são
-`deepseek-flash` e `deepseek-v4-pro`. `deepseek-chat` e `deepseek-reasoner`
-ainda respondem, como apelidos antigos — e o apelido aponta pro mais fraco.
+⚠️ **`deepseek-chat` e `deepseek-reasoner` são apelidos do `deepseek-flash`
+— o mesmo modelo, não três.** Provado de dois jeitos: a resposta da API
+traz o campo `model`, e nos três apelidos ele volta `deepseek-flash`; e a
+fatura dos dias em que a bancada rodou os "três" só tem duas linhas de
+modelo. Os modelos que existem de fato são **`deepseek-flash`** e
+**`deepseek-v4-pro`**.
 
-A escolha não foi no chute. A bancada
-(`src/lib/bancada-de-provas.test.ts`) rodou 16 casos difíceis contra a API
-de verdade, com o roteiro e as ferramentas reais:
+⚠️ **Isso corrige o que estava escrito aqui em 12/09.** Eu tinha dito que
+o `chat` era o pior dos três e que trocar pra `flash` melhorava o
+assistente. Não melhora nada: **é o mesmo modelo com outro nome.** O
+padrão virou `deepseek-flash` mesmo assim, mas por outro motivo — apelido
+é o provedor que decide pra onde aponta, e um dia ele pode apontar pra
+outro lugar sem avisar. Nome explícito não muda sozinho.
 
-Quatro rodadas completas, pra separar acerto de sorte:
+### O que a bancada mediu de verdade
 
-| Modelo | Acertos (4 rodadas) | Pior | Tempo por caso | Id inventado |
-|---|---|---|---|---|
-| `deepseek-chat` (o apelido) | 14, 15, 16, 14 | 14/16 | 2,9 s | 4 vezes |
-| **`deepseek-flash`** (padrão) | 16, 16, 15, 16 | **15/16** | **4,4 s** | nenhuma |
-| `deepseek-v4-pro` (o mais forte) | 16, 16, 14, 16 | 14/16 | 10,5 s | 1 vez |
+Quatro rodadas de 16 casos difíceis
+(`src/lib/bancada-de-provas.test.ts`), com o roteiro e as ferramentas
+reais:
 
-⚠️ **O placar tem ruído.** Rodada a rodada os três variam, e a diferença
-de acerto entre eles cabe dentro dessa variação — não dá pra dizer que o
-flash "é mais inteligente". O que NÃO é ruído, e se repetiu nas quatro:
-o `v4-pro` custa 2,4× o tempo do flash sem acertar mais, e o `chat` é o
-único que inventou id várias vezes.
+| Modelo | Acertos (4 rodadas) | Tempo por caso | US$ por chamada |
+|---|---|---|---|
+| **`deepseek-flash`** (padrão) | 14, 15, 16, 14 · 16, 16, 15, 16 | **4,4 s** | **0,000149** |
+| `deepseek-v4-pro` | 16, 16, 14, 16 | 10,5 s | 0,001115 |
 
-O `flash` e o `v4-pro` empatam em acerto, e o `v4-pro` cobra o dobro do
-tempo por isso. A Karol está com o celular na mão esperando: **o padrão é
-o `flash`**. Quem quiser o mais forte mesmo assim troca uma variável na
-Vercel, sem tocar em código:
+As duas fileiras de números do flash são as mesmas 4 rodadas chamadas
+pelos dois nomes (`chat` e `flash`). **Esse é o presente acidental deste
+erro:** o mesmo modelo, nas mesmas 8 rodadas, tirou de 14 a 16 em 16.
+Então **a bancada não enxerga diferença menor que uns 2 pontos em 16** —
+qualquer comparação mais apertada que isso é ruído, e não conclusão.
+
+Com essa régua, o `v4-pro` não acerta mais que o `flash`. O que ele cobra
+por isso está medido na fatura: **2,4× o tempo e 7,5× o dinheiro** por
+chamada. A Karol está com o celular na mão esperando. Quem quiser o mais
+forte mesmo assim troca uma variável na Vercel, sem tocar em código:
 
     IA_MODELO = deepseek-v4-pro
 
-O `flash` foi também o único que barrou sozinho um horário fora do
-expediente — respondeu que segunda às 16h não existe na agenda dela, sem
-precisar da trava do código.
+### Quanto isso custa por mês
+
+Da fatura real de 07 a 13/09, o uso normal dela (antes das bancadas) saiu
+a **US$ 0,000154 por chamada** — e uma conversa gasta de 2 a 4 chamadas.
+Na conta de 15 conversas por dia: **uns R$ 1,50 por mês**. O período
+inteiro, bancadas caras incluídas, deu US$ 0,38.
+
+O que segura o preço é o cache da API: o roteiro tem 8.880 caracteres e
+vai em toda mensagem, mas como ele não muda dentro do dia, a API cobra
+1/50 do preço por ele. ⚠️ Quem for mexer no `roteiro-do-assistente.ts`
+precisa saber disso: **o que varia a cada mensagem não pode entrar no
+roteiro** — vai pro histórico, como o lembrete de lista faz. Roteiro que
+muda a cada mensagem multiplica a conta por 50.
 
 ### O que ele lembra entre uma mensagem e outra
 

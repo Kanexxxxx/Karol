@@ -22,23 +22,26 @@ const BASE = process.env.IA_BASE_URL || "https://api.deepseek.com";
 /**
  * Qual modelo atende a Karol.
  *
- * ⚠️ `deepseek-chat` NÃO É MAIS O QUE ESTE NOME SUGERE. Perguntando a
- * lista pra própria API em 12/09/2026, os modelos que existem hoje são
- * `deepseek-flash` e `deepseek-v4-pro` — `deepseek-chat` e
- * `deepseek-reasoner` continuam respondendo como apelidos antigos, e o
- * apelido aponta pro mais fraco.
+ * ⚠️ `deepseek-chat` E `deepseek-reasoner` SÃO APELIDOS DESTE MESMO
+ * MODELO. A resposta da API traz o campo `model`, e nos três nomes ele
+ * volta `deepseek-flash`; a fatura dos dias de bancada confirma, com só
+ * duas linhas de modelo pros "três" que eu testei. Existem dois de fato:
+ * `deepseek-flash` e `deepseek-v4-pro`.
  *
- * Medido na bancada, nos casos difíceis (ver `PROGRESSO.md`): o apelido
- * inventou id de agendamento duas vezes em oito casos, e errou o alvo de
- * "pode ser o último". O `deepseek-flash` acertou os dois, e foi o único
- * a barrar sozinho um horário fora do expediente — respondeu que segunda
- * às 16h não existe na agenda dela, sem precisar da trava do código.
+ * Então trocar o padrão de `deepseek-chat` pra `deepseek-flash` NÃO
+ * melhorou nada — é o mesmo modelo. O nome explícito ficou por outro
+ * motivo: apelido é o provedor que decide pra onde aponta, e um dia ele
+ * aponta pra outro lugar sem avisar ninguém.
  *
- * Por que não o `v4-pro`, que é o mais forte: 10 s por resposta contra
- * 2 a 4 s do flash, com o mesmo placar. A Karol está com o celular na
- * mão, e o tempo aqui é o dela — não vale o triplo da espera por um
- * empate. Trocar é uma variável na Vercel: `IA_MODELO=deepseek-v4-pro`,
- * sem tocar em código.
+ * Por que não o `v4-pro`: medido na bancada em 4 rodadas de 16 casos, ele
+ * não acerta mais que o flash — a diferença cabe dentro do ruído, que o
+ * próprio engano acima mediu em uns 2 pontos em 16 (o mesmo modelo, com
+ * dois nomes, tirou de 14 a 16). O que ele cobra a mais está na fatura:
+ * 2,4× o tempo e 7,5× o dinheiro por chamada. A Karol está com o celular
+ * na mão, e o tempo aqui é o dela.
+ *
+ * Trocar é uma variável na Vercel: `IA_MODELO=deepseek-v4-pro`, sem tocar
+ * em código.
  */
 const MODELO = process.env.IA_MODELO || "deepseek-flash";
 

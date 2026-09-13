@@ -1186,15 +1186,39 @@ Agora tudo que sai passa por `fala-do-modelo.ts`, e as rodadas subiram de
 3 pra 4, porque 3 não cabia o caso comum (`procurar` → `horarios_livres` →
 propor).
 
-**3. `deepseek-chat` é o pior modelo disponível hoje.** Perguntando a
-lista pra própria API, os modelos que existem são `deepseek-flash` e
-`deepseek-v4-pro`; `deepseek-chat` é apelido antigo e aponta pro mais
-fraco. Placar em duas rodadas completas: chat 14/16 e 15/16 (3 ids
-inventados, marcação vazada nas duas), flash 16/16 nas duas em 4,3 s,
-v4-pro 16/16 nas duas em 8,9 s. O padrão virou `flash` — mesmo acerto do mais
-forte, na metade do tempo. O Kainã pediu "a versão mais forte"; a medição
-diz que ela não é melhor aqui, só mais lenta, e trocar é uma variável
-(`IA_MODELO=deepseek-v4-pro`).
+**3. `deepseek-chat` é apelido do `deepseek-flash` — e eu levei um dia pra
+perceber.** Escrevi aqui, em 12/09, que o `chat` era o pior dos três
+modelos e que trocar pro `flash` melhorava o assistente. **Está errado: é
+o mesmo modelo.** Quem mostrou foi a fatura que o Kainã mandou no dia
+seguinte — a bancada tinha rodado "três" modelos, e só duas linhas de
+modelo apareceram cobradas. Confirmado direto: a resposta da API traz o
+campo `model`, e `deepseek-chat`, `deepseek-reasoner` e `deepseek-flash`
+devolvem os três `deepseek-flash`.
+
+O padrão continua `deepseek-flash`, mas por outro motivo: apelido é o
+provedor que decide pra onde aponta, e um dia ele aponta pra outro lugar
+sem avisar.
+
+⚠️ **O engano deixou uma coisa boa: a régua de ruído da bancada.** As
+mesmas 4 rodadas, no mesmo modelo, chamadas por dois nomes diferentes,
+tiraram de 14 a 16 em 16. Então **a bancada não enxerga diferença menor
+que uns 2 pontos em 16.** Toda comparação mais apertada que isso — que é
+quase tudo que eu escrevi sobre "qual modelo é melhor" — era ruído lido
+como conclusão.
+
+Com essa régua, sobra o que se sustenta: o `v4-pro` não acerta mais que o
+`flash`, e cobra **2,4× o tempo e 7,5× o dinheiro** por chamada (fatura de
+12 e 13/09: US$ 0,001115 contra US$ 0,000149). O Kainã pediu "a versão
+mais forte"; a medição diz que ela não é melhor aqui, só mais cara e mais
+lenta, e trocar é uma variável (`IA_MODELO=deepseek-v4-pro`).
+
+**Quanto custa de verdade.** Da mesma fatura, o uso normal dela, antes das
+bancadas, saiu a US$ 0,000154 por chamada, com 2 a 4 chamadas por
+conversa: **uns R$ 1,50 por mês** em 15 conversas por dia. O que segura o
+preço é o cache — o roteiro de 8.880 caracteres vai em toda mensagem, mas
+como não muda dentro do dia, a API cobra 1/50 por ele. ⚠️ Isso vira regra
+de projeto: **o que varia a cada mensagem não entra no roteiro**, vai pro
+histórico, como o lembrete de lista faz.
 
 Junto, dois defeitos que eu mesmo tinha deixado na validação de expediente
 do dia anterior: ela contava o próprio agendamento como ocupação (adiantar

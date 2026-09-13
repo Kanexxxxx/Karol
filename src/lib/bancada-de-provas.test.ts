@@ -20,7 +20,7 @@ import { describe, it, vi } from "vitest";
  *  1. o modelo INVENTA id de agendamento ("ana-paula-2026-09-18-0730");
  *  2. sem ferramenta na mesa, ele escreve a chamada à mão, e a marcação
  *     interna ia inteira pro WhatsApp dela;
- *  3. `deepseek-chat`, o apelido antigo, é o pior dos modelos de hoje.
+ *  3. `deepseek-chat` é apelido do `deepseek-flash`, e não outro modelo.
  *
  * Os três viraram conserto no código e teste de graça em
  * `assistente.test.ts` e `fala-do-modelo.test.ts`. A bancada fica pra
@@ -349,7 +349,19 @@ const BAGUNCA: typeof CASOS = [
 ];
 CASOS.push(...BAGUNCA);
 
-const MODELOS = ["deepseek-chat", "deepseek-flash", "deepseek-v4-pro"];
+/*
+  Os modelos que EXISTEM, e não os apelidos.
+
+  ⚠️ `deepseek-chat` e `deepseek-reasoner` estavam nesta lista e foram
+  tirados: os dois respondem `deepseek-flash` no campo `model`, ou seja,
+  eu estava rodando o mesmo modelo três vezes e lendo a diferença entre as
+  rodadas como diferença entre modelos.
+
+  Ficou de graça a régua de ruído da bancada: aquelas rodadas repetidas
+  deram de 14 a 16 em 16 pro mesmo modelo. Diferença menor que uns 2
+  pontos aqui é ruído, não resultado.
+*/
+const MODELOS = ["deepseek-flash", "deepseek-v4-pro"];
 
 describe.skipIf(!LIGADA || !chave)("bancada de provas (contra a API de verdade)", () => {
   it("compara os modelos", async () => {
