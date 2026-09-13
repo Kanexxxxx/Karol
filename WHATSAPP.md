@@ -63,8 +63,38 @@ O caminho está provado. O que sobra é ligar no código.
   A única diferença entre o que funciona e o que não funciona é que um é
   de graça e o outro é pago.
 
-  **O que fazer:** Gerenciador do WhatsApp → *Configurações de pagamento* →
-  adicionar cartão na conta do WhatsApp Business (a WABA), não no Ads.
+  ❌ **ERRADO — o cartão JÁ ESTÁ LÁ.** Conferido no print de 13/09:
+  *Cobrança e pagamentos → Contas do WhatsApp Business* mostra "Studio
+  Karol Carvalho, identificação 958269250650095, MasterCard •••• 5105".
+  É a WABA certa, com forma de pagamento. **Esta hipótese caiu.**
+
+  Foi o segundo palpite errado meu no mesmo problema — o primeiro tinha
+  sido o limite de mensagens. Os dois vieram de eu adivinhar em vez de
+  ler o erro, porque o `console.error` some no plano Hobby da Vercel.
+
+  **Por isso o sistema passou a contar.** Desde 13/09, quando a cliente
+  não é avisada, a Karol recebe o aviso COM O CÓDIGO DA META junto:
+
+      ⚠️ Marquei, mas NÃO consegui avisar a cliente no WhatsApp.
+      Sheilla Ferreira — Design de sobrancelha
+      2026-09-14 às 07:00
+      Chama ela por aqui: https://wa.me/5516994419599
+
+      (131030 — Recipient phone number not in allowed list)
+
+  É esse número entre parênteses que encerra o assunto. Os candidatos:
+
+  | código | o que é | como resolve |
+  |---|---|---|
+  | `131030` | número fora da lista de teste | app está em **Desenvolvimento**; passar pra *Ativo* |
+  | `131047` | janela fechada e sem template | template não aprovado ou nome errado |
+  | `130497` | país restrito | número de teste da Meta, não o de produção |
+  | `131026` | número não recebe | não tem WhatsApp, ou é fixo |
+
+  ⚠️ **Suspeito de agora: modo de Desenvolvimento.** É o único que explica
+  o número do Kainã funcionar e os outros dois não, com cartão posto e
+  templates aprovados. O botão fica no topo do painel do app em
+  `developers.facebook.com`: *Desenvolvimento* → *Ativo*.
 
   ⚠️ Segundo suspeito, se o cartão não resolver: o app pode estar em
   **modo de Desenvolvimento** no `developers.facebook.com`. Nesse modo a

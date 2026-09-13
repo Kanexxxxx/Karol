@@ -179,7 +179,7 @@ describe("enviarEvento", () => {
       de rede não LANÇA, porque isto roda dentro do webhook e webhook que
       responde erro faz a Meta reenviar tudo.
     */
-    await expect(enviarEvento("lembrete", AG)).resolves.toBe(false);
+    await expect(enviarEvento("lembrete", AG)).resolves.toMatchObject({ ok: false });
   });
 });
 
@@ -282,7 +282,7 @@ describe("envio pela Cloud API da Meta", () => {
     const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ error: { code: 131047 } }), { status: 400 }),
     );
-    await expect(enviarEvento("lembrete", dados)).resolves.toBe(false);
+    await expect(enviarEvento("lembrete", dados)).resolves.toMatchObject({ ok: false });
     buscar.mockRestore();
   });
 
@@ -302,7 +302,7 @@ describe("envio pela Cloud API da Meta", () => {
         : new Response("{}", { status: 200 });
     });
 
-    await expect(enviarEvento("lembrete", dados)).resolves.toBe(true);
+    await expect(enviarEvento("lembrete", dados)).resolves.toEqual({ ok: true });
     expect(chamada).toBe(2);
     buscar.mockRestore();
   });
@@ -651,5 +651,104 @@ describe("os nomes dos templates", () => {
     for (const evento of eventos) {
       expect(templateDoEvento(evento, dados)?.nome).not.toBe("lembrete_30min");
     }
+  });
+});
+
+/**
+ * O motivo da falha sobe junto.
+ *
+ * ⚠️ ISTO NASCEU DE EU TER ERRADO DUAS VEZES SEGUIDAS. Em 13/09 a cliente
+ * não recebeu nada, e eu chutei "é o limite da conta" e depois "é a forma
+ * de pagamento" — as duas erradas, porque o `console.error` some no plano
+ * Hobby da Vercel e eu estava adivinhando em vez de ler.
+ *
+ * O código da Meta é o que resolve: 131047 é janela fechada, 130497 é
+ * país restrito, 131030 é número fora da lista de teste. Sem ele, a
+ * conversa vira palpite.
+ */
+const PARA_ERRO: DadosAgendamento = {
+  id: "8c6377a1-9f2b-4c3d-8e1a-5d6e7f809a0b",
+  cliente: "Maria da Silva",
+  whatsappCliente: "5518999998888",
+  servico: "Design com henna",
+  cidade: "Pereira Barreto",
+  inicioISO: new Date(2026, 9, 8, 10, 0).toISOString(),
+  valorCentavos: 3000,
+};
+
+describe("quando falha, diz por quê", () => {
+  beforeEach(() => {
+    process.env.META_TOKEN = "token-de-teste";
+    process.env.META_PHONE_NUMBER_ID = "123";
+    delete process.env.NOTIFICADOR_WEBHOOK_URL;
+  });
+  afterEach(() => {
+    delete process.env.META_TOKEN;
+    delete process.env.META_PHONE_NUMBER_ID;
+  });
+
+  it("traz o código e a mensagem curta da Meta", async () => {
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { code: 131030, message: "Recipient phone number not in allowed list" },
+        }),
+        { status: 400 },
+      ),
+    );
+
+    const r = await enviarEvento("lembrete", PARA_ERRO);
+
+    expect(r.ok).toBe(false);
+    expect(r.motivo).toContain("131030");
+    expect(r.motivo).toContain("allowed list");
+    buscar.mockRestore();
+  });
+
+  /*
+    O corpo da Meta é um JSON grande com rastro e link de documentação.
+    Mandar aquilo inteiro pro WhatsApp empurraria o texto útil pra fora da
+    tela do celular.
+  */
+  it("não despeja o JSON inteiro na mensagem", async () => {
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 131030,
+            message: "x".repeat(400),
+            type: "OAuthException",
+            fbtrace_id: "AbCdEf",
+            error_subcode: 2494055,
+          },
+        }),
+        { status: 400 },
+      ),
+    );
+
+    const r = await enviarEvento("lembrete", PARA_ERRO);
+
+    expect(r.motivo!.length).toBeLessThanOrEqual(160);
+    expect(r.motivo).not.toContain("fbtrace_id");
+    buscar.mockRestore();
+  });
+
+  it("corpo que não é JSON não quebra nada", async () => {
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("Bad Gateway", { status: 502 }),
+    );
+
+    const r = await enviarEvento("lembrete", PARA_ERRO);
+
+    expect(r.ok).toBe(false);
+    expect(r.motivo).toContain("Bad Gateway");
+    buscar.mockRestore();
+  });
+
+  it("quando dá certo, não sobra motivo nenhum", async () => {
+    const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+
+    expect(await enviarEvento("lembrete", PARA_ERRO)).toEqual({ ok: true });
+    buscar.mockRestore();
   });
 });

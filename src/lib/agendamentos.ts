@@ -400,7 +400,7 @@ export async function criarAgendamento(dados: {
     // nunca via antes de atender. Ver `DadosAgendamento.observacao`.
     observacao: dados.observacao?.trim() || null,
   };
-  const [, avisouACliente] = await Promise.all([
+  const [, envioParaCliente] = await Promise.all([
     enviarEvento("novo-agendamento", notif),
     enviarEvento("confirmacao", notif),
   ]);
@@ -423,7 +423,7 @@ export async function criarAgendamento(dados: {
     mais no dia dela é barato perto de uma cliente que marcou, não foi
     avisada, e não aparece.
   */
-  if (!avisouACliente) {
+  if (!envioParaCliente.ok) {
     await enviarTexto(
       whatsappDaKarol(),
       [
@@ -432,7 +432,27 @@ export async function criarAgendamento(dados: {
         `*${dados.nome.trim()}* — ${servico.nome}`,
         `${paraChave(inicio)} às ${String(inicio.getHours()).padStart(2, "0")}:${String(inicio.getMinutes()).padStart(2, "0")}`,
         "",
-        `Chama ela por aqui: https://wa.me/${dados.whatsapp.replace(/\D/g, "")}`,
+        /*
+          ⚠️ `normalizarWhatsapp`, e NÃO um `replace` de não-dígito. Isto
+          já saiu errado: o número que a cliente digita vem sem o 55, e
+          `wa.me/16994419599` abre um contato que não existe. É a mesma
+          normalização que grava no banco — o link tem que apontar pra
+          mesma pessoa que está na agenda.
+        */
+        `Chama ela por aqui: https://wa.me/${normalizarWhatsapp(dados.whatsapp) ?? dados.whatsapp.replace(/\D/g, "")}`,
+        /*
+          ⚠️ O CÓDIGO DO ERRO VAI JUNTO, e é feio de propósito.
+
+          Em 13/09 a cliente não recebeu nada e eu passei três rodadas
+          chutando o motivo — errei o limite da conta, errei a forma de
+          pagamento — porque o `console.error` some no plano Hobby da
+          Vercel e eu não tinha como ler.
+
+          Um código de erro na tela dela por alguns dias é melhor do que
+          mais uma semana de cliente não avisada. Quando o problema for
+          resolvido, esta linha sai.
+        */
+        ...(envioParaCliente.motivo ? ["", `_(${envioParaCliente.motivo})_`] : []),
       ].join("\n"),
     );
   }

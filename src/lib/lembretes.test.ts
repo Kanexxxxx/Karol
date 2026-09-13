@@ -37,7 +37,7 @@ vi.mock("./agendamentos", () => ({
 // `paraDados` fica a de verdade: é ela que monta o que o evento carrega.
 vi.mock("./notificacoes", async (original) => ({
   ...(await original<typeof import("./notificacoes")>()),
-  enviarEvento: vi.fn(async () => true),
+  enviarEvento: vi.fn(async () => ({ ok: true })),
 }));
 
 import {
@@ -146,7 +146,7 @@ describe("a varredura diária", () => {
   */
   it("o número que volta é quantos foram TENTADOS", async () => {
     amanha.mockResolvedValue([agendamento("Uma", "11111111-1111-1111-1111-111111111111")]);
-    avisar.mockResolvedValue(true);
+    avisar.mockResolvedValue({ ok: true });
 
     expect((await rodarLembretes()).lembretes).toBe(1);
   });

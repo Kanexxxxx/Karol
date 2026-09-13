@@ -1119,8 +1119,23 @@ export async function reenviarMidia(
   }
 }
 
-export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise<boolean> {
-  if (!ligado(evento)) return true;
+/**
+ * O resultado de um envio.
+ *
+ * ⚠️ O `motivo` EXISTE PORQUE EU FIQUEI TRÊS RODADAS CHUTANDO. Em 13/09 a
+ * cliente não recebeu nada, e o porquê ficou num `console.error` que o
+ * plano Hobby da Vercel não guarda. Eu errei duas hipóteses seguidas
+ * (limite da conta, forma de pagamento) porque estava adivinhando em vez
+ * de ler.
+ *
+ * Agora o motivo sobe junto com a falha e vai no aviso que chega pra
+ * Karol. É feio? É. Mas um código de erro na tela dela por alguns dias é
+ * melhor do que mais uma semana de cliente não avisada.
+ */
+export type Envio = { ok: boolean; motivo?: string };
+
+export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise<Envio> {
+  if (!ligado(evento)) return { ok: true };
 
   const para = evento === "novo-agendamento" ? whatsappDaKarol() : a.whatsappCliente;
   const texto = TEXTO[evento](a);
@@ -1129,7 +1144,7 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
   // A Meta primeiro: é o caminho direto. O webhook fica pra quem preferir
   // resolver o envio por fora (n8n, Make). Sem nenhum dos dois, a mensagem
   // é montada e simplesmente não sai — e nada quebra.
-  if (!metaConfigurada() && !webhook) return true;
+  if (!metaConfigurada() && !webhook) return { ok: true };
 
   /*
     O PEDIDO DO SINAL não é uma mensagem, são três (texto, QR e o copia e
@@ -1146,7 +1161,7 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
     `atendente.ts` dispara esta sequência inteira de graça.
   */
   if (evento === "confirmacao" && esperandoSinal(a) && metaConfigurada()) {
-    if (await enviarPedidoDeSinal(a)) return true;
+    if (await enviarPedidoDeSinal(a)) return { ok: true };
   }
 
   // A confirmação da cliente vai COM BOTÕES: ela acabou de marcar e é o
@@ -1191,25 +1206,43 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
         const tpl = templateDoEvento(evento, a);
         if (tpl) {
           const respTpl = await enviarTemplatePelaMeta(para, tpl.nome, tpl.components);
-          if (!respTpl.ok) {
-            const detalheTpl = await respTpl.text().catch(() => "");
-            console.error(
-              `fallback template ${tpl.nome} pro ${para}: ${respTpl.status} ${detalheTpl.slice(0, 300)}`,
-            );
-          }
-          return respTpl.ok;
+          if (respTpl.ok) return { ok: true };
+
+          const detalheTpl = await respTpl.text().catch(() => "");
+          console.error(
+            `fallback template ${tpl.nome} pro ${para}: ${respTpl.status} ${detalheTpl.slice(0, 300)}`,
+          );
+          return { ok: false, motivo: `template ${tpl.nome}: ${resumirErro(detalheTpl)}` };
         }
       }
 
       // O corpo da Meta diz o motivo: 131047 é janela fechada, 130497 é
       // restrição de país. Sem isso o log só diz "deu erro".
       console.error(`notificação ${evento}: ${resp.status} ${detalhe.slice(0, 300)}`);
-      return false;
+      return { ok: false, motivo: resumirErro(detalhe) };
     }
-    return true;
+    return { ok: true };
   } catch (e) {
     console.error(`notificação ${evento} falhou:`, e);
-    return false;
+    return { ok: false, motivo: e instanceof Error ? e.message.slice(0, 80) : "erro de rede" };
+  }
+}
+
+/**
+ * O erro da Meta em uma linha que cabe numa mensagem de WhatsApp.
+ *
+ * O corpo que ela devolve é um JSON grande com título, rastro e link de
+ * documentação. O que resolve o problema é o CÓDIGO e a mensagem curta —
+ * o resto só empurra o texto útil pra fora da tela do celular.
+ */
+function resumirErro(corpo: string): string {
+  try {
+    const e = (JSON.parse(corpo) as { error?: { code?: number; message?: string; error_data?: { details?: string } } }).error;
+    if (!e) return corpo.slice(0, 120);
+    const detalhe = e.error_data?.details ?? e.message ?? "";
+    return `${e.code ?? "?"} — ${detalhe}`.slice(0, 160);
+  } catch {
+    return corpo.slice(0, 120);
   }
 }
 

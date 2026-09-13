@@ -13,12 +13,17 @@ import { paraChave } from "./agenda";
  */
 
 vi.mock("./banco", () => ({ banco: vi.fn(), bancoConfigurado: vi.fn(() => true) }));
-vi.mock("./notificacoes", () => ({ enviarEvento: vi.fn(async () => true) }));
+vi.mock("./notificacoes", () => ({
+  enviarEvento: vi.fn(async () => ({ ok: true })),
+  enviarTexto: vi.fn(async () => true),
+  whatsappDaKarol: () => "5518997525291",
+}));
 
 import { banco } from "./banco";
-import { enviarEvento } from "./notificacoes";
+import { enviarEvento, enviarTexto } from "./notificacoes";
 import {
   buscarAgendamento,
+  criarAgendamento,
   criarAgendamentoNoPainel,
   horariosDoDia,
   mudarSituacao,
@@ -541,5 +546,68 @@ describe("encaixe aguardando a entrada", () => {
 
     const gravado = m.chamadas.find((c) => c.op === "insert")?.valores;
     expect(gravado).not.toHaveProperty("situacao");
+  });
+});
+
+/**
+ * Quando a cliente NÃO é avisada, a Karol fica sabendo.
+ *
+ * ⚠️ ISTO É O CONSERTO DE UM DIA INTEIRO PERDIDO. Em 13/09 o Kainã marcou
+ * pelo site pra dois números; nenhum recebeu nada; nenhuma tela mostrou
+ * erro; e o motivo ficou num `console.error` que o plano Hobby da Vercel
+ * não guarda. Eu chutei duas causas erradas antes de desistir de
+ * adivinhar.
+ *
+ * O envio pra cliente pode falhar por coisa que não é do código: número
+ * sem WhatsApp, conta da Meta sem verificação, limite, template recém
+ * aprovado. Não dá pra consertar todas aqui. Dá pra parar de fingir que
+ * deu certo.
+ */
+describe("cliente não avisada", () => {
+  const pedido = {
+    servicoId: "design-simples",
+    chaveDia: diaUtilFuturo(),
+    inicioMin: 7 * 60,
+    nome: "Sheilla Ferreira",
+    whatsapp: "16994419599",
+  };
+
+  function agendaLivre() {
+    return usarBanco({
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: { id: "novo" }, error: null }),
+    });
+  }
+
+  it("a Karol recebe o link pra chamar a pessoa na mão", async () => {
+    agendaLivre();
+    avisar.mockImplementation(async (evento) =>
+      evento === "confirmacao" ? { ok: false, motivo: "131030 — not in allowed list" } : { ok: true },
+    );
+
+    await criarAgendamento(pedido);
+
+    const [para, texto] = vi.mocked(enviarTexto).mock.calls[0];
+    expect(para).toBe("5518997525291");
+    expect(texto).toContain("NÃO consegui avisar");
+    expect(texto).toContain("Sheilla Ferreira");
+    expect(texto).toContain("wa.me/5516994419599");
+    // ⚠️ O código do erro junto: é o que evita a próxima semana de palpite.
+    expect(texto).toContain("131030");
+  });
+
+  /*
+    ⚠️ O LADO QUE MAIS IMPORTA. Se este aviso saísse quando o envio DEU
+    CERTO, a Karol receberia "não consegui avisar" em todo agendamento
+    feito pelo site — que é o caso normal, e ela aprenderia a ignorar o
+    alerta justamente antes do dia em que ele for verdade.
+  */
+  it("quando a cliente É avisada, a Karol não recebe alerta nenhum", async () => {
+    agendaLivre();
+    avisar.mockResolvedValue({ ok: true });
+
+    await criarAgendamento(pedido);
+
+    expect(enviarTexto).not.toHaveBeenCalled();
   });
 });
