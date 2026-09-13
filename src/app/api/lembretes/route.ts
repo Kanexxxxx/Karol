@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { rodarLembretes } from "@/lib/lembretes";
+import { expirarPendentes, rodarLembretes } from "@/lib/lembretes";
 
 /**
  * Dispara os lembretes da véspera e os agradecimentos. Uma varredura só,
@@ -36,7 +36,14 @@ async function handler(req: NextRequest) {
     return Response.json({ ok: false, erro: "não autorizado" }, { status: 401 });
   }
 
-  return Response.json({ ok: true, ...(await rodarLembretes()) });
+  /*
+    A varredura diária faz duas coisas, e a ordem importa pouco mas o
+    conjunto importa muito: manda os lembretes de amanhã, e SOLTA os
+    horários de quem marcou e não pagou a entrada. Ver `expirarPendentes`.
+  */
+  const [avisos, soltos] = await Promise.all([rodarLembretes(), expirarPendentes()]);
+
+  return Response.json({ ok: true, ...avisos, ...soltos });
 }
 
 export const GET = handler;

@@ -30,6 +30,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./agendamentos", () => ({
   agendamentosDeAmanha: vi.fn(async () => []),
   agendamentosConcluidosOntem: vi.fn(async () => []),
+  pendentesVencidos: vi.fn(async () => []),
+  mudarSituacao: vi.fn(async () => ({ ok: true })),
 }));
 
 // `paraDados` fica a de verdade: é ela que monta o que o evento carrega.
@@ -38,13 +40,20 @@ vi.mock("./notificacoes", async (original) => ({
   enviarEvento: vi.fn(async () => {}),
 }));
 
-import { agendamentosConcluidosOntem, agendamentosDeAmanha } from "./agendamentos";
+import {
+  agendamentosConcluidosOntem,
+  agendamentosDeAmanha,
+  mudarSituacao,
+  pendentesVencidos,
+} from "./agendamentos";
 import { enviarEvento } from "./notificacoes";
-import { rodarLembretes } from "./lembretes";
+import { expirarPendentes, rodarLembretes } from "./lembretes";
 
 const amanha = vi.mocked(agendamentosDeAmanha);
 const ontem = vi.mocked(agendamentosConcluidosOntem);
 const avisar = vi.mocked(enviarEvento);
+const vencidos = vi.mocked(pendentesVencidos);
+const mudar = vi.mocked(mudarSituacao);
 
 function agendamento(nome: string, id: string) {
   const inicio = new Date(2026, 8, 20, 9, 0);
@@ -71,6 +80,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   amanha.mockResolvedValue([]);
   ontem.mockResolvedValue([]);
+  vencidos.mockResolvedValue([]);
+  mudar.mockResolvedValue({ ok: true });
 });
 
 describe("a varredura diária", () => {
@@ -148,5 +159,63 @@ describe("a varredura diária", () => {
     expect(dados.cliente).toBe("Larissa Souza");
     expect(dados.servico).toBe("Design com henna");
     expect(dados.whatsappCliente).toBe("5518999998888");
+  });
+});
+
+/**
+ * Soltar o horário de quem marcou e não pagou a entrada.
+ *
+ * ⚠️ ESTE É O CÓDIGO MAIS PERIGOSO DO ARQUIVO: ele CANCELA horário de
+ * cliente sozinho, de madrugada, sem ninguém olhando. Um erro aqui não
+ * aparece como tela quebrada — aparece como uma cliente que pagou
+ * chegando no studio e descobrindo que não tem horário.
+ *
+ * Por isso o que se cobra abaixo é mais o que ele NÃO pode cancelar do
+ * que o que ele cancela.
+ */
+describe("soltar horário não pago", () => {
+  const pendente = (id: string) => ({ ...agendamento("Quem Não Pagou", id), situacao: "pendente" as const });
+
+  it("cancela pelo caminho normal, pra cliente ser avisada", async () => {
+    vencidos.mockResolvedValue([pendente("11111111-1111-1111-1111-111111111111")]);
+
+    const r = await expirarPendentes();
+
+    expect(r).toEqual({ expirados: 1 });
+    // ⚠️ Tem que ser `mudarSituacao`, e não um update direto: é ela que
+    // manda o aviso. Cancelar calado é a pessoa aparecendo no studio.
+    expect(mudar).toHaveBeenCalledWith("11111111-1111-1111-1111-111111111111", "cancelado");
+  });
+
+  it("dia sem ninguém vencido não cancela nada", async () => {
+    vencidos.mockResolvedValue([]);
+
+    expect(await expirarPendentes()).toEqual({ expirados: 0 });
+    expect(mudar).not.toHaveBeenCalled();
+  });
+
+  /*
+    Se o cancelamento de uma falhar — banco fora do ar por um instante,
+    corrida com a Karol cancelando na mão — as outras não podem parar
+    junto. Cada horário preso a mais é uma cliente que não conseguiu
+    marcar.
+  */
+  it("uma que falha não derruba as outras", async () => {
+    vencidos.mockResolvedValue([
+      pendente("11111111-1111-1111-1111-111111111111"),
+      pendente("22222222-2222-2222-2222-222222222222"),
+      pendente("33333333-3333-3333-3333-333333333333"),
+    ]);
+    mudar
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({ ok: false, erro: "Não consegui salvar agora." })
+      .mockResolvedValueOnce({ ok: true });
+
+    const r = await expirarPendentes();
+
+    expect(mudar).toHaveBeenCalledTimes(3);
+    // Conta só o que soltou de verdade — o número volta pro cron, e um
+    // número inflado esconderia a falha.
+    expect(r).toEqual({ expirados: 2 });
   });
 });

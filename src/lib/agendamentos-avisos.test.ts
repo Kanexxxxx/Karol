@@ -17,7 +17,13 @@ vi.mock("./notificacoes", () => ({ enviarEvento: vi.fn(async () => {}) }));
 
 import { banco } from "./banco";
 import { enviarEvento } from "./notificacoes";
-import { criarAgendamentoNoPainel, mudarSituacao, remarcarAgendamento } from "./agendamentos";
+import {
+  criarAgendamento,
+  criarAgendamentoNoPainel,
+  mudarSituacao,
+  pendentesVencidos,
+  remarcarAgendamento,
+} from "./agendamentos";
 
 const bancoMock = vi.mocked(banco);
 const avisar = vi.mocked(enviarEvento);
@@ -204,5 +210,172 @@ describe("Karol muda a situação", () => {
     const r = await mudarSituacao(id, "confirmado");
     expect(r.ok).toBe(true);
     expect(eventos()).toEqual(["confirmacao"]);
+  });
+});
+
+/**
+ * QUEM entra na lista de horários a soltar por falta de pagamento.
+ *
+ * ⚠️ A LISTA É O PERIGO, não o cancelamento. Quem cancela só obedece: se
+ * alguém errado entrar aqui, o horário de uma cliente some sozinho de
+ * madrugada e ela descobre na porta do studio.
+ *
+ * Por isso quase todos os casos abaixo são sobre quem NÃO pode entrar.
+ */
+describe("horários presos por falta de pagamento", () => {
+  /** Uma linha crua com serviço e data de criação escolhidos. */
+  function pendenteCriadoEm(criadoEm: Date, servicoId: string, inicio: Date) {
+    return {
+      ...linha(inicio, "pendente"),
+      servico_id: servicoId,
+      servico_preco: servicoId === "design-simples" ? 2500 : 12000,
+      criado_em: criadoEm.toISOString(),
+    };
+  }
+
+  const ontem = () => new Date(Date.now() - 24 * 3600_000);
+
+  it("entra quem marcou ontem um serviço com entrada e não pagou", async () => {
+    usarBanco({
+      select: () => ({
+        data: [pendenteCriadoEm(ontem(), "brow-lamination", daquiATresDias())],
+        error: null,
+      }),
+    });
+
+    expect(await pendentesVencidos()).toHaveLength(1);
+  });
+
+  /*
+    ⚠️ O CASO QUE MAIS ASSUSTA. Com aprovação manual ligada, um design de
+    R$ 25 também fica `pendente` — mas esse está esperando a KAROL olhar,
+    não a cliente pagar. Cancelar por falta de pagamento um horário que
+    nunca pediu pagamento é apagar o trabalho dela.
+  */
+  it("NÃO entra serviço que nem pede entrada", async () => {
+    usarBanco({
+      select: () => ({
+        data: [pendenteCriadoEm(ontem(), "design-simples", daquiATresDias())],
+        error: null,
+      }),
+    });
+
+    expect(await pendentesVencidos()).toEqual([]);
+  });
+
+  /*
+    Cancelar um horário que já passou não libera nada, e manda pra cliente
+    um "seu horário foi cancelado" depois de ela já ter ido — ou não ido.
+  */
+  it("NÃO entra horário que já aconteceu", async () => {
+    usarBanco({
+      select: () => ({
+        data: [pendenteCriadoEm(tresDiasAtras(), "brow-lamination", tresDiasAtras())],
+        error: null,
+      }),
+    });
+
+    expect(await pendentesVencidos()).toEqual([]);
+  });
+
+  /*
+    O prazo é feito no banco, com `criado_em < hoje 00:00`. O teste prova
+    que o filtro FOI PEDIDO — sem ele, quem marcou agora mesmo e ainda
+    está com o aplicativo do banco aberto perderia o horário.
+  */
+  it("pede ao banco só o que foi criado antes de hoje", async () => {
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+
+    await pendentesVencidos();
+
+    const lt = m.chamadas
+      .find((c) => c.op === "select")
+      ?.filtros?.find((f) => f.metodo === "lt");
+    expect(lt?.coluna).toBe("criado_em");
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    expect(lt?.valor).toBe(hoje.toISOString());
+  });
+
+  it("pede ao banco só quem está pendente", async () => {
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+
+    await pendentesVencidos();
+
+    const eq = m.chamadas
+      .find((c) => c.op === "select")
+      ?.filtros?.find((f) => f.metodo === "eq");
+    expect(eq?.coluna).toBe("situacao");
+    expect(eq?.valor).toBe("pendente");
+  });
+
+  it("banco fora do ar devolve lista vazia, e ninguém é cancelado", async () => {
+    usarBanco({ select: () => ({ data: null, error: { message: "caiu" } }) });
+
+    expect(await pendentesVencidos()).toEqual([]);
+  });
+});
+
+/**
+ * O teto de horários futuros por pessoa.
+ *
+ * ⚠️ O ERRO CARO AQUI É O CONTRÁRIO DO USUAL: não é deixar passar quem
+ * não devia, é BARRAR cliente de verdade. Quem é barrada some — ela não
+ * chama no WhatsApp pra reclamar de um site, ela desiste. Por isso os
+ * casos abaixo cobrem principalmente quem TEM que passar.
+ */
+describe("teto de horários por pessoa", () => {
+  const pedido = {
+    servicoId: "design-simples",
+    chaveDia: diaUtilFuturo(),
+    inicioMin: 7 * 60,
+    nome: "Maria da Silva",
+    whatsapp: "18999998888",
+  };
+
+  /** Responde a contagem do teto e deixa o resto do fluxo seguir. */
+  function comContagem(quantos: number | null, erro: unknown = null) {
+    return usarBanco({
+      select: () => ({ data: [], error: null, count: quantos ?? undefined, ...(erro ? { error: erro } : {}) }),
+      insert: () => ({ data: null, error: { message: "parou depois do teto" } }),
+    });
+  }
+
+  it("barra quem já tem cinco horários marcados", async () => {
+    comContagem(5);
+
+    const r = await criarAgendamento(pedido);
+
+    expect(r.ok).toBe(false);
+    expect(r).toHaveProperty("erro");
+    if (!r.ok) {
+      // A saída tem que estar na mensagem: barrar sem dizer o que fazer
+      // é a pessoa fechando o site.
+      expect(r.erro).toContain("WhatsApp");
+    }
+  });
+
+  it("quatro ainda passa — a mãe com duas filhas e o horário dela", async () => {
+    comContagem(4);
+
+    const r = await criarAgendamento(pedido);
+
+    // Passou do teto e morreu adiante, no insert de mentira. O que
+    // importa é que NÃO foi barrada pelo teto.
+    if (!r.ok) expect(r.erro).not.toContain("WhatsApp");
+  });
+
+  /*
+    ⚠️ NA DÚVIDA, DEIXA PASSAR. Se a contagem falhar, barrar cliente de
+    verdade por causa de um erro nosso é o pior desfecho — e o que se
+    perde é um teto que nem existia até ontem.
+  */
+  it("banco falhando na contagem não barra ninguém", async () => {
+    comContagem(null, { message: "caiu" });
+
+    const r = await criarAgendamento(pedido);
+
+    if (!r.ok) expect(r.erro).not.toContain("WhatsApp");
   });
 });

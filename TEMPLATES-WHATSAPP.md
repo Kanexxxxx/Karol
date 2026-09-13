@@ -538,7 +538,7 @@ assim por diante. Então:
 | `pos_atendimento` | nota_otimo | nota_bom | nota_ruim |
 | `horario_remarcado` | confirmar | remarcar | falar |
 | `horario_cancelado` | remarcar | falar | — |
-| `lembrete_30min` | (sem botão) | — | — |
+| ~~`lembrete_30min`~~ | arrancado em 13/09 — não crie | — | — |
 
 **"Falar com a Karol" manda a cliente pro WhatsApp pessoal dela.** O número
 da API não tem caixa de entrada — ninguém lê o que chega nele. Por isso, quando

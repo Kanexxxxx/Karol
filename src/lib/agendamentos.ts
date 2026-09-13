@@ -272,6 +272,13 @@ export async function criarAgendamento(dados: {
   const servico = buscarServicoAgendavel(dados.servicoId);
   if (!servico) return { ok: false, erro: "Serviço não encontrado." };
 
+  if (await passouDoLimite(dados.whatsapp)) {
+    return {
+      ok: false,
+      erro: `Esse número já tem ${MAX_FUTUROS_POR_PESSOA} horários marcados. Pra marcar mais, me chama no WhatsApp.`,
+    };
+  }
+
   const dia = deChave(dados.chaveDia);
   const livres = await horariosDoDia(servico, dados.chaveDia);
   if (!livres.some((h) => h.inicio === dados.inicioMin)) {
@@ -344,6 +351,136 @@ export async function criarAgendamento(dados: {
   ]);
 
   return { ok: true, id: data.id, quando: inicio, cidade: CIDADES[cidade].nome };
+}
+
+/**
+ * Pendentes de pagamento que já passaram do prazo de espera.
+ *
+ * ---------------------------------------------------------------------
+ * O buraco que isto fecha
+ * ---------------------------------------------------------------------
+ *
+ * Um agendamento `pendente` OCUPA o horário — e tem que ocupar, senão
+ * duas pessoas marcariam o mesmo enquanto uma paga. Só que ele nunca
+ * expirava: quem marcasse e não pagasse ficava com o horário até a Karol
+ * cancelar na mão.
+ *
+ * Isso é a regra dela que faltava, não uma trava nova. No briefing ela
+ * respondeu que segura o horário **"até o fim do dia"** esperando o
+ * comprovante. Nunca foi implementado.
+ *
+ * ⚠️ E o caso comum nem é má-fé. É a cliente de verdade que marca, se
+ * distrai e não paga: o horário dela fica preso do mesmo jeito, e a Karol
+ * perde a vaga sem saber. Junto disso, fechava também o jeito mais barato
+ * de travar a agenda de propósito — marcar dez horários com calma e não
+ * pagar nenhum passa longe de qualquer freio por IP.
+ *
+ * ---------------------------------------------------------------------
+ * O prazo, e por que ele é generoso
+ * ---------------------------------------------------------------------
+ *
+ * Vence o que foi criado ANTES DE HOJE. Como a varredura roda uma vez por
+ * dia, ao meio-dia, na prática a pessoa tem de 12 a 36 horas — sempre mais
+ * que o "fim do dia" que ela prometeu.
+ *
+ * É de propósito: o erro de cancelar cedo demais é cancelar o horário de
+ * uma cliente que pagou e o comprovante demorou. O erro de cancelar tarde
+ * é um horário vago por mais meio dia. Os dois não custam a mesma coisa.
+ *
+ * ⚠️ SÓ QUEM ESTÁ ESPERANDO PAGAMENTO. Se um dia a aprovação manual for
+ * ligada, um design de R$ 25 também fica `pendente` — e aquele está
+ * esperando a KAROL, não a cliente. Cancelar por falta de pagamento um
+ * horário que nunca pediu pagamento seria apagar o trabalho dela.
+ *
+ * ⚠️ E SÓ O QUE AINDA NÃO ACONTECEU. Cancelar um horário de ontem não
+ * libera nada e manda pra cliente um aviso sem sentido.
+ */
+export async function pendentesVencidos(agora = new Date()): Promise<Agendamento[]> {
+  const bd = banco();
+  if (!bd) return [];
+
+  const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+
+  const { data, error } = await bd
+    .from("agendamentos")
+    .select("*")
+    .eq("situacao", "pendente")
+    .lt("criado_em", hoje.toISOString())
+    .order("periodo", { ascending: true });
+
+  if (error) {
+    console.error("não consegui procurar pendentes vencidos:", error.message);
+    return [];
+  }
+
+  return (data ?? [])
+    .map(linhaParaAgendamento)
+    .filter((a) => a.inicio > agora)
+    .filter((a) => {
+      const servico = buscarServico(a.servicoId);
+      return servico ? precisaDeSinal(servico) : false;
+    });
+}
+
+/**
+ * Quantos horários futuros um mesmo telefone pode ter marcados.
+ *
+ * ⚠️ NÃO É ANTI-ROBÔ. Quem quiser insistir troca o número, e nem precisa
+ * de robô. Isto é o teto que faltava: até 13/09/2026 **nada no projeto
+ * perguntava quantos horários uma pessoa já tinha**, e o freio por IP não
+ * ajuda porque ele conta por HORA — dez horários marcados com calma ao
+ * longo do mês passam longe dele.
+ *
+ * O irmão desta trava é `pendentesVencidos`, que solta o que não foi
+ * pago. Os dois cobrem lados diferentes: aquele alcança os serviços com
+ * entrada, este alcança os baratos, que confirmam na hora e portanto
+ * nunca expiram.
+ *
+ * ---------------------------------------------------------------------
+ * Por que CINCO
+ * ---------------------------------------------------------------------
+ *
+ * Porque o erro de barrar cliente de verdade é muito pior que o de
+ * deixar passar. Uma mãe marcando pra ela e duas filhas já são três; com
+ * o horário dela do mês que vem, quatro. Cinco cabe a família inteira e
+ * ainda assim transforma "travar a agenda" em cinco horários, não vinte.
+ *
+ * E quem esbarrar não fica sem saída: a mensagem manda chamar no
+ * WhatsApp, onde a Karol resolve na mão em dez segundos.
+ */
+export const MAX_FUTUROS_POR_PESSOA = 5;
+
+/**
+ * Este número já tem horários demais marcados?
+ *
+ * ⚠️ NA DÚVIDA, DEIXA PASSAR. Se o banco falhar na contagem, o
+ * agendamento segue — barrar cliente de verdade por causa de um erro
+ * nosso é o pior desfecho possível aqui, e o que se perde no outro caso é
+ * um teto que nem existia até ontem.
+ *
+ * Conta só o que ainda vai acontecer e o que ainda está de pé: horário
+ * cancelado não ocupa nada, e o que já passou é histórico dela.
+ */
+async function passouDoLimite(whatsappBruto: string): Promise<boolean> {
+  const bd = banco();
+  if (!bd) return false;
+
+  const whatsapp = normalizarWhatsapp(whatsappBruto);
+  if (!whatsapp) return false;
+
+  const { count, error } = await bd
+    .from("agendamentos")
+    .select("id", { count: "exact", head: true })
+    .eq("cliente_whatsapp", whatsapp)
+    .in("situacao", ["pendente", "confirmado"])
+    .gte("periodo", new Date().toISOString());
+
+  if (error) {
+    console.error("não consegui contar os horários da pessoa:", error.message);
+    return false;
+  }
+
+  return (count ?? 0) >= MAX_FUTUROS_POR_PESSOA;
 }
 
 /** Confirmados que começam amanhã — base do lembrete de 1 dia antes. */

@@ -4,7 +4,7 @@ import { vi } from "vitest";
  * Fake mínimo do cliente Supabase pros testes.
  *
  * Cobre só o que as libs usam: `from().select()/insert()/update()/delete()`
- * encadeado com `eq/in/overlaps/order/gte/lte/ilike/limit` e terminando em
+ * encadeado com `eq/in/overlaps/order/gte/lte/lt/ilike/limit` e terminando em
  * `single/maybeSingle` ou no próprio `await` (o builder do PostgREST é
  * "thenable").
  *
@@ -15,7 +15,12 @@ import { vi } from "vitest";
  * dos dois jeitos e passaria com a consulta errada.
  */
 
-type Resposta = { data?: unknown; error?: unknown };
+/*
+  `count` existe porque o PostgREST devolve contagem quando quem chama pede
+  `select("id", { count: "exact", head: true })` — é assim que o teto de
+  horários por pessoa conta sem trazer as linhas.
+*/
+type Resposta = { data?: unknown; error?: unknown; count?: number };
 
 /** Um `.eq("id", x)` vira `{ metodo: "eq", coluna: "id", valor: x }`. */
 export type Filtro = { metodo: string; coluna?: string; valor?: unknown };
@@ -85,6 +90,9 @@ export function mockBanco(handlers: Handlers = {}) {
       order: anota("order"),
       gte: anota("gte"),
       lte: anota("lte"),
+      // `lt` entrou com a expiração de pendente não pago, que compara
+      // `criado_em` com a meia-noite de hoje.
+      lt: anota("lt"),
       ilike: anota("ilike"),
       limit: (n: number) => (filtros.push({ metodo: "limit", valor: n }), builder),
       // `single`/`maybeSingle` devolvem UM objeto ou null no PostgREST de

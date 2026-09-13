@@ -1454,7 +1454,25 @@ disse que faz. Já existe cron diário na Vercel pra pendurar isso.
 Um limite por telefone (uns 3 horários futuros ativos) é barato e fecha o
 resto.
 
-**Nada disso está feito.** Está escrito aqui pra não virar surpresa.
+✅ **FEITO NO MESMO DIA**, depois do "dá uma melhorada e corrija isso":
+
+- `pendentesVencidos` + `expirarPendentes` soltam o horário de quem marcou
+  e não pagou. Vence o que foi criado ANTES DE HOJE, e como a varredura
+  roda ao meio-dia a pessoa tem de 12 a 36 horas — sempre mais que o "fim
+  do dia" que ela prometeu. Cancela pelo caminho normal, então a cliente é
+  avisada; cancelar calado seria ela aparecer no studio.
+- `MAX_FUTUROS_POR_PESSOA = 5` fecha o outro lado: serviço barato confirma
+  na hora e nunca expira, então o teto é o que segura ali. Cinco cabe uma
+  mãe com duas filhas e ainda transforma "travar a agenda" em cinco
+  horários, não vinte. Quem esbarra recebe a mensagem mandando chamar no
+  WhatsApp.
+
+Os dois erram pro lado seguro de propósito: banco falhando na contagem
+**deixa passar**, e só entra na expiração quem pede entrada, tem horário no
+futuro e marcou antes de hoje. Cinco mutações conferidas — cada filtro de
+segurança foi quebrado de propósito pra ver o teste reprovar.
+
+O freio por IP ficou como está. Ele nunca foi o problema.
 
 ---
 

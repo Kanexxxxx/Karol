@@ -3,6 +3,8 @@ import "server-only";
 import {
   agendamentosConcluidosOntem,
   agendamentosDeAmanha,
+  mudarSituacao,
+  pendentesVencidos,
 } from "./agendamentos";
 import { enviarEvento, paraDados } from "./notificacoes";
 
@@ -42,5 +44,34 @@ export async function rodarLembretes(): Promise<{
   for (const a of ontem) await enviarEvento("agradecimento", paraDados(a));
 
   return { lembretes: amanha.length, agradecimentos: ontem.length };
+}
+
+/**
+ * Solta os horários de quem marcou e não pagou a entrada.
+ *
+ * O porquê está em `pendentesVencidos` — resumo: `pendente` ocupa o
+ * horário e nunca expirava, então quem marcasse e não pagasse ficava com
+ * a vaga até a Karol cancelar na mão. A regra dela ("seguro até o fim do
+ * dia") nunca tinha sido implementada.
+ *
+ * ⚠️ CANCELA PELO CAMINHO NORMAL, e isso não é detalhe. `mudarSituacao`
+ * avisa a cliente que o horário caiu. Cancelar por baixo, direto no
+ * banco, seria a pessoa aparecer no studio no dia — que é exatamente o
+ * problema que a gente está tentando evitar, virado do avesso.
+ *
+ * Um erro numa não derruba as outras: cada horário presa a mais é uma
+ * cliente que não conseguiu marcar.
+ */
+export async function expirarPendentes(): Promise<{ expirados: number }> {
+  const vencidos = await pendentesVencidos();
+
+  let soltos = 0;
+  for (const a of vencidos) {
+    const r = await mudarSituacao(a.id, "cancelado");
+    if (r.ok) soltos++;
+    else console.error(`não consegui soltar o horário ${a.id}: ${r.erro}`);
+  }
+
+  return { expirados: soltos };
 }
 
