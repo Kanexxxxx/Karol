@@ -256,11 +256,21 @@ casos, incluindo um que lê o texto do arquivo e prova que a escrita só
 acontece depois do botão), `lib/fala-do-modelo.test.ts` (13) e
 `lib/recepcao.test.ts` (20 casos de roteamento).
 
-Fora deles, `lib/bancada-de-provas.test.ts` é a única coisa aqui que fala
-com a API de verdade — desligada por padrão, ligada com `BANCADA=1`. Ela
-não protege o código no dia a dia; serve pra descobrir o que o modelo faz
-de errado, que é uma classe de defeito que teste com modelo de mentira
-não mostra.
+Fora deles, dois arquivos falam com a API de verdade. Os dois ficam
+desligados por padrão (custam dinheiro e minutos) e ligam com `BANCADA=1`:
+
+- `lib/bancada-de-provas.test.ts` — compara modelos e mede o que o modelo
+  faz de errado. Usa uma CÓPIA do laço, escrita dentro do teste.
+- `lib/assistente-de-ponta-a-ponta.test.ts` — roda a função `assistente()`
+  de verdade, a mesma que o webhook chama, contra a API de verdade. Só o
+  banco e o WhatsApp são de mentira.
+
+⚠️ **A diferença entre os dois importa.** A bancada é cega pro nosso
+código: se `assistente()` tiver um defeito que a cópia dela não tem, ela
+passa e a Karol sofre. O de ponta a ponta é o único lugar do projeto onde
+as duas metades — nosso código e o modelo — se encontram. Em 4 rodadas
+seguidas ele deu 8/8, então instabilidade ali é sinal de defeito, não de
+ruído do modelo.
 
 ---
 
