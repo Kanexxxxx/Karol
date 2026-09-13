@@ -766,10 +766,18 @@ Solução: mudança para `items-end pt-10 pb-0 lg:pt-14`, ancorando a foto na li
 - **Controle de acesso em `decisaoDaKarol` (`atendente.ts`):** os botões de confirmação/recusa de remarcação (`k:ok:...` e `k:no:...`) não validavam o remetente da mensagem. Se uma cliente enviasse esse payload de botão, poderia autoaprovar sua remarcação. Agora exige explicitamente que `m.de` corresponda ao número oficial da Karol. Coberto com teste em `remarcacao-fluxo.test.ts`.
 - **Prevenção de Timing Attack na rota de cron (`/api/lembretes`):** a validação do cabeçalho `Authorization: Bearer <CRON_SECRET>` usava igualdade estrita de strings (`===`), suscetível a ataques de canal lateral por tempo. Atualizada para comparação em tempo constante (`timingSafeEqual` via SHA-256).
 
-⚠️ **Correção da etapa 20:** a frase acima ("275 testes passando, build
+⚠️ **Correção feita na etapa "a Karol respondeu, e um resgate no meio do
+caminho":** a frase acima ("275 testes passando, build
 compilando") **não era verdade quando esta etapa foi entregue.** O
 projeto chegou na sessão seguinte sem compilar — três erros de sintaxe e
-11 arquivos de teste que nem carregavam. Ver etapa 20.
+11 arquivos de teste que nem carregavam. Ver a etapa **"a Karol respondeu,
+e um resgate no meio do caminho"**.
+
+⚠️ **A numeração das etapas neste arquivo se repete** — existem duas 18,
+duas 19 e duas 20, de duas séries que foram escritas em momentos
+diferentes. Renumerar quebraria toda referência já feita a elas, aqui e
+nos commits. Então a regra passou a ser: **referência a etapa cita o
+título ou a data, nunca só o número.**
 
 O que foi feito AQUI, porém, presta e ficou: o motor de múltiplos turnos
 está certo (conferido no navegador), e as duas correções de segurança são
@@ -1159,6 +1167,10 @@ texto caía nesse ramo.
 ---
 
 ### Etapa 20 — 13/09/2026: a bancada de provas, e o que ela achou
+
+> ⚠️ Esta é a etapa 20 **de 13/09/2026**. Existe outra etapa 20 mais acima
+> ("a Karol respondeu, e um resgate no meio do caminho"), de outra série.
+> Ver o aviso sobre numeração repetida lá.
 
 O Kainã testou o assistente e disse: *"ele está horrível, não faz nada e o
 diálogo dele é horrível"*. Até aqui, todo teste do assistente usava um

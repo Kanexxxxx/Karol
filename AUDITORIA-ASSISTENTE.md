@@ -111,11 +111,18 @@ O loop está em `assistente()`. Antes dele, duas saídas que não gastam token:
 - `esquece` / `recomeça` / `zera` / `limpa` → apaga o histórico e para;
 - sem `DEEPSEEK_API_KEY` → responde com o link do painel e se cala.
 
-Passando disso: monta `instrucoes()` como *system*, até oito falas de
-histórico, a mensagem nova. O loop roda no máximo **três** vezes
-(`MAX_RODADAS = 3`), e na terceira as ferramentas são retiradas da
+Passando disso: monta `instrucoes()` como *system*, até **30** falas de
+histórico, a mensagem nova. O loop roda no máximo **quatro** vezes
+(`MAX_RODADAS = 4`), e na quarta as ferramentas são retiradas da
 requisição — `rodada === MAX_RODADAS - 1 ? [] : FERRAMENTAS` — obrigando o
 modelo a responder em texto em vez de pedir leitura pra sempre.
+
+> ⚠️ Números atualizados em 13/09. Eram 8 falas e 3 rodadas quando esta
+> auditoria foi escrita. As 8 falas faziam o assistente "esquecer tudo" no
+> meio de uma conversa de trabalho; as 3 rodadas não cabiam o pedido mais
+> comum dela (`procurar` → `horarios_livres` → propor), e o estouro fazia
+> o modelo escrever a chamada de ferramenta à mão, como texto, direto no
+> WhatsApp dela. Ver `PROGRESSO.md`, etapa 20 de 13/09/2026.
 
 **Dentro de cada rodada, escrita é procurada primeiro.** Se o modelo pediu
 uma ferramenta de escrita, o loop retorna ali mesmo, vira proposta, e

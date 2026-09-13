@@ -85,16 +85,19 @@ aí o botão não protege de nada.
 e no fluxo dela é sempre ela quem escreve primeiro — então a janela dela
 nunca fecha e as respostas saem como texto livre, sem template.
 
-**Centavos de IA.** No volume dela (algumas dezenas de mensagens por dia,
-no pior caso), o DeepSeek fica na casa de **R$ 1 a R$ 3 por mês**. Cada
-troca gasta algo entre 1.000 e 3.000 tokens.
+**Centavos de IA.** Medido na fatura de 07 a 13/09: **US$ 0,000154 por
+chamada**, com 2 a 4 chamadas por conversa. Em 15 conversas por dia dá
+**uns R$ 1,50 por mês**. A conta detalhada está mais abaixo, em "Quanto
+isso custa por mês".
 
 O que segura o gasto no código:
 
 - só o número dela é atendido;
-- no máximo 3 idas ao modelo por mensagem (`MAX_RODADAS`), e na última as
-  ferramentas são retiradas pra ele ser obrigado a responder;
-- a memória guarda 8 falas, não a conversa inteira;
+- no máximo **4** idas ao modelo por mensagem (`MAX_RODADAS`), e na última
+  as ferramentas são retiradas pra ele ser obrigado a responder;
+- a memória guarda **30** falas, não a conversa inteira;
+- o roteiro não muda dentro do dia, então a API o cobra pelo preço de
+  cache — 1/50;
 - `max_tokens: 700` na resposta.
 
 ---
@@ -251,10 +254,11 @@ de quem estiver em uso.
 | `lib/acoes-pendentes.ts` | as propostas esperando o toque dela |
 | `lib/conversas.ts` | a janela de 24 h e a memória da conversa |
 
-Os testes que seguram tudo isso estão em `lib/assistente.test.ts` (31
+Os testes que seguram tudo isso estão em `lib/assistente.test.ts` (35
 casos, incluindo um que lê o texto do arquivo e prova que a escrita só
-acontece depois do botão), `lib/fala-do-modelo.test.ts` (13) e
-`lib/recepcao.test.ts` (20 casos de roteamento).
+acontece depois do botão), `lib/fala-do-modelo.test.ts` (13),
+`lib/lista-mostrada.test.ts` (13) e `lib/recepcao.test.ts` (19 casos de
+roteamento).
 
 Fora deles, dois arquivos falam com a API de verdade. Os dois ficam
 desligados por padrão (custam dinheiro e minutos) e ligam com `BANCADA=1`:
