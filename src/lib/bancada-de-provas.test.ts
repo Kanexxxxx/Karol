@@ -58,13 +58,14 @@ vi.mock("./acoes-pendentes", () => ({ guardarAcao: vi.fn(), reservarAcao: vi.fn(
 vi.mock("./supabase", () => ({ banco: () => ({}) }));
 
 import { FERRAMENTAS, instrucoes } from "./assistente";
+
 import { lembreteDaLista } from "./lista-mostrada";
 
 /** Ligada só com `BANCADA=1`, e só se a chave existir nesta máquina. */
 const LIGADA = Boolean(process.env.BANCADA) && existsSync(".env.local");
-const chave = LIGADA
-  ? (readFileSync(".env.local", "utf8").match(/DEEPSEEK_API_KEY\s*=\s*(\S+)/)?.[1] ?? "")
-  : "";
+const env = LIGADA ? readFileSync(".env.local", "utf8") : "";
+const chaveDe = (nome: string) => env.match(new RegExp(`${nome}\\s*=\\s*(\\S+)`))?.[1] ?? "";
+const chave = chaveDe("DEEPSEEK_API_KEY");
 const MAX_RODADAS = 4;
 
 type Chamada = { id: string; type: "function"; function: { name: string; arguments: string } };
@@ -98,8 +99,38 @@ function responderLeitura(nome: string, args: Record<string, unknown>): unknown 
 }
 
 /** O mesmo laco do assistente de verdade: le, devolve o dado, pergunta de novo. */
-async function rodar(modelo: string, falas: Fala[], extra: Record<string, unknown> = {}) {
-  const mensagens: Fala[] = [{ role: "system", content: instrucoes() }, ...falas];
+type Casa = { base: string; chave: string; corpo: (b: Record<string, unknown>) => Record<string, unknown> };
+
+/*
+  Onde cada modelo mora, e as manias de cada casa.
+
+  ⚠️ A OPENAI DOS MODELOS QUE PENSAM (gpt-5*) recusa `max_tokens` — quer
+  `max_completion_tokens` — e recusa `temperature` diferente de 1. Mandar
+  o corpo do DeepSeek pra lá volta 400, e um 400 na bancada parece o
+  modelo sendo burro quando é a gente enviando errado.
+*/
+const DEEPSEEK: Casa = {
+  base: "https://api.deepseek.com",
+  chave,
+  corpo: (b) => ({ ...b, temperature: 0.3, max_tokens: 3000 }),
+};
+const OPENAI = (pensa: boolean): Casa => ({
+  base: "https://api.openai.com/v1",
+  chave: chaveDe("OPENAI_API_KEY"),
+  corpo: (b) =>
+    pensa
+      ? { ...b, max_completion_tokens: 3000 }
+      : { ...b, temperature: 0.3, max_tokens: 3000 },
+});
+
+async function rodar(
+  modelo: string,
+  falas: Fala[],
+  extra: Record<string, unknown> = {},
+  roteiro = instrucoes(),
+  casa: Casa = DEEPSEEK,
+) {
+  const mensagens: Fala[] = [{ role: "system", content: roteiro }, ...falas];
   const t0 = Date.now();
   let tokens = 0;
   const vazio = { escrita: null as null | { nome: string; args: Record<string, unknown> }, texto: "" };
@@ -108,14 +139,15 @@ async function rodar(modelo: string, falas: Fala[], extra: Record<string, unknow
   let inventouId = false;
 
   for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
-    const r = await fetch("https://api.deepseek.com/chat/completions", {
+    const r = await fetch(`${casa.base}/chat/completions`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${chave}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${casa.chave}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: modelo,
-        messages: mensagens,
-        tools: rodada === MAX_RODADAS - 1 ? undefined : FERRAMENTAS,
-        temperature: 0.3,
+        ...casa.corpo({
+          model: modelo,
+          messages: mensagens,
+          tools: rodada === MAX_RODADAS - 1 ? undefined : FERRAMENTAS,
+        }),
         ...extra,
       }),
     });
@@ -367,23 +399,30 @@ CASOS.push(...BAGUNCA);
   requisição — é assim que dá pra comparar PENSANDO contra NÃO PENSANDO
   sem duplicar a bancada.
 */
-const MODELOS: { rotulo: string; modelo: string; extra?: Record<string, unknown> }[] = [
-  { rotulo: "flash (pensando)", modelo: "deepseek-flash" },
-  { rotulo: "flash (sem pensar)", modelo: "deepseek-flash", extra: { thinking: { type: "disabled" } } },
-  { rotulo: "v4-pro", modelo: "deepseek-v4-pro" },
+const MODELOS: {
+  rotulo: string;
+  modelo: string;
+  extra?: Record<string, unknown>;
+  roteiro?: string;
+  casa?: Casa;
+}[] = [
+  { rotulo: "deepseek-flash", modelo: "deepseek-flash" },
+  { rotulo: "gpt-5-nano", modelo: "gpt-5-nano", casa: OPENAI(true) },
+  { rotulo: "gpt-4o-mini", modelo: "gpt-4o-mini", casa: OPENAI(false) },
+  { rotulo: "gpt-5-mini", modelo: "gpt-5-mini", casa: OPENAI(true) },
 ];
 
 describe.skipIf(!LIGADA || !chave)("bancada de provas (contra a API de verdade)", () => {
   it("compara os modelos", async () => {
     console.log(`\nroteiro: ${instrucoes().length} chars | ferramentas: ${FERRAMENTAS.length}\n`);
-    for (const { rotulo, modelo, extra } of MODELOS) {
+    for (const { rotulo, modelo, extra, roteiro, casa } of MODELOS) {
       let acertos = 0;
       let resgates = 0;
       let ms = 0;
       let tk = 0;
       const falhas: string[] = [];
       for (const caso of CASOS) {
-        const r = await rodar(modelo, caso.falas, extra);
+        const r = await rodar(modelo, caso.falas, extra, roteiro, casa);
         ms += r.ms;
         tk += r.tokens;
         if (r.erro) {
