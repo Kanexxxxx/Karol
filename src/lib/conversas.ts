@@ -117,11 +117,17 @@ export type Fala = { papel: "user" | "assistant"; texto: string };
 /**
  * Quantas falas ficam guardadas.
  *
- * Oito é o suficiente pra "cancela a segunda" saber a que lista o "segunda"
- * se refere, e curto o bastante pra conversa de ontem não voltar do nada
- * nem inflar a conta. Ver `migracao-05-assistente.sql`.
+ * ⚠️ ERA OITO, E OITO ERA POUCO. O Kainã testou em 12/09 com uma conversa
+ * de umas vinte mensagens — marcar duas clientes, conferir, cancelar as
+ * duas — e disse que o assistente "esquece tudo". Esquecia mesmo: oito
+ * falas são quatro trocas, e as linhas de registro ([sistema] FEITO...)
+ * ainda ocupam lugar na mesma fila.
+ *
+ * Trinta cobre uma conversa inteira de trabalho sem trazer a de ontem de
+ * volta. São trinta linhas curtas: o custo por mensagem continua
+ * desprezível perto de ela ter que repetir tudo.
  */
-export const FALAS_GUARDADAS = 8;
+export const FALAS_GUARDADAS = 30;
 
 /** O que já foi dito com este número. Vazio quando não há nada. */
 export async function historicoDe(whatsapp: string): Promise<Fala[]> {
