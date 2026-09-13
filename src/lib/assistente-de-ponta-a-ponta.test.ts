@@ -274,6 +274,31 @@ describe.skipIf(!LIGADA)("o assistente de verdade, com o modelo de verdade", () 
     expect(r.fez).toBe("respondeu");
   }, 120_000);
 
+  /*
+    ⚠️ A MENSAGEM QUE MAIS FALHAVA, E A PIOR HORA PRA FALHAR.
+
+    "nossa que dia cheio hoje to morta" não pede nada — ela só está
+    falando. Não existe ferramenta pra chamar, e o modelo inventava uma:
+    despejava `<｜｜DSML｜｜invoke name="ver_agenda">` como texto. O filtro
+    barrava, e o que sobrava era "Não consegui responder isso".
+
+    Ficar mudo justamente quando ela não está pedindo nada é o que faz o
+    assistente parecer burro.
+  */
+  it("desabafo recebe resposta de gente, não silêncio", async () => {
+    const r = await assistente(KAROL, "nossa que dia cheio hoje to morta");
+
+    nadaProibido();
+    expect(r.fez).toBe("respondeu");
+
+    const dito = tudoQueEleDisse();
+    expect(dito).not.toContain("Não consegui responder isso");
+    expect(dito.length).toBeGreaterThan(25);
+    console.log(`
+    >>> ela leria: ${JSON.stringify(dito)}
+`);
+  }, 120_000);
+
   it("conversa fiada não mexe em nada", async () => {
     const r = await assistente(KAROL, "oi, tudo bem?");
 

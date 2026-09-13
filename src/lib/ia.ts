@@ -1,5 +1,7 @@
 import "server-only";
 
+import { vazouMarcacao } from "./fala-do-modelo";
+
 /**
  * A conversa com o modelo. Só o transporte — nada daqui sabe o que é
  * agendamento.
@@ -279,9 +281,33 @@ async function tentarNo(
   return primeira;
 }
 
-/** Voltou de mãos abanando por ter estourado o orçamento pensando? */
+/**
+ * Vale tentar de novo, com o pensamento desligado?
+ *
+ * Dois casos, e os dois terminam do mesmo jeito pra Karol: uma resposta
+ * que ela não pode ler.
+ *
+ * 1. **Ele pensou até acabar o papel.** `finish_reason: "length"` com
+ *    conteúdo vazio — o modelo gastou o orçamento inteiro pensando.
+ *
+ * 2. **Ele escreveu a chamada de ferramenta à mão.** Em vez de texto vem
+ *    `<｜｜DSML｜｜invoke name="ver_agenda">`. `fala-do-modelo.ts` barra
+ *    isso antes de chegar nela, e o que sobra é o "não consegui
+ *    responder" — que foi exatamente o que o Kainã leu como assistente
+ *    burro. Medido em 13/09: acontece justamente nas mensagens de
+ *    CONVERSA ("nossa que dia cheio, tô morta"), onde não há ferramenta
+ *    nenhuma pra chamar e ele inventa uma.
+ *
+ * Em nenhum dos dois há chamada de ferramenta de verdade — se houvesse, o
+ * pedido dela estaria atendido e repetir sem pensar poderia trocar a
+ * ferramenta escolhida por outra.
+ */
 function precisaTentarSemPensar(r: Resposta): boolean {
-  return r.motivo === "length" && !r.texto?.trim() && r.chamadas.length === 0;
+  if (r.chamadas.length > 0) return false;
+
+  const texto = r.texto?.trim() ?? "";
+  if (!texto) return r.motivo === "length";
+  return vazouMarcacao(texto);
 }
 
 /** Uma ida só, num provedor só. */

@@ -278,3 +278,59 @@ describe("quando um provedor cai, o outro assume", () => {
     expect(enderecos).toHaveLength(2);
   });
 });
+
+/**
+ * Ele escreveu a chamada de ferramenta à mão, em vez de chamá-la.
+ *
+ * ⚠️ ERA ISTO QUE O KAINÃ LIA COMO ASSISTENTE BURRO. Em vez de texto vem
+ * `<｜｜DSML｜｜invoke name="ver_agenda">`. O filtro de `fala-do-modelo.ts`
+ * barra antes de chegar na Karol — e o que sobra é "Não consegui
+ * responder isso".
+ *
+ * Medido em 13/09: acontece justamente nas mensagens de CONVERSA ("nossa
+ * que dia cheio, tô morta"), onde não existe ferramenta pra chamar e ele
+ * inventa uma. É a pior hora pra ficar mudo: é quando ela não está
+ * pedindo nada, só falando.
+ */
+describe("quando ele escreve a marcação em vez de chamar", () => {
+  const VAZAMENTO = '<｜｜DSML｜｜tool_calls>\n<｜｜DSML｜｜invoke name="ver_agenda">';
+
+  it("tenta de novo sem pensar, e a resposta boa é a que vale", async () => {
+    apiResponde(
+      resposta({ texto: VAZAMENTO }),
+      resposta({ texto: "Ai, dia puxado mesmo 😩 Quer que eu confira a agenda?" }),
+    );
+
+    const r = await perguntar(pergunta, []);
+
+    expect(enviados).toHaveLength(2);
+    expect(enviados[1].thinking).toEqual({ type: "disabled" });
+    expect(r?.texto).toContain("dia puxado");
+  });
+
+  /*
+    Marcação COM chamada de ferramenta de verdade junto não repete: o
+    pedido dela já foi atendido, e insistir poderia trocar a ferramenta
+    escolhida por outra.
+  */
+  it("não repete se ele também chamou uma ferramenta de verdade", async () => {
+    apiResponde(
+      resposta({
+        texto: VAZAMENTO,
+        chamadas: [{ id: "c1", type: "function", function: { name: "ver_agenda", arguments: "{}" } }],
+      }),
+    );
+
+    await perguntar(pergunta, []);
+
+    expect(enviados).toHaveLength(1);
+  });
+
+  it("texto normal não faz repetir", async () => {
+    apiResponde(resposta({ texto: "Sexta você tem 3 clientes." }));
+
+    await perguntar(pergunta, []);
+
+    expect(enviados).toHaveLength(1);
+  });
+});
