@@ -1,3 +1,21 @@
+-- ⚠️ MIGRAÇÃO OBSOLETA — NÃO RODE NUM BANCO NOVO.
+--
+-- O lembrete de 30 minutos foi arrancado do projeto em 13/09/2026 (a Karol
+-- nunca pediu). Nada mais lê nem escreve a coluna criada aqui.
+--
+-- O arquivo fica porque migração é história: quem já rodou tem a coluna, e
+-- apagar o arquivo faria a numeração pular sem explicação.
+--
+-- A coluna `avisado_30min_em` continua no banco de quem já aplicou. Ela é
+-- inofensiva — 8 bytes nulos por linha — e derrubar coluna é operação que
+-- não se desfaz. Se alguém quiser mesmo limpar:
+--
+--     alter table agendamentos drop column if exists avisado_30min_em;
+--
+-- ---------------------------------------------------------------------
+-- O texto original, do dia em que a coluna foi criada:
+-- ---------------------------------------------------------------------
+--
 -- Lembrete de 30 minutos antes: a marca de "já avisei".
 --
 -- Rode UMA VEZ, num banco que já tem o `schema.sql` aplicado.

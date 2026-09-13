@@ -2,7 +2,7 @@ import "server-only";
 
 import { ANTES_DE_VIR, CIDADES, NEGOCIO, NOTIFICACOES, REGRAS, SITE_URL } from "@/data/negocio";
 import { formatarPreco, sinalPorValor } from "@/data/servicos";
-import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
+import { DIA_HORA_POR_EXTENSO } from "./datas";
 import { brCodeDoSinal } from "./pix";
 import type { Agendamento } from "./agendamentos";
 import { formatarWhatsapp } from "./telefone";
@@ -81,7 +81,6 @@ export type Evento =
   | "remarcado"
   | "cancelado"
   | "lembrete"
-  | "lembrete-curto"
   | "agradecimento";
 
 function quando(iso: string): string {
@@ -351,27 +350,6 @@ export function textoLembrete(a: DadosAgendamento): string {
   ].join("\n");
 }
 
-/**
- * O lembrete curto, ~30 min antes. É o empurrão pra sair de casa.
- *
- * Deliberadamente MAIS CURTO que o da véspera: quem recebe isto está se
- * arrumando, provavelmente lendo a prévia da notificação sem abrir o
- * WhatsApp. Hora, cidade e endereço cabem na prévia; o resto não seria
- * lido.
- *
- * Não repete o "venha sem maquiagem" — a essa altura ou ela já tirou, ou
- * não dá mais tempo, e o aviso só faria a pessoa se sentir mal na saída.
- */
-export function textoLembreteCurto(a: DadosAgendamento): string {
-  return [
-    `Oi, ${primeiroNome(a.cliente)}! Seu horário é daqui a pouco ⏰`,
-    "",
-    `🕐 ${HORA.format(new Date(a.inicioISO))} — ${a.servico}`,
-    `📍 ${a.cidade} — ${enderecoPorCidade(a.cidade)}`,
-    "",
-    "Te espero! 💛",
-  ].join("\n");
-}
 
 export function textoAgradecimento(a: DadosAgendamento): string {
   return [
@@ -426,7 +404,6 @@ const TEXTO: Record<Evento, (a: DadosAgendamento) => string> = {
   remarcado: textoRemarcado,
   cancelado: textoCancelado,
   lembrete: textoLembrete,
-  "lembrete-curto": textoLembreteCurto,
   agradecimento: textoAgradecimento,
 };
 
@@ -661,20 +638,6 @@ export function templateDoEvento(
       pelo Kainã; remarcado e cancelado são mudanças que a Karol fez no
       horário de alguém, e não chegar não é opção.
     */
-    case "lembrete-curto":
-      return {
-        nome: "lembrete_30min",
-        components: [
-          {
-            type: "body",
-            parameters: [
-              { type: "text", text: primeiroNome(a.cliente) },
-              { type: "text", text: HORA.format(new Date(a.inicioISO)) },
-              { type: "text", text: `${a.cidade} — ${enderecoPorCidade(a.cidade)}` },
-            ],
-          },
-        ],
-      };
 
     case "agradecimento":
       return {
@@ -1195,8 +1158,6 @@ function ligado(evento: Evento): boolean {
       return true;
     case "lembrete":
       return NOTIFICACOES.lembreteUmDiaAntes;
-    case "lembrete-curto":
-      return NOTIFICACOES.lembrete30MinAntes;
     case "agradecimento":
       return NOTIFICACOES.agradecimentoDepois;
   }

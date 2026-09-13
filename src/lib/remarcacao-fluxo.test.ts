@@ -79,7 +79,6 @@ function agendamento() {
     fim: new Date(inicio.getTime() + 70 * 60000),
     situacao: "confirmado" as const,
     observacao: null,
-    avisado30minEm: null,
   };
 }
 

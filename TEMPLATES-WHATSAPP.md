@@ -34,8 +34,7 @@ Aprendi na marra o que reprova um template:
 - **Rodapé não aceita variável.**
 - **A validade padrão é de 10 MINUTOS.** Se você não ligar o "período de
   validade personalizado", uma cliente com o celular sem sinal por 10 minutos
-  simplesmente não recebe. Use **12 horas** em todos — menos no
-  `lembrete_30min`, onde curto é o certo.
+  simplesmente não recebe. Use **12 horas** em todos.
 - **Os exemplos são obrigatórios.** A Meta testa o template com eles.
 
 ---
@@ -306,58 +305,23 @@ Tipo: **Resposta rápida** — **nesta ordem**
 
 ---
 
-## 5. `lembrete_30min`
-
-O empurrão pra sair de casa, ~30 min antes. Curto de propósito: quem
-recebe está se arrumando e lê pela prévia da notificação.
-
-| Campo | Valor |
-|---|---|
-| **Nome** | `lembrete_30min` |
-| **Categoria** | Utilidade |
-| **Idioma** | Português (BR) |
-
-### Cabeçalho
-Tipo: **Texto**
-
-```
-Seu horário é daqui a pouco
-```
-
-### Corpo
-
-```
-Oi, {{1}}! Passando só pra avisar que está chegando a hora. ✨
-
-🕐 Horário: {{2}}
-📍 Local: {{3}}
-
-Te espero! 💛
-```
-
-### Rodapé
-
-```
-Studio Karol Carvalho
-```
-
-### Botões
-**Nenhum.** A pessoa está saindo de casa; botão aqui só atrapalha.
-
-### ⚠️ Validade: CURTA (30 min a 1 h)
-
-Este é o único dos oito que não leva 12 horas. Se o celular dela estiver
-desligado e a mensagem for entregue duas horas depois, ela chega quando o
-atendimento já acabou — pior do que não chegar. Com validade curta, a Meta
-descarta e ainda não cobra.
-
-### Exemplos
-
-| Variável | Exemplo |
-|---|---|
-| `{{1}}` | `Maria` |
-| `{{2}}` | `19:00` |
-| `{{3}}` | `Pereira Barreto — Rua Atlântico, 884 (Condomínio da Praia)` |
+> ### ~~5. `lembrete_30min`~~ — ARRANCADO EM 13/09/2026
+>
+> Este template mandava "seu horário é daqui a pouco" meia hora antes.
+>
+> **Não crie ele, e se já criou, apague na Meta.** A Karol nunca pediu esse
+> aviso: em agosto ela respondeu NÃO pra "lembrete de horas antes", e o de
+> meia hora foi perguntado num formulário e nunca respondido. Mensagem que
+> sai no nome dela não fica no ar esperando ela reclamar.
+>
+> Saiu do código inteiro junto — o disparo, o cron, a coluna de controle e
+> o botão que existia no cartão de cada cliente no painel. Nenhuma mensagem
+> chegou a ser enviada: o disparo dependia de um cron que nunca foi ligado.
+>
+> A numeração dos outros **não mudou de propósito.** Renumerar quebraria
+> toda referência já feita a "template 6", "template 7", aqui e nos
+> commits — e o número do meio faltando conta uma história que a
+> renumeração apagaria.
 
 ---
 

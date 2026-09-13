@@ -3,28 +3,25 @@ import "server-only";
 import {
   agendamentosConcluidosOntem,
   agendamentosDeAmanha,
-  agendamentosParaLembrar,
-  marcarLembreteEnviado,
 } from "./agendamentos";
 import { enviarEvento, paraDados } from "./notificacoes";
-import { NOTIFICACOES } from "@/data/negocio";
 
 /**
  * Os lembretes.
  *
- * São DOIS relógios diferentes, e é isso que explica a divisão deste
- * arquivo:
+ * `rodarLembretes()` manda o da véspera e o agradecimento do dia
+ * seguinte. Varre o dia inteiro de uma vez, então roda 1x/dia: quem chama
+ * é o cron da Vercel (ver `vercel.json`) e o botão do painel.
  *
- * - `rodarLembretes()` — o da véspera e o agradecimento. Varre o dia
- *   inteiro de uma vez, então roda 1x/dia. Quem chama é o cron da Vercel
- *   (ver vercel.json) e o botão do painel.
+ * ⚠️ AQUI JÁ MOROU UM SEGUNDO RELÓGIO. `rodarLembretesCurtos()` mandava um
+ * aviso ~30 min antes do horário, e precisava de um cron externo batendo
+ * de 10 em 10 minutos. Foi arrancado em 13/09/2026: a Karol nunca pediu
+ * esse aviso — ela tinha respondido NÃO pra "lembrete de horas antes", e o
+ * de meia hora foi perguntado e nunca respondido. Mensagem que sai no nome
+ * dela não fica no ar esperando ela reclamar.
  *
- * - `rodarLembretesCurtos()` — o de ~30 min antes. Precisa de alguém
- *   batendo a cada 10–15 minutos, porque um horário de 07:15 tem que ser
- *   pego às 06:45 e nenhum cron diário faz isso. O plano Hobby da Vercel
- *   só permite 1 execução por dia, então quem bate é um cron externo
- *   (cron-job.org) apontando pra `/api/lembretes?tipo=curto` com o
- *   `CRON_SECRET` no cabeçalho. Ver WHATSAPP.md.
+ * O que saiu junto está no commit; o que ficou é este arquivo com um
+ * relógio só.
  */
 
 // `paraDados` mudou de casa: agora vive em `notificacoes.ts`, junto do
@@ -47,49 +44,3 @@ export async function rodarLembretes(): Promise<{
   return { lembretes: amanha.length, agradecimentos: ontem.length };
 }
 
-/**
- * O lembrete de ~30 min antes.
- *
- * ⚠️ A ORDEM AQUI IMPORTA: marca primeiro, manda depois.
- *
- * Invertido, a janela entre mandar e marcar cabe a próxima batida do cron
- * — e a cliente recebe a mesma mensagem duas ou três vezes enquanto se
- * arruma. `marcarLembreteEnviado` é uma corrida que só uma execução vence
- * (o `is(null)` vai dentro do próprio UPDATE), então mesmo duas instâncias
- * do serverless rodando ao mesmo tempo produzem uma mensagem só.
- *
- * O preço disso é que uma falha de envio some sem reenvio automático. É o
- * lado certo pra errar: mandar demais a cliente vê e acha o site quebrado;
- * mandar de menos a Karol resolve tocando em "Lembrar agora" no cartão do
- * painel, que existe exatamente pra isso.
- */
-export async function rodarLembretesCurtos(): Promise<{ curtos: number }> {
-  /*
-    ⚠️ SAIR ANTES DE MARCAR QUANDO O AVISO ESTÁ DESLIGADO.
-
-    A ordem aqui embaixo é marcar primeiro, mandar depois — e ela está
-    certa: é o que impede a mesma cliente de receber três vezes quando o
-    cron bate de 10 em 10 minutos dentro da mesma janela.
-
-    Mas `enviarEvento` consulta `NOTIFICACOES.lembrete30MinAntes` lá
-    dentro e não manda nada quando está desligado. Sem esta saída, o cron
-    rodando com o aviso desligado MARCAVA todo mundo como "já avisei" sem
-    ter avisado ninguém — e no dia em que a Karol dissesse "pode mandar",
-    essas clientes já estariam queimadas e nunca receberiam.
-
-    Silencioso, e só apareceria semanas depois como "o lembrete não
-    funciona pra algumas pessoas".
-  */
-  if (!NOTIFICACOES.lembrete30MinAntes) return { curtos: 0 };
-
-  const proximos = await agendamentosParaLembrar();
-
-  let enviados = 0;
-  for (const a of proximos) {
-    if (!(await marcarLembreteEnviado(a.id))) continue;
-    await enviarEvento("lembrete-curto", paraDados(a));
-    enviados++;
-  }
-
-  return { curtos: enviados };
-}

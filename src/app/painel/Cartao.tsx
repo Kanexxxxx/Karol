@@ -1,10 +1,9 @@
 import { formatarPreco, sinalPorValor } from "@/data/servicos";
 import { paraChave } from "@/lib/agenda";
-import { podeLembrar, type Agendamento } from "@/lib/agendamentos";
+import { type Agendamento } from "@/lib/agendamentos";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
 import { formatarWhatsapp } from "@/lib/telefone";
 import { AcoesAgendamento } from "./AcoesAgendamento";
-import { Lembrete } from "./Lembrete";
 import { Remarcar } from "./Remarcar";
 import { NUMERO } from "./estilos";
 
@@ -71,10 +70,6 @@ export function Cartao({
   // Pendente sem sinal só acontece com aprovação manual ligada — aí não é
   // PIX que ela espera, e o selo não pode dizer que é.
   const selo = pendente && sinal === 0 ? "Aguardando" : SELO[ag.situacao].texto;
-
-  // A mesma condição com que o `Lembrete` decide sumir. Conferida aqui pra
-  // não sobrar a faixa vazia com fio em cima quando não há lembrete.
-  const temLembrete = podeLembrar(ag) || ag.avisado30minEm !== null;
 
   return (
     <li
@@ -194,27 +189,6 @@ export function Cartao({
         <Remarcar id={ag.id} diaAtual={paraChave(ag.inicio)} horaAtual={HORA.format(ag.inicio)} />
       </div>
 
-      {/*
-        O lembrete fica numa faixa própria, separado por fio: os botões de
-        cima MUDAM o agendamento, este só manda uma mensagem. Ter "Cancelar"
-        e "Lembrar agora" colados, do mesmo tamanho e da mesma cor, é
-        convite pra toque errado no celular.
-
-        `podeEnviar` é decidido AQUI, no servidor, e não dentro do
-        componente de cliente. Comparar com `new Date()` no navegador daria
-        resultado diferente do servidor na primeira renderização — é o
-        clássico erro de hidratação — e ainda usaria o fuso do celular dela
-        em vez do FUSO do negócio.
-      */}
-      {temLembrete && (
-        <div className="border-t border-linha px-4 py-2 sm:px-5">
-          <Lembrete
-            id={ag.id}
-            enviadoAs={ag.avisado30minEm ? HORA.format(ag.avisado30minEm) : null}
-            podeEnviar={podeLembrar(ag)}
-          />
-        </div>
-      )}
     </li>
   );
 }

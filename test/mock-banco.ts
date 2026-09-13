@@ -76,9 +76,9 @@ export function mockBanco(handlers: Handlers = {}) {
       delete: () => ((op = "delete"), builder),
       eq: anota("eq"),
       // `is` é o filtro de NULL do PostgREST. Entrou com o lembrete de 30
-      // min: a varredura procura `avisado_30min_em is null`, e sem gravar
-      // esse filtro o teste não conseguiria provar que a consulta exclui
-      // quem já foi avisado.
+      // minutos, que foi arrancado do projeto em 13/09/2026 — ficou porque
+      // é uma linha e o próximo `is null` que alguém escrever já vai poder
+      // ser testado.
       is: anota("is"),
       in: anota("in"),
       overlaps: anota("overlaps"),

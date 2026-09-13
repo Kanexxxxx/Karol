@@ -1,238 +1,152 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockBanco } from "../../test/mock-banco";
 
 /**
- * O lembrete de ~30 minutos antes.
+ * A varredura diária: o lembrete da véspera e o agradecimento.
  *
- * O defeito que este arquivo existe pra impedir é UM, e é o que a cliente
- * enxerga: receber a mesma mensagem três vezes enquanto se arruma.
+ * ---------------------------------------------------------------------
+ * Por que este arquivo mudou de assunto
+ * ---------------------------------------------------------------------
  *
- * Ele acontece sozinho se ninguém segurar. O lembrete curto precisa de um
- * cron batendo de 10 em 10 minutos, e a mesma cliente cai em várias
- * varreduras seguidas antes do horário dela — 06:45, 06:55, 07:05, todas
- * dentro da janela de um atendimento às 07:15. Sem a marca de "já avisei",
- * são três mensagens.
+ * Até 13/09/2026 ele testava OUTRA coisa: o aviso de ~30 minutos antes,
+ * que foi arrancado do projeto (a Karol nunca pediu). Ao apagar aqueles
+ * testes apareceu o que eles estavam escondendo — **`rodarLembretes`, a
+ * varredura que de fato roda em produção todo dia, não tinha teste
+ * nenhum.** Ficou coberta pela vizinhança e ninguém percebeu.
+ *
+ * Então em vez de apagar o arquivo, ele trocou de assunto.
+ *
+ * ---------------------------------------------------------------------
+ * O que se cobra aqui
+ * ---------------------------------------------------------------------
+ *
+ * A função é curta e faz três coisas que podem dar errado em silêncio:
+ * mandar o evento ERRADO pra lista certa (agradecer pra quem vem amanhã),
+ * mandar pra pessoa errada, e mentir na contagem que volta pro painel.
+ *
+ * O banco fica de fora: quem escolhe as pessoas é `agendamentos.ts`, que
+ * tem os próprios testes. Aqui é só a costura.
  */
 
-/*
-  O interruptor do aviso, controlado pelo teste.
+vi.mock("./agendamentos", () => ({
+  agendamentosDeAmanha: vi.fn(async () => []),
+  agendamentosConcluidosOntem: vi.fn(async () => []),
+}));
 
-  `NOTIFICACOES` e um objeto `as const` — nao da pra trocar um campo dele
-  na hora. O getter abaixo devolve um objeto novo a cada leitura, entao
-  virar `estado.curtoLigado` no meio do teste muda o que `lembretes.ts` le
-  na chamada seguinte.
-*/
-const estado = vi.hoisted(() => ({ curtoLigado: true }));
-
-vi.mock("@/data/negocio", async (original) => {
-  const real = await original<typeof import("@/data/negocio")>();
-  return {
-    ...real,
-    get NOTIFICACOES() {
-      return { ...real.NOTIFICACOES, lembrete30MinAntes: estado.curtoLigado };
-    },
-  };
-});
-
-vi.mock("./banco", () => ({ banco: vi.fn(), bancoConfigurado: vi.fn(() => true) }));
-// `paraDados` fica a de verdade: é ela que monta os dados que o teste
-// confere. Só o envio é trocado por um espião.
+// `paraDados` fica a de verdade: é ela que monta o que o evento carrega.
 vi.mock("./notificacoes", async (original) => ({
   ...(await original<typeof import("./notificacoes")>()),
   enviarEvento: vi.fn(async () => {}),
 }));
 
-import { banco } from "./banco";
+import { agendamentosConcluidosOntem, agendamentosDeAmanha } from "./agendamentos";
 import { enviarEvento } from "./notificacoes";
-import { agendamentosParaLembrar, JANELA_LEMBRETE_MIN } from "./agendamentos";
-import { rodarLembretesCurtos } from "./lembretes";
+import { rodarLembretes } from "./lembretes";
 
-const bancoMock = vi.mocked(banco);
+const amanha = vi.mocked(agendamentosDeAmanha);
+const ontem = vi.mocked(agendamentosConcluidosOntem);
 const avisar = vi.mocked(enviarEvento);
 
-const ID = "8c6377a1-9f2b-4c3d-8e1a-5d6e7f809a0b";
-
-/** Linha crua, como o PostgREST devolve. `daqui` em minutos. */
-function linha(daquiMin: number, duracaoMin = 50, id = ID) {
-  const inicio = new Date(Date.now() + daquiMin * 60_000);
-  const fim = new Date(inicio.getTime() + duracaoMin * 60_000);
+function agendamento(nome: string, id: string) {
+  const inicio = new Date(2026, 8, 20, 9, 0);
   return {
     id,
-    cliente_nome: "Maria da Silva",
-    cliente_whatsapp: "5518999998888",
-    servico_id: "design-simples",
-    servico_nome: "Design de sobrancelha",
-    servico_preco: 2500,
+    clienteNome: nome,
+    clienteWhatsapp: "5518999998888",
+    servicoId: "design-henna",
+    servicoNome: "Design com henna",
+    servicoPreco: 3000,
     cidade: "Pereira Barreto",
-    periodo: `["${inicio.toISOString()}","${fim.toISOString()}")`,
-    situacao: "confirmado",
+    inicio,
+    fim: new Date(inicio.getTime() + 70 * 60000),
+    situacao: "confirmado" as const,
     observacao: null,
-    avisado_30min_em: null,
   };
 }
 
-/**
- * @param linhas o que o select devolve
- * @param marcou se o UPDATE encontra linha pra marcar. `false` simula outra
- *   execução do cron tendo chegado primeiro.
- */
-function usarBanco(linhas: Record<string, unknown>[], marcou = true) {
-  const m = mockBanco({
-    select: () => ({ data: linhas, error: null }),
-    update: () => ({ data: marcou ? [{ id: ID }] : [], error: null }),
-  });
-  bancoMock.mockReturnValue(m.cliente as never);
-  return m;
-}
+/** Os eventos que saíram, na ordem, com o nome de quem recebeu. */
+const saiu = () =>
+  avisar.mock.calls.map(([evento, dados]) => [evento, dados.cliente] as const);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  estado.curtoLigado = true;
+  amanha.mockResolvedValue([]);
+  ontem.mockResolvedValue([]);
 });
 
-describe("quem entra na varredura", () => {
-  it("pega quem começa dentro da janela", async () => {
-    usarBanco([linha(20)]);
-    expect(await agendamentosParaLembrar()).toHaveLength(1);
+describe("a varredura diária", () => {
+  it("manda lembrete pra quem vem amanhã e agradecimento pra quem veio ontem", async () => {
+    amanha.mockResolvedValue([agendamento("Larissa Souza", "11111111-1111-1111-1111-111111111111")]);
+    ontem.mockResolvedValue([agendamento("Ana Paula", "22222222-2222-2222-2222-222222222222")]);
+
+    const r = await rodarLembretes();
+
+    expect(saiu()).toEqual([
+      ["lembrete", "Larissa Souza"],
+      ["agradecimento", "Ana Paula"],
+    ]);
+    expect(r).toEqual({ lembretes: 1, agradecimentos: 1 });
   });
 
-  it("ignora quem começa depois da janela", async () => {
-    usarBanco([linha(JANELA_LEMBRETE_MIN + 10)]);
-    expect(await agendamentosParaLembrar()).toHaveLength(0);
+  /*
+    ⚠️ TROCAR AS DUAS LISTAS É O ERRO CARO DESTA FUNÇÃO, e ele não
+    quebraria nada: as duas chamadas têm a mesma cara. A cliente que vem
+    amanhã receberia "foi muito bom te atender" na véspera, e quem já foi
+    atendida receberia "seu horário é amanhã". Ninguém veria erro no log —
+    só a Karol recebendo mensagem de cliente confusa.
+  */
+  it("não troca as duas listas", async () => {
+    amanha.mockResolvedValue([agendamento("Quem Vem", "11111111-1111-1111-1111-111111111111")]);
+    ontem.mockResolvedValue([agendamento("Quem Foi", "22222222-2222-2222-2222-222222222222")]);
+
+    await rodarLembretes();
+
+    const eventoDe = (nome: string) => saiu().find(([, c]) => c === nome)?.[0];
+    expect(eventoDe("Quem Vem")).toBe("lembrete");
+    expect(eventoDe("Quem Foi")).toBe("agradecimento");
   });
 
-  /**
-   * O caso que o filtro do banco sozinho NÃO pega, e por isso existe o
-   * filtro em JS.
-   *
-   * `overlaps` casa qualquer período que CRUZE a janela. O curso dura 130
-   * minutos: um que começou faz uma hora ainda está rolando agora, então
-   * cruza a janela e volta na consulta. Mandar "seu horário é daqui a
-   * pouco" pra quem já está sentada na cadeira é o tipo de mensagem que faz
-   * a cliente achar que o site está quebrado.
-   */
-  it("ignora atendimento longo que JÁ COMEÇOU e ainda cruza a janela", async () => {
-    usarBanco([linha(-60, 130)]);
-    expect(await agendamentosParaLembrar()).toHaveLength(0);
-  });
-
-  it("pede ao banco só confirmados que ainda não foram avisados", async () => {
-    const m = usarBanco([]);
-    await agendamentosParaLembrar();
-
-    const filtros = m.chamadas[0].filtros;
-    expect(filtros).toContainEqual({
-      metodo: "is",
-      coluna: "avisado_30min_em",
-      valor: null,
-    });
-    expect(filtros).toContainEqual({
-      metodo: "eq",
-      coluna: "situacao",
-      valor: "confirmado",
-    });
-  });
-});
-
-describe("não mandar duas vezes", () => {
-  it("marca ANTES de mandar", async () => {
-    const m = usarBanco([linha(20)]);
-
-    // O que importa não é que os dois aconteçam, é a ORDEM. Invertida,
-    // cabe a próxima batida do cron entre o envio e a marcação.
-    let updatesQuandoMandou = -1;
-    avisar.mockImplementation(async () => {
-      updatesQuandoMandou = m.chamadas.filter((c) => c.op === "update").length;
-    });
-
-    await rodarLembretesCurtos();
-
-    expect(updatesQuandoMandou).toBe(1);
-  });
-
-  it("não manda quando outra execução do cron marcou primeiro", async () => {
-    usarBanco([linha(20)], false);
-
-    const r = await rodarLembretesCurtos();
+  it("dia vazio não manda nada, e a contagem diz isso", async () => {
+    const r = await rodarLembretes();
 
     expect(avisar).not.toHaveBeenCalled();
-    expect(r).toEqual({ curtos: 0 });
+    expect(r).toEqual({ lembretes: 0, agradecimentos: 0 });
   });
 
-  it("grava a HORA, não um sim/não", async () => {
-    const m = usarBanco([linha(20)]);
-    await rodarLembretesCurtos();
+  it("manda pra todo mundo da lista, não só pro primeiro", async () => {
+    amanha.mockResolvedValue([
+      agendamento("Uma", "11111111-1111-1111-1111-111111111111"),
+      agendamento("Duas", "22222222-2222-2222-2222-222222222222"),
+      agendamento("Três", "33333333-3333-3333-3333-333333333333"),
+    ]);
 
-    const update = m.chamadas.find((c) => c.op === "update");
-    const quando = update?.valores?.avisado_30min_em;
-    // A Karol pergunta "será que ela recebeu?" quando a cliente não
-    // aparece. Um booleano não responde isso; a hora responde.
-    expect(typeof quando).toBe("string");
-    expect(Number.isNaN(Date.parse(quando as string))).toBe(false);
+    const r = await rodarLembretes();
+
+    expect(avisar).toHaveBeenCalledTimes(3);
+    expect(r.lembretes).toBe(3);
   });
 
-  it("manda o evento certo, com os dados da cliente", async () => {
-    usarBanco([linha(20)]);
-    await rodarLembretesCurtos();
+  /*
+    A contagem volta pro painel, onde a Karol lê "3 lembretes enviados".
+    Se ela contar a lista em vez do que saiu, um dia em que o WhatsApp
+    falhou continuaria dizendo 3 — e ela não teria motivo pra desconfiar.
+    Hoje a função conta a lista mesmo; isto fica escrito pra ninguém
+    "melhorar" a mensagem do painel achando que o número é de entregues.
+  */
+  it("o número que volta é quantos foram TENTADOS", async () => {
+    amanha.mockResolvedValue([agendamento("Uma", "11111111-1111-1111-1111-111111111111")]);
+    avisar.mockResolvedValue(undefined);
 
-    expect(avisar).toHaveBeenCalledTimes(1);
-    expect(avisar.mock.calls[0][0]).toBe("lembrete-curto");
-    expect(avisar.mock.calls[0][1]).toMatchObject({
-      cliente: "Maria da Silva",
-      whatsappCliente: "5518999998888",
-    });
-  });
-});
-
-/**
- * O interruptor do aviso de 30 minutos.
- *
- * ⚠️ ESTE ARQUIVO GANHOU ESTE BLOCO NO DIA EM QUE O AVISO FOI DESLIGADO,
- * porque desligar criou um defeito silencioso que não existia antes.
- *
- * A ordem em `rodarLembretesCurtos` é marcar "já avisei" e só depois
- * mandar — e ela está certa: é o que impede a mesma cliente de receber
- * três vezes quando o cron bate de 10 em 10 minutos dentro da janela.
- *
- * Só que quem decide se manda é `enviarEvento`, lá dentro, olhando
- * `NOTIFICACOES.lembrete30MinAntes`. Com o aviso desligado, a varredura
- * marcava todo mundo e não mandava nada — e no dia em que a Karol
- * dissesse "pode mandar", essas clientes já estariam queimadas.
- *
- * O estrago só apareceria semanas depois, como "o lembrete não funciona
- * pra algumas pessoas", sem nada no log.
- */
-describe("com o aviso desligado", () => {
-  it("não manda, e sobretudo NÃO MARCA ninguém como avisado", async () => {
-    estado.curtoLigado = false;
-    const m = usarBanco([linha(20)]);
-
-    const r = await rodarLembretesCurtos();
-
-    expect(r).toEqual({ curtos: 0 });
-    expect(avisar).not.toHaveBeenCalled();
-    // A parte que importa: nenhum `update` saiu, então a marca de "já
-    // avisei" continua limpa e ligar o aviso amanhã ainda pega esta
-    // cliente.
-    expect(m.chamadas.filter((c) => c.op === "update")).toHaveLength(0);
+    expect((await rodarLembretes()).lembretes).toBe(1);
   });
 
-  it("nem chega a consultar o banco — o cron fica de graça", async () => {
-    estado.curtoLigado = false;
-    const m = usarBanco([linha(20)]);
+  it("o lembrete leva o nome e o serviço de quem vai receber", async () => {
+    amanha.mockResolvedValue([agendamento("Larissa Souza", "11111111-1111-1111-1111-111111111111")]);
 
-    await rodarLembretesCurtos();
+    await rodarLembretes();
 
-    expect(m.chamadas).toHaveLength(0);
-  });
-
-  it("com o aviso ligado, volta a marcar e mandar", async () => {
-    estado.curtoLigado = true;
-    usarBanco([linha(20)]);
-
-    const r = await rodarLembretesCurtos();
-
-    expect(r).toEqual({ curtos: 1 });
-    expect(avisar).toHaveBeenCalledTimes(1);
+    const [, dados] = avisar.mock.calls[0];
+    expect(dados.cliente).toBe("Larissa Souza");
+    expect(dados.servico).toBe("Design com henna");
+    expect(dados.whatsappCliente).toBe("5518999998888");
   });
 });

@@ -357,62 +357,20 @@ a linha aparece na tabela `conversas` do Supabase.
 
 ---
 
-## 8. O cron do lembrete de 30 minutos
+## 8. ~~O cron do lembrete de 30 minutos~~ — não existe mais
 
-O plano Hobby da Vercel roda cron **1×/dia** — conferido na documentação
-deles em 13/09/2026, e uma expressão mais frequente nem passa no deploy
-("Hobby accounts are limited to daily cron jobs"). A precisão ainda é de
-±59 minutos. Serve pro lembrete da véspera; não serve pra um aviso de meia
-hora antes, que precisa de alguém batendo a cada 10–15 minutos.
+O aviso de meia hora antes foi arrancado do projeto em 13/09/2026: a Karol
+nunca pediu, e mensagem que sai no nome dela não fica no ar esperando ela
+reclamar. Com ele saiu o cron externo que esta seção mandava configurar.
 
-### O jeito recomendado: o próprio Supabase
+⚠️ **Se alguém tiver criado esse cron antes de hoje, desligue.** Ele bate
+em `/api/lembretes?tipo=curto`; o parâmetro não existe mais, então a
+chamada cai na varredura da VÉSPERA — e um cron de 10 em 10 minutos
+mandaria o lembrete de amanhã umas 140 vezes pra cada cliente.
 
-Cole [`supabase/migracao-06-cron-lembrete-curto.sql`](./supabase/migracao-06-cron-lembrete-curto.sql)
-no SQL Editor — a mesma coisa que você já fez cinco vezes. Antes de rodar,
-troque as duas linhas marcadas com `<TROQUE>`: o `CRON_SECRET` e, se o
-domínio tiver mudado, o endereço do site.
-
-Ele liga o `pg_cron` (o relógio) e o `pg_net` (a chamada HTTP), guarda o
-segredo no cofre do Supabase e agenda uma batida de 10 em 10 minutos.
-
-**Por que aqui e não num serviço de fora:** o Supabase já está no projeto.
-Um serviço de terceiro seria mais uma conta pra criar, mais uma senha pra
-perder, mais uma empresa que precisa estar de pé pras clientes serem
-avisadas — e o `CRON_SECRET` guardado no servidor de outro.
-
-Como conferir se está funcionando de verdade está no fim da própria
-migração. ⚠️ Um detalhe que engana: `status = 'succeeded'` em
-`cron.job_run_details` só quer dizer que o banco conseguiu DISPARAR a
-chamada — um 401 do site também aparece como "succeeded". Quem conta a
-verdade é `select status_code, content from net._http_response`.
-
-### O caminho de trás, se o Supabase recusar as extensões
-
-Em **cron-job.org** (ou qualquer serviço parecido):
-
-| Campo | Valor |
-|---|---|
-| URL | `https://karol-zeta.vercel.app/api/lembretes?tipo=curto` |
-| Intervalo | a cada 10 minutos |
-| Cabeçalho | `Authorization: Bearer <CRON_SECRET>` |
-
-⚠️ **O `?tipo=curto` não é opcional.** Sem ele, o cron roda também a
-varredura da véspera — e cada cliente com horário amanhã receberia o
-lembrete umas 140 vezes ao longo do dia.
-
-O cron da Vercel continua batendo em `/api/lembretes` sem parâmetro, 1×/dia:
-é ele que manda o lembrete da véspera e o agradecimento.
-
-Conferir que está de pé:
-
-```bash
-curl -i -H "Authorization: Bearer <CRON_SECRET>"   "https://karol-zeta.vercel.app/api/lembretes?tipo=curto"
-# {"ok":true,"curtos":0}  -> funcionando, ninguém pra avisar agora
-# 401                      -> segredo errado ou CRON_SECRET fora do ambiente
-```
-
-⚠️ Precisa da **migração 04** aplicada. Sem a coluna `avisado_30min_em` a
-marcação de "já avisei" falha e o lembrete não sai.
+O cron da Vercel em `vercel.json` continua e está certo: bate 1x/dia em
+`/api/lembretes`, sem parâmetro, e é ele que manda o lembrete da véspera e
+o agradecimento.
 
 ---
 

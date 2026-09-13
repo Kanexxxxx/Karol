@@ -46,7 +46,6 @@ const AVISOS: { chave: keyof typeof NOTIFICACOES; texto: string }[] = [
   { chave: "avisaKarolNoWhatsapp", texto: "Aviso pra você quando entra um agendamento" },
   { chave: "confirmacaoNaHora", texto: "Confirmação pra cliente na hora de agendar" },
   { chave: "lembreteUmDiaAntes", texto: "Lembrete pra cliente um dia antes" },
-  { chave: "lembrete30MinAntes", texto: "Lembrete pra cliente ~30 min antes" },
   { chave: "agradecimentoDepois", texto: "Agradecimento depois do atendimento" },
 ];
 
