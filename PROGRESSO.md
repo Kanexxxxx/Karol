@@ -1374,12 +1374,21 @@ que ele existiu.
 
 ### 8.5 Técnico pendente
 
-- **Ela ABRIR um dia** em que normalmente não atende (inverso do bloqueio).
-  Mexe no motor, que hoje deriva o expediente de `EXPEDIENTE` e não tem
-  conceito de exceção pra mais.
-- **Vídeos** dela no site (pedido antigo, nunca feito).
-- Freio por IP sério (Upstash ou o próprio Supabase) se virar problema. O
-  atual é `Map` em memória — some no deploy e não é compartilhado.
+- ~~**Ela ABRIR um dia** em que normalmente não atende~~ — ❌ **cortado do
+  plano em 13/09, decisão do Kainã.** "Vai gerar confusão futuramente." O
+  caso real não é exceção de um dia: é ela querer passar a atender à tarde
+  daqui uns meses, e isso é editar `EXPEDIENTE` — uma linha, feita por ele
+  ou por quem estiver mexendo no código. Não precisa de motor novo, e um
+  motor de exceções seria complexidade permanente pra um caso que não
+  existe.
+- ~~**Vídeos** dela no site~~ — ⚠️ **atribuição errada, corrigida em
+  13/09.** Estava aqui como pedido antigo dela; é pedido do KAINÃ (está na
+  seção "o que ELE pediu"). Ela só foi PERGUNTADA, no formulário 2, se
+  tinha vídeos — e a resposta não chegou ao código. Não é pendência até
+  alguém saber o que ela respondeu.
+- **Freio por IP** — ver 8.6, que ganhou a análise de risco de verdade em
+  13/09. Resumo: o freio não é o problema; o problema é o que ele não
+  cobre.
 
 ### 8.7 O que falta apertar fora do repositório
 
@@ -1401,6 +1410,53 @@ Depois de qualquer variável nova: **redeploy**. Variável só vale no build
 seguinte — isso já mordeu duas vezes neste projeto.
 
 ### 8.6 Revisão de segurança
+
+#### ⚠️ O buraco de verdade: nada limita UMA pessoa (achado em 13/09)
+
+O Kainã perguntou se o freio por IP era problema real, e mandou avisar se
+fosse. A resposta honesta é: **o freio não é o problema. O problema é o
+que ninguém está segurando.**
+
+O freio (`lib/limite.ts`) deixa 5 agendamentos por hora por IP, contados
+num `Map` em memória. Ele é fraco — some no deploy, não é compartilhado
+entre as máquinas da Vercel — mas trabalha junto com uma armadilha pra
+robô e um carimbo de tempo no formulário, e **para o caso que ele existe
+pra parar**, que é script ingênuo martelando o formulário.
+
+Ele também não atrapalha cliente de verdade: 5 por hora do MESMO IP, em
+cidades de 25 mil e 3 mil habitantes, é folgado. Agendar pro mês que vem
+não conta diferente de agendar pra amanhã — o freio é por hora, não por
+quantidade de horários futuros.
+
+O que ninguém segura são estas três coisas juntas:
+
+1. **Não existe limite por pessoa.** Nenhum lugar do código pergunta
+   quantos horários futuros aquele telefone já tem.
+2. **Agendamento `pendente` OCUPA o horário** (`agendamentos.ts`, o
+   `.in("situacao", ["pendente","confirmado","concluido"])`). É certo que
+   ocupe — senão duas pessoas marcariam o mesmo horário enquanto uma paga.
+3. **`pendente` não expira nunca.** A Karol respondeu no briefing que
+   segura o horário "até o fim do dia" esperando o comprovante. **Essa
+   regra dela nunca foi implementada.** Quem marca e não paga fica com o
+   horário até ela cancelar na mão.
+
+Somando: dá pra travar a agenda dela sem esbarrar em freio nenhum. Dez
+horários marcados com calma ao longo do mês, sem pagar, é bem menos que 5
+por hora — e cada um bloqueia um horário até ela perceber e limpar.
+
+⚠️ **E isso não é só ataque.** O caso comum é a cliente de verdade que
+marca, se distrai e não paga. Hoje o horário dela fica preso do mesmo
+jeito. É a regra da própria Karol que está faltando, não uma trava nova.
+
+**O conserto certo é o 3**, e ele resolve os outros dois de lambuja:
+expirar `pendente` não pago no fim do dia, que é literalmente o que ela
+disse que faz. Já existe cron diário na Vercel pra pendurar isso.
+Um limite por telefone (uns 3 horários futuros ativos) é barato e fecha o
+resto.
+
+**Nada disso está feito.** Está escrito aqui pra não virar surpresa.
+
+---
 
 Verificado e bom:
 

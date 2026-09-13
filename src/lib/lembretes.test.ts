@@ -14,6 +14,26 @@ import { mockBanco } from "../../test/mock-banco";
  * são três mensagens.
  */
 
+/*
+  O interruptor do aviso, controlado pelo teste.
+
+  `NOTIFICACOES` e um objeto `as const` — nao da pra trocar um campo dele
+  na hora. O getter abaixo devolve um objeto novo a cada leitura, entao
+  virar `estado.curtoLigado` no meio do teste muda o que `lembretes.ts` le
+  na chamada seguinte.
+*/
+const estado = vi.hoisted(() => ({ curtoLigado: true }));
+
+vi.mock("@/data/negocio", async (original) => {
+  const real = await original<typeof import("@/data/negocio")>();
+  return {
+    ...real,
+    get NOTIFICACOES() {
+      return { ...real.NOTIFICACOES, lembrete30MinAntes: estado.curtoLigado };
+    },
+  };
+});
+
 vi.mock("./banco", () => ({ banco: vi.fn(), bancoConfigurado: vi.fn(() => true) }));
 // `paraDados` fica a de verdade: é ela que monta os dados que o teste
 // confere. Só o envio é trocado por um espião.
@@ -65,7 +85,10 @@ function usarBanco(linhas: Record<string, unknown>[], marcou = true) {
   return m;
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  estado.curtoLigado = true;
+});
 
 describe("quem entra na varredura", () => {
   it("pega quem começa dentro da janela", async () => {
@@ -158,5 +181,58 @@ describe("não mandar duas vezes", () => {
       cliente: "Maria da Silva",
       whatsappCliente: "5518999998888",
     });
+  });
+});
+
+/**
+ * O interruptor do aviso de 30 minutos.
+ *
+ * ⚠️ ESTE ARQUIVO GANHOU ESTE BLOCO NO DIA EM QUE O AVISO FOI DESLIGADO,
+ * porque desligar criou um defeito silencioso que não existia antes.
+ *
+ * A ordem em `rodarLembretesCurtos` é marcar "já avisei" e só depois
+ * mandar — e ela está certa: é o que impede a mesma cliente de receber
+ * três vezes quando o cron bate de 10 em 10 minutos dentro da janela.
+ *
+ * Só que quem decide se manda é `enviarEvento`, lá dentro, olhando
+ * `NOTIFICACOES.lembrete30MinAntes`. Com o aviso desligado, a varredura
+ * marcava todo mundo e não mandava nada — e no dia em que a Karol
+ * dissesse "pode mandar", essas clientes já estariam queimadas.
+ *
+ * O estrago só apareceria semanas depois, como "o lembrete não funciona
+ * pra algumas pessoas", sem nada no log.
+ */
+describe("com o aviso desligado", () => {
+  it("não manda, e sobretudo NÃO MARCA ninguém como avisado", async () => {
+    estado.curtoLigado = false;
+    const m = usarBanco([linha(20)]);
+
+    const r = await rodarLembretesCurtos();
+
+    expect(r).toEqual({ curtos: 0 });
+    expect(avisar).not.toHaveBeenCalled();
+    // A parte que importa: nenhum `update` saiu, então a marca de "já
+    // avisei" continua limpa e ligar o aviso amanhã ainda pega esta
+    // cliente.
+    expect(m.chamadas.filter((c) => c.op === "update")).toHaveLength(0);
+  });
+
+  it("nem chega a consultar o banco — o cron fica de graça", async () => {
+    estado.curtoLigado = false;
+    const m = usarBanco([linha(20)]);
+
+    await rodarLembretesCurtos();
+
+    expect(m.chamadas).toHaveLength(0);
+  });
+
+  it("com o aviso ligado, volta a marcar e mandar", async () => {
+    estado.curtoLigado = true;
+    usarBanco([linha(20)]);
+
+    const r = await rodarLembretesCurtos();
+
+    expect(r).toEqual({ curtos: 1 });
+    expect(avisar).toHaveBeenCalledTimes(1);
   });
 });

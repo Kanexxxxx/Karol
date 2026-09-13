@@ -7,6 +7,7 @@ import {
   marcarLembreteEnviado,
 } from "./agendamentos";
 import { enviarEvento, paraDados } from "./notificacoes";
+import { NOTIFICACOES } from "@/data/negocio";
 
 /**
  * Os lembretes.
@@ -63,6 +64,24 @@ export async function rodarLembretes(): Promise<{
  * painel, que existe exatamente pra isso.
  */
 export async function rodarLembretesCurtos(): Promise<{ curtos: number }> {
+  /*
+    ⚠️ SAIR ANTES DE MARCAR QUANDO O AVISO ESTÁ DESLIGADO.
+
+    A ordem aqui embaixo é marcar primeiro, mandar depois — e ela está
+    certa: é o que impede a mesma cliente de receber três vezes quando o
+    cron bate de 10 em 10 minutos dentro da mesma janela.
+
+    Mas `enviarEvento` consulta `NOTIFICACOES.lembrete30MinAntes` lá
+    dentro e não manda nada quando está desligado. Sem esta saída, o cron
+    rodando com o aviso desligado MARCAVA todo mundo como "já avisei" sem
+    ter avisado ninguém — e no dia em que a Karol dissesse "pode mandar",
+    essas clientes já estariam queimadas e nunca receberiam.
+
+    Silencioso, e só apareceria semanas depois como "o lembrete não
+    funciona pra algumas pessoas".
+  */
+  if (!NOTIFICACOES.lembrete30MinAntes) return { curtos: 0 };
+
   const proximos = await agendamentosParaLembrar();
 
   let enviados = 0;

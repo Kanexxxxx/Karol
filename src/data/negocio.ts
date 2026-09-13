@@ -337,15 +337,27 @@ export const NOTIFICACOES = {
   /**
    * O lembrete curto, ~30 min antes — "está na hora de sair".
    *
-   * ⚠️ TENSÃO COM O BRIEFING, e é de propósito. Na pergunta sobre avisos a
-   * Karol marcou que NÃO queria "lembrete de horas antes". Este foi pedido
-   * pelo Kainã depois, e é outra coisa na prática: horas antes é redundante
-   * com o da véspera, meia hora antes é o empurrão pra pessoa sair de casa
-   * — que é justamente o que evita a falta em cima da hora, o problema que
-   * ela relatou (1 a 2 por semana).
+   * ⚠️ DESLIGADO EM 13/09/2026, E O MOTIVO IMPORTA MAIS QUE O VALOR.
    *
-   * Fica aqui como interruptor porque, se ela reclamar, desligar é UMA
-   * linha e não uma cirurgia. Ver `agendamentosParaLembrar`.
+   * Isto esteve `true` por um tempo, com um comentário aqui admitindo que
+   * era pedido do Kainã e que a Karol tinha marcado NÃO pra "lembrete de
+   * horas antes" em agosto. Ou seja: estava ligado contra a única resposta
+   * que ela tinha dado sobre o assunto, esperando que ela reclamasse
+   * depois.
+   *
+   * Quando o Kainã percebeu isso, a decisão dele foi direta: deixa
+   * desligado, e pergunta pra ela na entrega. **O padrão de uma mensagem
+   * que sai no nome dela é NÃO SAIR até ela dizer que pode.**
+   *
+   * Nada foi enviado nesse meio-tempo: o disparo depende de um cron que
+   * nunca foi ligado. Nenhuma cliente recebeu nada contra a vontade dela.
+   *
+   * A pergunta continua de pé, e boa: ela relatou 1 a 2 faltas por semana,
+   * e meia hora antes é o empurrão pra pessoa sair de casa — diferente de
+   * um aviso horas antes, que só repete o da véspera. É isso que se
+   * pergunta na entrega.
+   *
+   * Ligar é esta linha e o cron da migração 06. Ver `agendamentosParaLembrar`.
    */
-  lembrete30MinAntes: true,
+  lembrete30MinAntes: false,
 } as const;
