@@ -1119,8 +1119,8 @@ export async function reenviarMidia(
   }
 }
 
-export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise<void> {
-  if (!ligado(evento)) return;
+export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise<boolean> {
+  if (!ligado(evento)) return true;
 
   const para = evento === "novo-agendamento" ? whatsappDaKarol() : a.whatsappCliente;
   const texto = TEXTO[evento](a);
@@ -1129,7 +1129,7 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
   // A Meta primeiro: é o caminho direto. O webhook fica pra quem preferir
   // resolver o envio por fora (n8n, Make). Sem nenhum dos dois, a mensagem
   // é montada e simplesmente não sai — e nada quebra.
-  if (!metaConfigurada() && !webhook) return;
+  if (!metaConfigurada() && !webhook) return true;
 
   /*
     O PEDIDO DO SINAL não é uma mensagem, são três (texto, QR e o copia e
@@ -1146,7 +1146,7 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
     `atendente.ts` dispara esta sequência inteira de graça.
   */
   if (evento === "confirmacao" && esperandoSinal(a) && metaConfigurada()) {
-    if (await enviarPedidoDeSinal(a)) return;
+    if (await enviarPedidoDeSinal(a)) return true;
   }
 
   // A confirmação da cliente vai COM BOTÕES: ela acabou de marcar e é o
@@ -1197,16 +1197,19 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
               `fallback template ${tpl.nome} pro ${para}: ${respTpl.status} ${detalheTpl.slice(0, 300)}`,
             );
           }
-          return;
+          return respTpl.ok;
         }
       }
 
       // O corpo da Meta diz o motivo: 131047 é janela fechada, 130497 é
       // restrição de país. Sem isso o log só diz "deu erro".
       console.error(`notificação ${evento}: ${resp.status} ${detalhe.slice(0, 300)}`);
+      return false;
     }
+    return true;
   } catch (e) {
     console.error(`notificação ${evento} falhou:`, e);
+    return false;
   }
 }
 

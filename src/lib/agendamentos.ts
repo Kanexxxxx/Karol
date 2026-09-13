@@ -15,7 +15,7 @@ import {
   type VagaNaGrade,
 } from "./agenda";
 import { lerPeriodo, montarPeriodo } from "./periodo";
-import { enviarEvento } from "./notificacoes";
+import { enviarEvento, enviarTexto, whatsappDaKarol } from "./notificacoes";
 import { normalizarWhatsapp } from "./telefone";
 import {
   buscarServico,
@@ -400,10 +400,42 @@ export async function criarAgendamento(dados: {
     // nunca via antes de atender. Ver `DadosAgendamento.observacao`.
     observacao: dados.observacao?.trim() || null,
   };
-  await Promise.all([
+  const [, avisouACliente] = await Promise.all([
     enviarEvento("novo-agendamento", notif),
     enviarEvento("confirmacao", notif),
   ]);
+
+  /*
+    ⚠️ A CLIENTE NÃO FOI AVISADA, E A KAROL PRECISA SABER DISSO.
+
+    Em 13/09 o Kainã marcou pelo site pra um número que nunca tinha
+    escrito pro studio. A Karol recebeu o aviso; a cliente não recebeu
+    nada. Nenhuma tela mostrou erro, e o motivo ficou num `console.error`
+    que o plano Hobby da Vercel não guarda — ou seja, o defeito era
+    invisível dos dois lados.
+
+    O envio pra cliente pode falhar por coisas que não são culpa do
+    código: número que não tem WhatsApp, conta da Meta ainda sem
+    verificação, limite diário, template recém-aprovado. Não dá pra
+    consertar todas aqui. **Dá pra parar de fingir que deu certo.**
+
+    Então a Karol recebe o link pra chamar a pessoa na mão. Uma mensagem a
+    mais no dia dela é barato perto de uma cliente que marcou, não foi
+    avisada, e não aparece.
+  */
+  if (!avisouACliente) {
+    await enviarTexto(
+      whatsappDaKarol(),
+      [
+        "⚠️ Marquei, mas NÃO consegui avisar a cliente no WhatsApp.",
+        "",
+        `*${dados.nome.trim()}* — ${servico.nome}`,
+        `${paraChave(inicio)} às ${String(inicio.getHours()).padStart(2, "0")}:${String(inicio.getMinutes()).padStart(2, "0")}`,
+        "",
+        `Chama ela por aqui: https://wa.me/${dados.whatsapp.replace(/\D/g, "")}`,
+      ].join("\n"),
+    );
+  }
 
   return { ok: true, id: data.id, quando: inicio, cidade: CIDADES[cidade].nome };
 }

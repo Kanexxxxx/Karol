@@ -172,7 +172,14 @@ describe("enviarEvento", () => {
       throw new Error("sem rede");
     }));
     vi.spyOn(console, "error").mockImplementation(() => {});
-    await expect(enviarEvento("lembrete", AG)).resolves.toBeUndefined();
+    /*
+      ⚠️ `false`, e não `undefined`. Desde 13/09 `enviarEvento` DIZ se
+      conseguiu — foi assim que a Karol passou a ser avisada quando a
+      cliente não recebe nada. O que continua valendo é o principal: erro
+      de rede não LANÇA, porque isto roda dentro do webhook e webhook que
+      responde erro faz a Meta reenviar tudo.
+    */
+    await expect(enviarEvento("lembrete", AG)).resolves.toBe(false);
   });
 });
 
@@ -265,11 +272,38 @@ describe("envio pela Cloud API da Meta", () => {
    * 131047 é janela de 24h fechada — acontece de verdade com o lembrete da
    * véspera. Não pode derrubar o cron nem o agendamento.
    */
-  it("engole o erro de janela fechada sem lançar", async () => {
+  /*
+    Janela fechada não lança — mas agora DEVOLVE `false`, porque o
+    template de socorro também levou 400 neste teste. É esse `false` que
+    faz a Karol receber "não consegui avisar a cliente, chama ela aqui" em
+    vez de o defeito morrer num log que o plano Hobby não guarda.
+  */
+  it("janela fechada não lança, e avisa que não conseguiu", async () => {
     const buscar = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ error: { code: 131047 } }), { status: 400 }),
     );
-    await expect(enviarEvento("lembrete", dados)).resolves.toBeUndefined();
+    await expect(enviarEvento("lembrete", dados)).resolves.toBe(false);
+    buscar.mockRestore();
+  });
+
+  /*
+    ⚠️ E O CONTRÁRIO TAMBÉM: janela fechada com o template PASSANDO tem
+    que devolver `true`. Se devolvesse `false`, a Karol receberia o aviso
+    de "não consegui" em TODO agendamento feito pelo site — que é
+    justamente o caso normal, porque quem marca pelo site nunca escreveu
+    pro studio antes.
+  */
+  it("janela fechada com template funcionando conta como enviado", async () => {
+    let chamada = 0;
+    const buscar = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      chamada++;
+      return chamada === 1
+        ? new Response(JSON.stringify({ error: { code: 131047 } }), { status: 400 })
+        : new Response("{}", { status: 200 });
+    });
+
+    await expect(enviarEvento("lembrete", dados)).resolves.toBe(true);
+    expect(chamada).toBe(2);
     buscar.mockRestore();
   });
 

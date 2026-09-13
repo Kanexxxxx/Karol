@@ -13,7 +13,7 @@ import { paraChave } from "./agenda";
  */
 
 vi.mock("./banco", () => ({ banco: vi.fn(), bancoConfigurado: vi.fn(() => true) }));
-vi.mock("./notificacoes", () => ({ enviarEvento: vi.fn(async () => {}) }));
+vi.mock("./notificacoes", () => ({ enviarEvento: vi.fn(async () => true) }));
 
 import { banco } from "./banco";
 import { enviarEvento } from "./notificacoes";
