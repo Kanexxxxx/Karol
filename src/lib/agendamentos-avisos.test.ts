@@ -494,3 +494,52 @@ describe("de onde vem o criadoEm", () => {
     expect(Date.now() - ag!.criadoEm.getTime()).toBeLessThan(5000);
   });
 });
+
+/**
+ * Encaixe que ainda espera a entrada.
+ *
+ * ⚠️ O QUE IMPORTA AQUI É O QUE VAI PRO BANCO. A situação `pendente` é o
+ * que faz o horário entrar na conta dos 30 minutos e voltar pra agenda
+ * sozinho. Se ela não for gravada, o encaixe vira `confirmado` pelo padrão
+ * do banco e fica preso pra sempre esperando um pagamento que ninguém
+ * está cobrando.
+ */
+describe("encaixe aguardando a entrada", () => {
+  const base = {
+    servicoId: "brow-lamination",
+    cidade: "pereira-barreto" as const,
+    chaveDia: diaUtilFuturo(),
+    hora: "08:00",
+    nome: "Thais",
+    whatsapp: "18999998888",
+  };
+
+  it("grava como pendente quando a entrada não foi paga", async () => {
+    const m = usarBanco({
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: { id: "novo" }, error: null }),
+    });
+
+    await criarAgendamentoNoPainel({ ...base, aguardandoSinal: true });
+
+    const gravado = m.chamadas.find((c) => c.op === "insert")?.valores;
+    expect(gravado?.situacao).toBe("pendente");
+  });
+
+  /*
+    Sem a marca, a linha não leva `situacao` nenhuma e o padrão do banco
+    (`confirmado`) vale — que é o que a Karol quer na maioria dos encaixes
+    que ela faz na mão.
+  */
+  it("sem a marca, deixa o padrão do banco decidir", async () => {
+    const m = usarBanco({
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: { id: "novo" }, error: null }),
+    });
+
+    await criarAgendamentoNoPainel(base);
+
+    const gravado = m.chamadas.find((c) => c.op === "insert")?.valores;
+    expect(gravado).not.toHaveProperty("situacao");
+  });
+});

@@ -1302,6 +1302,64 @@ deixa cliente sem horário depois de ter pago.
 
 ---
 
+### Etapa 22 — 13/09/2026: o teste real do Kainã, e o defeito que parecia burrice
+
+Ele testou o assistente no WhatsApp por meia hora e mandou o log inteiro.
+A conclusão dele: *"esse assistente não está bom, ele não está entendendo
+porra nenhuma, só responde mensagens já feitas"*. E propôs jogar tudo fora
+e pôr uma IA separada numa VPS, junto do código, "porque lá ele vai
+entender melhor".
+
+A VPS não resolveria: é a mesma API DeepSeek nos dois lugares, e estar
+perto do código não ajuda ninguém a marcar horário. Mas o log dele tinha
+quatro defeitos de verdade, e o primeiro explica a frase inteira.
+
+**1. `max_tokens: 700` estava emudecendo o assistente.** O modelo pensa
+antes de responder, e o pensamento sai do MESMO orçamento da resposta.
+Medido com o pedido real dele — cinco agendamentos numa mensagem só:
+
+| teto | pensando | resposta |
+|---|---|---|
+| 700 | 700 tokens | **zero** |
+| 2000 | 2000 tokens | **zero** |
+| pensamento desligado | 0 | inteira |
+
+Numa pergunta simples o pensamento já come 161 de 215 tokens. Era isso o
+"Não consegui responder isso" — e era isso a resposta dele que chegou
+cortada no meio da frase. **Não era burrice do modelo, era configuração
+nossa.**
+
+⚠️ E a saída óbvia estava errada. Desligar o pensamento sempre conserta o
+travamento e **derruba o acerto de 16/16 pra 13/16** nos casos difíceis da
+bancada. Então: teto de 3000, pensando por padrão, e uma segunda ida SEM
+pensar só quando ele voltar de mãos vazias por ter estourado. O pior caso
+deixa de ser silêncio e vira uma resposta um pouco pior.
+
+**2. Ele dizia que não avisa a cliente quando marca.** Mentira: `marcar`
+passa por `criarAgendamentoNoPainel`, que dispara a confirmação. O roteiro
+citava só cancelar e remarcar. Corrigido — e agora ele avisa a Karol pra
+não mandar de novo, senão a cliente recebe tudo em dobro.
+
+**3. Ele ofereceu "quer que eu deixe ela como pendente?" sem ter como.**
+O Kainã pediu pra marcar a Thais sem ela ter pago; ele marcou como
+confirmado e depois ofereceu o que não sabia fazer. Agora `marcar` aceita
+`aguardando_sinal`, e a proposta que a Karol lê diz, com todas as letras,
+que o horário volta pra agenda em 30 minutos se a entrada não chegar.
+
+⚠️ É opção de CRIAÇÃO, e não um botão pra virar um horário antigo em
+pendente — o prazo conta de quando a linha nasce, então um agendamento de
+ontem virado pendente hoje já nasceria vencido e a primeira varredura o
+cancelaria.
+
+**4. "Limpar o histórico do painel" não existe, e ele explicou certo.**
+Apagar registro não é ferramenta do assistente. Fica como pedido em
+aberto, pro painel.
+
+Três mutações que tinham passado batido na primeira rodada viraram teste:
+o `ia.test.ts` inteiro é novo. 470 testes.
+
+---
+
 ## 8. O que falta
 
 > Atualizado em 11/09/2026. A etapa 18 (seção 7) diz o que mudou.

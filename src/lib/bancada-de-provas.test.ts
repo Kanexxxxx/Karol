@@ -98,7 +98,7 @@ function responderLeitura(nome: string, args: Record<string, unknown>): unknown 
 }
 
 /** O mesmo laco do assistente de verdade: le, devolve o dado, pergunta de novo. */
-async function rodar(modelo: string, falas: Fala[]) {
+async function rodar(modelo: string, falas: Fala[], extra: Record<string, unknown> = {}) {
   const mensagens: Fala[] = [{ role: "system", content: instrucoes() }, ...falas];
   const t0 = Date.now();
   let tokens = 0;
@@ -116,6 +116,7 @@ async function rodar(modelo: string, falas: Fala[]) {
         messages: mensagens,
         tools: rodada === MAX_RODADAS - 1 ? undefined : FERRAMENTAS,
         temperature: 0.3,
+        ...extra,
       }),
     });
     voltas = rodada + 1;
@@ -361,19 +362,28 @@ CASOS.push(...BAGUNCA);
   deram de 14 a 16 em 16 pro mesmo modelo. Diferença menor que uns 2
   pontos aqui é ruído, não resultado.
 */
-const MODELOS = ["deepseek-flash", "deepseek-v4-pro"];
+/*
+  Cada linha é um jeito de chamar o modelo. O `extra` vai no corpo da
+  requisição — é assim que dá pra comparar PENSANDO contra NÃO PENSANDO
+  sem duplicar a bancada.
+*/
+const MODELOS: { rotulo: string; modelo: string; extra?: Record<string, unknown> }[] = [
+  { rotulo: "flash (pensando)", modelo: "deepseek-flash" },
+  { rotulo: "flash (sem pensar)", modelo: "deepseek-flash", extra: { thinking: { type: "disabled" } } },
+  { rotulo: "v4-pro", modelo: "deepseek-v4-pro" },
+];
 
 describe.skipIf(!LIGADA || !chave)("bancada de provas (contra a API de verdade)", () => {
   it("compara os modelos", async () => {
     console.log(`\nroteiro: ${instrucoes().length} chars | ferramentas: ${FERRAMENTAS.length}\n`);
-    for (const modelo of MODELOS) {
+    for (const { rotulo, modelo, extra } of MODELOS) {
       let acertos = 0;
       let resgates = 0;
       let ms = 0;
       let tk = 0;
       const falhas: string[] = [];
       for (const caso of CASOS) {
-        const r = await rodar(modelo, caso.falas);
+        const r = await rodar(modelo, caso.falas, extra);
         ms += r.ms;
         tk += r.tokens;
         if (r.erro) {
@@ -387,7 +397,7 @@ describe.skipIf(!LIGADA || !chave)("bancada de provas (contra a API de verdade)"
         else if (p === null) acertos++;
         else falhas.push(`${caso.nome}: ${p} [volta ${r.voltas}, sem ferramentas=${r.semFerramentas}]`);
       }
-      console.log(`${modelo.padEnd(16)} ${acertos}/${CASOS.length}  ${Math.round(ms / CASOS.length)}ms/caso  ${tk} tokens  ${resgates} id(s) inventado(s) e resgatado(s)`);
+      console.log(`${rotulo.padEnd(20)} ${acertos}/${CASOS.length}  ${Math.round(ms / CASOS.length)}ms/caso  ${tk} tokens  ${resgates} id(s) inventado(s) e resgatado(s)`);
       falhas.forEach((f) => console.log(`   x ${f}`));
     }
   }, 900_000);

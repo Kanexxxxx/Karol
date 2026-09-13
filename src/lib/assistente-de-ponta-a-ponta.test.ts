@@ -292,6 +292,41 @@ describe.skipIf(!LIGADA)("o assistente de verdade, com o modelo de verdade", () 
     if (proposta) expect(proposta.argumentos.hora).not.toBe("15:00");
   }, 120_000);
 
+  /*
+    ⚠️ O PEDIDO DE VERDADE QUE FEZ ELE EMUDECER.
+
+    Está copiado do WhatsApp do Kainã, em 13/09, transcrição de áudio e
+    tudo: cinco agendamentos, telefones que ele vai passar depois, quem
+    pagou e quem não pagou, tudo numa mensagem só. O assistente respondeu
+    "Não consegui responder isso" — e a causa não era burrice do modelo, e
+    sim `max_tokens: 700`. O pensamento sai do mesmo orçamento, e ele
+    gastou os 700 pensando sem escrever uma letra.
+
+    O que se cobra aqui é o mínimo: **ele não pode ficar mudo**. Não é
+    razoável esperar que cinco agendamentos saiam de uma tacada — o certo
+    é ele perguntar o que falta.
+  */
+  it("o pedido comprido não deixa ele mudo", async () => {
+    const r = await assistente(
+      KAROL,
+      "Segunda-feira quero que você agenda o horário das oito hora para Maria na terça-feira " +
+        "para o João no mesmo horário na quinta para o Flávio na sexta para Thais todos no mesmo " +
+        "horário às 8h00 aí vou te passar o telefone de cada um eu quero que você manda o aviso " +
+        "para eles OK os três primeiros já me deram o sinal mandaram o comprovante os outros dois " +
+        "aí não falta aguardar esse focinho daqui 30 minuto até 30 minuto vão pagar então deixa " +
+        "aí o serviço de todos são blow lamination",
+    );
+
+    nadaProibido();
+    expect(r.fez).not.toBe("nada");
+
+    const dito = tudoQueEleDisse();
+    expect(dito).not.toContain("Não consegui responder isso");
+    // E não pode ser um resto de frase: 700 tokens também cortavam
+    // resposta no meio.
+    expect(dito.length).toBeGreaterThan(40);
+  }, 180_000);
+
   it("o 'esquece tudo' zera a memória", async () => {
     await assistente(KAROL, "quem vem sexta?");
     expect(memoria.length).toBeGreaterThan(0);

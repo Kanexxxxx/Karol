@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CIDADES, SITE_URL, type CidadeId } from "@/data/negocio";
+import { CIDADES, REGRAS, SITE_URL, type CidadeId } from "@/data/negocio";
 import { SERVICOS, buscarServico, formatarPreco } from "@/data/servicos";
 import {
   agendaDaKarol,
@@ -256,6 +256,11 @@ export const FERRAMENTAS: Ferramenta[] = [
           },
           dia: { type: "string", description: "Data no formato AAAA-MM-DD." },
           hora: { type: "string", description: "Hora no formato HH:MM." },
+          aguardando_sinal: {
+            type: "boolean",
+            description:
+              "true quando a cliente AINDA NÃO pagou a entrada. O horário fica guardado por 30 minutos e volta pra agenda sozinho se o pagamento não chegar. Use false, ou nem mande, quando ela já pagou ou quando o serviço não pede entrada.",
+          },
         },
         required: ["nome", "servico_id", "dia", "hora"],
       },
@@ -452,9 +457,23 @@ async function descrever(
       if (!cidadeDoDia(dia, hora)) return null;
 
       const tel = String(args.whatsapp ?? "").trim();
+      /*
+        ⚠️ "AGUARDANDO A ENTRADA" TEM QUE APARECER NA PROPOSTA.
+
+        É a diferença entre um horário fechado e um que some em 30 minutos
+        se ninguém pagar. A Karol lê esta frase e toca em Confirmar — se
+        ela não disser isso, ela confirma achando uma coisa e acontece
+        outra.
+      */
+      const esperandoPagamento = args.aguardando_sinal === true;
       return [
         `MARCAR ${nomeCliente}${tel ? ` (${tel})` : ""}`,
         `${servico.nome} — ${DIA_HORA_POR_EXTENSO.format(new Date(`${dia}T${hora}:00`))}`,
+        ...(esperandoPagamento
+          ? [
+              `⏳ Aguardando a entrada — o horário volta pra agenda em ${REGRAS.sinal.minutosParaPagar} min se não for paga.`,
+            ]
+          : []),
       ].join("\n");
     }
 
@@ -528,6 +547,7 @@ async function executar(
         hora: String(args.hora),
         nome: String(args.nome),
         whatsapp: normalizarWhatsapp(String(args.whatsapp ?? "")) ?? "",
+        aguardandoSinal: args.aguardando_sinal === true,
       });
       return { ok: r.ok, erro: r.erro };
     }

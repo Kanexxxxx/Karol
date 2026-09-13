@@ -724,3 +724,98 @@ describe("a última lista mostrada fica guardada", () => {
     expect(falas).toHaveLength(2);
   });
 });
+
+/**
+ * Marcar alguém que ainda não pagou a entrada.
+ *
+ * ⚠️ ISTO VEIO DE UM TESTE REAL QUE FALHOU. Em 13/09 o Kainã pediu pra
+ * marcar a Thais sem ela ter pago: "não é pra você confirmar, é pra
+ * deixar pendente e esperar 30 minutos". O assistente marcou como
+ * CONFIRMADO, depois ofereceu "quer que eu deixe ela como pendente?" — e
+ * não tinha como fazer isso.
+ *
+ * A opção é de CRIAÇÃO, e não um jeito de virar um horário antigo em
+ * pendente: o prazo de 30 minutos conta de quando a linha nasce, então um
+ * agendamento de ontem virado pendente hoje já nasceria vencido, e a
+ * primeira varredura o cancelaria.
+ */
+describe("marcar quem ainda não pagou", () => {
+  it("a proposta AVISA que o horário está esperando a entrada", async () => {
+    perguntarMock.mockResolvedValue(
+      chamando("marcar", {
+        nome: "Thais",
+        servico_id: "brow-lamination",
+        dia: "2026-10-08",
+        hora: "08:00",
+        aguardando_sinal: true,
+      }),
+    );
+
+    await assistente(KAROL, "marca a thais quinta as 8, ela ainda nao pagou");
+
+    const descricao = vi.mocked(guardarAcao).mock.calls[0][0].descricao;
+    // Sem esta linha a Karol confirma achando que o horário está fechado.
+    expect(descricao).toContain("Aguardando a entrada");
+    expect(descricao).toContain("30 min");
+  });
+
+  it("sem a marca, a proposta não fala em entrada nenhuma", async () => {
+    perguntarMock.mockResolvedValue(
+      chamando("marcar", {
+        nome: "Thais",
+        servico_id: "brow-lamination",
+        dia: "2026-10-08",
+        hora: "08:00",
+      }),
+    );
+
+    await assistente(KAROL, "marca a thais quinta as 8");
+
+    expect(vi.mocked(guardarAcao).mock.calls[0][0].descricao).not.toContain("Aguardando");
+  });
+
+  it("o toque dela grava o horário como pendente", async () => {
+    reservarAcaoMock.mockResolvedValue({
+      id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      whatsapp: KAROL,
+      ferramenta: "marcar",
+      argumentos: {
+        nome: "Thais",
+        servico_id: "brow-lamination",
+        dia: "2026-10-08",
+        hora: "08:00",
+        whatsapp: "18999998888",
+        aguardando_sinal: true,
+      },
+      descricao: "MARCAR Thais",
+    });
+
+    await decisaoDoBotao(KAROL, "a:ok:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+
+    expect(vi.mocked(criarAgendamentoNoPainel).mock.calls[0][0]).toMatchObject({
+      aguardandoSinal: true,
+    });
+  });
+
+  it("quem já pagou entra confirmado, como sempre foi", async () => {
+    reservarAcaoMock.mockResolvedValue({
+      id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      whatsapp: KAROL,
+      ferramenta: "marcar",
+      argumentos: {
+        nome: "Thais",
+        servico_id: "brow-lamination",
+        dia: "2026-10-08",
+        hora: "08:00",
+        whatsapp: "18999998888",
+      },
+      descricao: "MARCAR Thais",
+    });
+
+    await decisaoDoBotao(KAROL, "a:ok:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+
+    expect(vi.mocked(criarAgendamentoNoPainel).mock.calls[0][0]).toMatchObject({
+      aguardandoSinal: false,
+    });
+  });
+});

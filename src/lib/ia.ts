@@ -119,6 +119,12 @@ export type Resposta = {
    */
   raciocinio?: string | null;
   chamadas: ChamadaDeFerramenta[];
+  /**
+   * Por que o modelo parou. `"length"` quer dizer que ele bateu no teto de
+   * tokens — e num modelo que pensa isso costuma significar que ele gastou
+   * tudo pensando e não escreveu nada. Ver `perguntar`.
+   */
+  motivo?: string | null;
 };
 
 /**
@@ -132,6 +138,54 @@ export type Resposta = {
 export async function perguntar(
   mensagens: Mensagem[],
   ferramentas: Ferramenta[],
+): Promise<Resposta | null> {
+  const primeira = await umaIda(mensagens, ferramentas);
+  if (!primeira) return null;
+
+  /*
+    ⚠️ ELE PENSOU ATÉ ACABAR O PAPEL E NÃO ESCREVEU NADA.
+
+    Foi isto que a Karol e o Kainã viram como "Não consegui responder
+    isso. Tenta de outro jeito?" — e é o defeito mais grave que este
+    arquivo já teve, porque parece burrice do modelo e é configuração
+    nossa.
+
+    O modelo pensa ANTES de responder, e o pensamento sai do mesmo
+    orçamento de `max_tokens`. Medido em 13/09/2026 com o pedido real que
+    ele mandou (agendar cinco pessoas na mesma mensagem):
+
+      max_tokens=700   -> 700 tokens pensando, 0 de resposta
+      max_tokens=2000  -> 2000 pensando,       0 de resposta
+      sem pensar       -> 0 pensando,          resposta inteira
+
+    Nas respostas normais o pensamento come de 70% a 100% do orçamento
+    (161 de 215 numa pergunta simples). Por isso o teto subiu — e por isso
+    ele sozinho não basta: num pedido complicado o modelo pensa até o
+    limite que tiver.
+
+    A segunda ida desliga o pensamento. Não dá pra desligar sempre: medido
+    na bancada, sem pensar ele cai de 16/16 pra 13/16 nos casos difíceis.
+    Pensando por padrão, sem pensar como rede — o pior caso deixa de ser
+    silêncio e vira uma resposta um pouco pior.
+  */
+  if (precisaTentarSemPensar(primeira)) {
+    const segunda = await umaIda(mensagens, ferramentas, { thinking: { type: "disabled" } });
+    if (segunda && (segunda.texto?.trim() || segunda.chamadas.length > 0)) return segunda;
+  }
+
+  return primeira;
+}
+
+/** Voltou de mãos abanando por ter estourado o orçamento pensando? */
+function precisaTentarSemPensar(r: Resposta): boolean {
+  return r.motivo === "length" && !r.texto?.trim() && r.chamadas.length === 0;
+}
+
+/** Uma ida só. `extra` entra no corpo da requisição. */
+async function umaIda(
+  mensagens: Mensagem[],
+  ferramentas: Ferramenta[],
+  extra: Record<string, unknown> = {},
 ): Promise<Resposta | null> {
   const chave = process.env.DEEPSEEK_API_KEY;
   if (!chave) return null;
@@ -151,7 +205,13 @@ export async function perguntar(
         // decide o que fazer com a agenda de uma pessoa: a resposta certa
         // pra "cancela a da Maria" é sempre a mesma.
         temperature: 0.2,
-        max_tokens: 700,
+        /*
+          ⚠️ ESTE TETO INCLUI O PENSAMENTO. Eram 700, e 700 era pouco
+          demais — ver a explicação em `perguntar`. Uma resposta da Karol
+          chegou cortada no meio da frase por causa disto.
+        */
+        max_tokens: 3000,
+        ...extra,
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -163,16 +223,18 @@ export async function perguntar(
     }
 
     const dados = (await resp.json()) as {
-      choices?: { message?: Mensagem }[];
+      choices?: { message?: Mensagem; finish_reason?: string }[];
     };
 
-    const msg = dados.choices?.[0]?.message;
+    const escolha = dados.choices?.[0];
+    const msg = escolha?.message;
     if (!msg) return null;
 
     return {
       texto: typeof msg.content === "string" ? msg.content : null,
       raciocinio: typeof msg.reasoning_content === "string" ? msg.reasoning_content : null,
       chamadas: msg.tool_calls ?? [],
+      motivo: escolha?.finish_reason ?? null,
     };
   } catch (e) {
     console.error("IA falhou:", e);

@@ -847,6 +847,16 @@ export async function criarAgendamentoNoPainel(dados: {
   nome: string;
   whatsapp: string;
   observacao?: string;
+  /**
+   * `true` quando o horário ainda espera a entrada.
+   *
+   * ⚠️ O PRAZO DE 30 MINUTOS COMEÇA AGORA, na criação da linha, porque é
+   * de `criado_em` que `pendentesVencidos` conta. Por isso isto é opção
+   * de CRIAÇÃO e não um botão pra virar um horário antigo em pendente:
+   * um agendamento de ontem virado pendente hoje já nasceria vencido, e
+   * a primeira varredura o cancelaria.
+   */
+  aguardandoSinal?: boolean;
 }): Promise<{ ok: boolean; id?: string; erro?: string }> {
   const bd = banco();
   if (!bd) return { ok: false, erro: "Banco não configurado." };
@@ -889,6 +899,9 @@ export async function criarAgendamentoNoPainel(dados: {
       cidade: CIDADES[dados.cidade].nome,
       periodo: montarPeriodo(inicio, fim),
       observacao: dados.observacao?.trim() || null,
+      // Sem isto o padrão do banco vale, que é `confirmado` — o que a
+      // Karol quer na maioria dos encaixes que ela faz na mão.
+      ...(dados.aguardandoSinal ? { situacao: "pendente" } : {}),
     })
     .select("id")
     .single();
