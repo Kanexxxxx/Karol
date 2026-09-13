@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PIX_DE_TESTE, REGRAS } from "@/data/negocio";
 import { sair } from "./acoes";
 import { BOTAO, FOCO } from "./estilos";
 
@@ -52,6 +53,7 @@ export function CabecalhoPainel({
 }) {
   return (
     <header className="border-b border-linha bg-papel">
+      <AvisoPixDeTeste />
       <div className={`${LARGURA} pt-4 pb-3.5`}>
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -104,6 +106,34 @@ export function CabecalhoPainel({
         </nav>
       </div>
     </header>
+  );
+}
+
+/**
+ * A tarja de "o dinheiro está indo pro lugar errado".
+ *
+ * Só aparece enquanto a chave PIX em uso não for a da Karol — hoje é a do
+ * Kainã, posta em 12/09 pra testar o pagamento sem mexer no dinheiro
+ * dela. Ver `PIX_DE_TESTE` em `data/negocio.ts`.
+ *
+ * ⚠️ ELA FICA NO PAINEL, E NÃO NO SITE, de propósito: aqui só entra quem
+ * tem a senha. Uma tarja dessas na página da cliente seria pior que o
+ * problema — a pessoa desiste de pagar e vai embora.
+ *
+ * Não tem botão de fechar. É pra incomodar até alguém trocar a linha.
+ */
+function AvisoPixDeTeste() {
+  if (!PIX_DE_TESTE) return null;
+
+  return (
+    <div role="alert" className="bg-[#8f2d2d] text-white">
+      <div className={`${LARGURA} py-2 text-[12.5px] leading-snug`}>
+        <b>⚠️ O PIX do site está indo pra outra conta.</b> Chave{" "}
+        {REGRAS.sinal.chavePix} — {REGRAS.sinal.favorecido}, {REGRAS.sinal.banco}. É a conta
+        de teste. Todo QR e todo copia e cola que a cliente recebe apontam pra lá. Trocar em{" "}
+        <code className="font-mono">src/data/negocio.ts</code> antes de entregar.
+      </div>
+    </div>
   );
 }
 

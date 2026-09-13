@@ -228,12 +228,17 @@ export const REGRAS = {
       de ponta a ponta sem mexer no dinheiro dela.
 
       ANTES DE ENTREGAR, VOLTAR PARA:
-        chavePix: "18997525291"
+        chavePix: CHAVE_DA_KAROL
         banco: "Nubank"
         favorecido: "Karolaine Carvalho"
 
       Enquanto isto estiver aqui, todo QR e todo copia e cola do site
-      apontam pra conta dele. Nada avisa sozinho — é este comentário.
+      apontam pra conta dele.
+
+      Isto já dependeu só deste comentário pra ser lembrado, e comentário
+      não avisa ninguém. Agora o painel mostra uma tarja vermelha em toda
+      tela enquanto a chave não for a dela — ver `PIX_DE_TESTE` logo
+      abaixo. A tarja some sozinha quando a linha voltar ao normal.
     */
     chavePix: "16991557552",
     tipoChave: "Telefone",
@@ -280,6 +285,36 @@ export const REGRAS = {
   /** Ela não quer que a cliente desmarque sozinha pelo site. */
   clientePodeCancelar: false,
 } as const;
+
+/**
+ * A chave PIX da Karol de verdade — a conta pra onde o dinheiro TEM que ir.
+ *
+ * Fica separada da chave em uso de propósito: é a referência contra a
+ * qual o projeto sabe se está apontando pro lugar certo.
+ */
+export const CHAVE_DA_KAROL = "18997525291";
+
+/**
+ * O site está mandando dinheiro de cliente pra uma conta que não é a dela?
+ *
+ * ⚠️ ISTO EXISTE PORQUE QUASE PASSOU BATIDO. A chave foi trocada pela do
+ * Kainã em 12/09 pra testar o pagamento sem mexer no dinheiro dela, e a
+ * única coisa que lembrava de desfazer era um comentário dentro do
+ * arquivo. Comentário não avisa ninguém no dia da entrega — e o erro aqui
+ * não é uma tela feia, é cliente pagando na conta errada.
+ *
+ * Enquanto isto for `true`, o painel mostra uma tarja vermelha em toda
+ * tela. Quando a chave voltar a ser a dela, a tarja some sozinha: não tem
+ * segundo lugar pra lembrar de desligar.
+ */
+/*
+  O `as string` não é preguiça. `REGRAS` é `as const`, então o TypeScript
+  conhece a chave como o texto literal "16991557552" e reclama que
+  comparar com outro literal é comparação sem sentido — ele está certo em
+  tempo de compilação, e errado sobre o mundo: essa linha VAI mudar, e é
+  exatamente a mudança dela que este valor precisa enxergar.
+*/
+export const PIX_DE_TESTE = (REGRAS.sinal.chavePix as string) !== CHAVE_DA_KAROL;
 
 /** Resposta dela: o que a cliente precisa saber antes de chegar. */
 export const ANTES_DE_VIR = [
