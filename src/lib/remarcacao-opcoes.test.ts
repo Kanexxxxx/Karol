@@ -44,6 +44,7 @@ const AG = {
   fim: new Date(2099, 0, 1, 9, 50),
   situacao: "confirmado" as const,
   observacao: null,
+  criadoEm: new Date(),
 } as unknown as Agendamento;
 
 describe("os horários oferecidos pra remarcar", () => {

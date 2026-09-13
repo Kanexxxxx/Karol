@@ -4,13 +4,14 @@ import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env, Rotulo } from "@/components/ui";
 import { ANTES_DE_VIR, NEGOCIO, REGRAS } from "@/data/negocio";
-import { buscarServico, formatarPreco, valorDoSinal } from "@/data/servicos";
+import { buscarServico, formatarPreco, prazoDoSinal, valorDoSinal } from "@/data/servicos";
 import { buscarAgendamento } from "@/lib/agendamentos";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { DIA_POR_EXTENSO, HORA } from "@/lib/datas";
 import { brCodeDoSinal } from "@/lib/pix";
 import { qrParaSvg } from "@/lib/qr";
 import { CopiarPix } from "./CopiarPix";
+import { Cronometro } from "./Cronometro";
 
 export const metadata: Metadata = { title: "Horário confirmado", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -63,6 +64,15 @@ function Sucesso({
   const esperandoPagamento = agendamento.situacao === "pendente" && pedeSinal;
 
   /*
+    O prazo conta a partir de quando o agendamento NASCEU, não de agora.
+
+    Recarregar esta página não pode dar mais tempo pra ninguém: quem
+    solta o horário lá no servidor conta de `criadoEm`, e o relógio que a
+    cliente vê tem que contar da mesma coisa. Ver `Cronometro.tsx`.
+  */
+  const { venceEm, restanteSeg } = prazoDoSinal(agendamento.criadoEm);
+
+  /*
     Este toque é a peça central do WhatsApp automático, e por dois motivos:
 
     1. avisa a Karol na hora, com o nome e o horário — ela acha a cliente
@@ -108,11 +118,15 @@ function Sucesso({
       <h1 className="mt-2.5 mb-3 font-titulo text-[clamp(32px,6vw,50px)] leading-[1.05] font-light">
         {esperandoPagamento ? "Falta a entrada pra fechar" : "Horário confirmado"}
       </h1>
-      <p className="mb-8 text-tinta-2">
+      <p className="mb-6 text-tinta-2">
         {esperandoPagamento
-          ? `Seu horário fica guardado por ${REGRAS.sinal.minutosParaPagar} minutos. Pague a entrada pelo QR abaixo — o valor já vai preenchido — e mande o comprovante pra Karol no WhatsApp. Assim que ela conferir, está fechado.`
+          ? "Pague a entrada pelo QR abaixo — o valor já vai preenchido — e mande o comprovante pra Karol no WhatsApp. Assim que ela conferir, está fechado."
           : "O horário já está reservado no seu nome. Anote os detalhes:"}
       </p>
+
+      {esperandoPagamento && (
+        <Cronometro venceEm={venceEm.toISOString()} restanteInicial={restanteSeg} />
+      )}
 
       <dl className="border border-linha bg-papel">
         <Linha rotulo="Serviço" valor={agendamento.servicoNome} />

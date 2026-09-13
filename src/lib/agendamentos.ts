@@ -37,6 +37,17 @@ export type Agendamento = {
   fim: Date;
   situacao: "pendente" | "confirmado" | "cancelado" | "concluido" | "faltou";
   observacao: string | null;
+  /**
+   * Quando a linha nasceu. É daqui que sai o prazo dos 30 minutos pra
+   * pagar a entrada — tanto a soltura do horário quanto o cronômetro da
+   * tela de confirmação contam a partir deste instante, e não de quando
+   * alguém abriu a página.
+   *
+   * ⚠️ Sem isso o cronômetro seria mentira: bastava recarregar a página
+   * pra ele voltar do começo, e a cliente acharia que tem meia hora
+   * quando já tinha só cinco minutos.
+   */
+  criadoEm: Date;
 };
 
 /** Converte minutos do dia numa data completa, no fuso local do servidor. */
@@ -61,9 +72,11 @@ function linhaParaAgendamento(r: Record<string, unknown>): Agendamento {
     fim: p?.fim ?? new Date(),
     situacao: r.situacao as Agendamento["situacao"],
     observacao: (r.observacao as string | null) ?? null,
-    // A coluna é nova (migracao-04). Em banco que ainda não migrou ela vem
-    // `undefined`, e o `??` faz isso virar `null` — o painel mostra "não
-    // avisado" em vez de quebrar.
+    // `criado_em` tem `default now()` desde o schema, então sempre vem.
+    // O `??` cobre a consulta que não pediu a coluna: aí o prazo nasce
+    // agora, o cronômetro mostra os 30 minutos cheios, e ninguém perde
+    // horário por falta de dado.
+    criadoEm: r.criado_em ? new Date(r.criado_em as string) : new Date(),
   };
 }
 

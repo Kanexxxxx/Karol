@@ -62,6 +62,7 @@ const ANA = {
   fim: new Date(2026, 8, 18, 8, 20),
   situacao: "confirmado" as const,
   observacao: null,
+  criadoEm: new Date(),
 };
 
 const BIA = {

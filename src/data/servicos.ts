@@ -196,3 +196,32 @@ export function sinalPorValor(centavos: number): number {
 export function valorDoSinal(servico: Servico): number {
   return sinalPorValor(servico.preco * 100);
 }
+
+/**
+ * O prazo pra pagar a entrada de um agendamento.
+ *
+ * ⚠️ MORA AQUI, E NÃO NA TELA, por causa do `Date.now()`. Chamar o relógio
+ * dentro de um componente é leitura impura: o lint do React reprova
+ * (`react-hooks/purity`), e o motivo é bom — num componente "agora" muda
+ * no meio do desenho. Foi o mesmo caminho de `podeLembrar`, em
+ * `lib/agendamentos.ts`.
+ *
+ * `agora` entra por parâmetro pra o teste poder escolher o instante em vez
+ * de correr contra o relógio de verdade.
+ *
+ * ⚠️ O prazo conta de `criadoEm`, nunca de quando a página abriu. É o que
+ * impede a cliente de ganhar mais meia hora só recarregando — e o que faz
+ * o relógio da tela concordar com a soltura do horário lá no servidor.
+ */
+export function prazoDoSinal(
+  criadoEm: Date,
+  agora = Date.now(),
+): { venceEm: Date; restanteSeg: number } {
+  const venceEm = new Date(criadoEm.getTime() + REGRAS.sinal.minutosParaPagar * 60_000);
+  return {
+    venceEm,
+    // Nunca negativo: "faltam -400 segundos" não quer dizer nada, e quem
+    // desenha só precisa saber que acabou.
+    restanteSeg: Math.max(0, Math.round((venceEm.getTime() - agora) / 1000)),
+  };
+}

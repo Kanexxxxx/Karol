@@ -18,6 +18,7 @@ vi.mock("./notificacoes", () => ({ enviarEvento: vi.fn(async () => {}) }));
 import { banco } from "./banco";
 import { enviarEvento } from "./notificacoes";
 import {
+  buscarAgendamento,
   criarAgendamentoNoPainel,
   horariosDoDia,
   mudarSituacao,
@@ -450,5 +451,46 @@ describe("prazo de 30 minutos pra pagar", () => {
     agendaCom([ocupando("concluido", 60 * 24 * 30)]);
 
     expect(await seteHoras()).toBeUndefined();
+  });
+});
+
+/**
+ * `criadoEm` sai do banco, e não do relógio de agora.
+ *
+ * ⚠️ ESTE É UM DEFEITO QUE NÃO APARECE. Se a coluna não vier na consulta,
+ * o mapeamento cai no `new Date()` de reserva — e aí o cronômetro da tela
+ * de confirmação mostra 30 minutos cheios TODA VEZ que a página é aberta,
+ * inclusive vinte minutos depois. Nada quebra, nenhum erro no log: só uma
+ * cliente confiando num relógio que mente.
+ */
+describe("de onde vem o criadoEm", () => {
+  it("vem da coluna, não do momento da leitura", async () => {
+    const nasceu = new Date("2026-09-20T14:00:00.000Z");
+    usarBanco({
+      // Objeto, e não lista: esta consulta termina em `maybeSingle`.
+      select: () => ({
+        data: { ...linha(daquiATresDias()), criado_em: nasceu.toISOString() },
+        error: null,
+      }),
+    });
+
+    const ag = await buscarAgendamento("8c6377a1-9f2b-4c3d-8e1a-5d6e7f809a0b");
+
+    expect(ag?.criadoEm.toISOString()).toBe(nasceu.toISOString());
+  });
+
+  /*
+    Banco antigo, consulta que não pediu a coluna, linha editada na mão no
+    Supabase. O prazo nasce agora — a cliente ganha tempo a mais, que é o
+    lado certo de errar: o outro lado é tirar o horário de quem ainda
+    podia pagar.
+  */
+  it("sem a coluna, o prazo nasce agora em vez de quebrar", async () => {
+    usarBanco({ select: () => ({ data: linha(daquiATresDias()), error: null }) });
+
+    const ag = await buscarAgendamento("8c6377a1-9f2b-4c3d-8e1a-5d6e7f809a0b");
+
+    expect(ag?.criadoEm).toBeInstanceOf(Date);
+    expect(Date.now() - ag!.criadoEm.getTime()).toBeLessThan(5000);
   });
 });
