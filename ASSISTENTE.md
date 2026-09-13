@@ -181,6 +181,35 @@ forte mesmo assim troca uma variável na Vercel, sem tocar em código:
 
     IA_MODELO = deepseek-v4-pro
 
+### E a OpenAI? Testada, e perdeu
+
+O Kainã pôs crédito na OpenAI e pediu pra comparar — a ideia dele era usar
+o DeepSeek no básico e a OpenAI no que é difícil (remarcar, cancelar).
+Rodei os quatro modelos que cabem no orçamento na mesma bancada, com o
+mesmo roteiro:
+
+| Modelo | Acertos | Tempo por caso | R$/mês |
+|---|---|---|---|
+| **`deepseek-flash`** | **15/16** | **5,1 s** | **R$ 1,12** |
+| `gpt-5-mini` | 15/16 | 16,8 s | R$ 9,84 |
+| `gpt-4o-mini` | 12/16 | 2,2 s | R$ 4,59 |
+| `gpt-5-nano` | 9/16 | 16,4 s | R$ 1,97 |
+
+⚠️ **A divisão por tarefa não se sustenta.** O melhor da OpenAI que cabe
+no bolso apenas EMPATA, cobrando 9× mais e demorando 3× — e o barato dela
+erra quase metade. Mandar as tarefas difíceis pra lá seria pagar mais e
+esperar mais pelo mesmo resultado.
+
+O `gpt-4o-mini` é o mais rápido de todos, e inventou id duas vezes — o
+defeito mais perigoso desta lista.
+
+O que NÃO foi testado: `gpt-5.1` e acima. Não por preguiça — a R$ 49/mês
+eles não cabem no que ela vai pagar, então o resultado não mudaria a
+decisão.
+
+A OpenAI fica como REDE, não como titular: se o DeepSeek cair, `ia.ts`
+passa a bola pra ela sozinho.
+
 ### Quanto isso custa por mês
 
 Da fatura real de 07 a 13/09, o uso normal dela (antes das bancadas) saiu

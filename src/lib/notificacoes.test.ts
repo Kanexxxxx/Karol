@@ -4,7 +4,6 @@ import { REGRAS } from "@/data/negocio";
 import {
   enviarEvento,
   enviarTemplatePelaMeta,
-  templateDoEvento,
   notificadorConfigurado,
   textoAgradecimento,
   linkDoPainel,
@@ -12,6 +11,7 @@ import {
   textoLembrete,
   textoParaKarol,
   textoSinalVencido,
+  templateDoEvento,
   whatsappDaKarol,
   type DadosAgendamento,
 } from "./notificacoes";
@@ -552,5 +552,70 @@ describe("horário solto por falta de pagamento", () => {
 
   it("deixa a porta aberta pra remarcar", () => {
     expect(textoSinalVencido(dados)).toContain("marcar de novo");
+  });
+});
+
+/**
+ * Os nomes dos templates têm que bater com os aprovados na Meta.
+ *
+ * ⚠️ UM CARACTERE DIFERENTE E A MENSAGEM SOME. Template é só o que
+ * alcança quem não escreveu nas últimas 24 h — a confirmação de quem
+ * marcou pelo site, o lembrete da véspera, o aviso pra Karol. Se o nome
+ * não existir do lado da Meta, a chamada volta erro, o `console.error`
+ * some no log da Vercel, e a cliente simplesmente não recebe nada.
+ *
+ * Nada no sistema percebe isso. Por isso a lista está escrita aqui à mão,
+ * conferida contra a tela de templates aprovados em 13/09/2026.
+ */
+describe("os nomes dos templates", () => {
+  /** Exatamente o que está APROVADO na conta da Meta. */
+  const APROVADOS = [
+    "confirmacao_agendamento",
+    "lembrete_vespera",
+    "aviso_karol_novo_agendamento",
+    "pedido_sinal",
+    "pos_atendimento",
+    "horario_remarcado",
+    "horario_cancelado",
+  ];
+
+  const dados: DadosAgendamento = {
+    id: "8c6377a1-9f2b-4c3d-8e1a-5d6e7f809a0b",
+    cliente: "Maria da Silva",
+    whatsappCliente: "5518999998888",
+    servico: "Design com henna",
+    cidade: "Pereira Barreto",
+    inicioISO: new Date(2026, 9, 8, 10, 0).toISOString(),
+    valorCentavos: 12000,
+  };
+
+  const eventos = [
+    "novo-agendamento",
+    "confirmacao",
+    "remarcado",
+    "cancelado",
+    "sinal-vencido",
+    "lembrete",
+    "agradecimento",
+  ] as const;
+
+  it("todo template que o código pede está aprovado na Meta", () => {
+    for (const evento of eventos) {
+      const tpl = templateDoEvento(evento, dados);
+      if (!tpl) continue;
+      expect(APROVADOS, `evento ${evento}`).toContain(tpl.nome);
+    }
+  });
+
+  /*
+    ⚠️ O `lembrete_30min` foi arrancado do projeto em 13/09 e arquivado na
+    Meta pelo Kainã. Se o nome reaparecer aqui, alguém ressuscitou o aviso
+    de meia hora que a Karol nunca pediu — e ele voltaria mandando
+    mensagem pra cliente dela.
+  */
+  it("o lembrete de 30 minutos não voltou", () => {
+    for (const evento of eventos) {
+      expect(templateDoEvento(evento, dados)?.nome).not.toBe("lembrete_30min");
+    }
   });
 });
