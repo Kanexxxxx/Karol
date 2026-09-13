@@ -41,10 +41,39 @@ O caminho está provado. O que sobra é ligar no código.
 - **Ligar as variáveis na Vercel.** `META_TOKEN` e `META_PHONE_NUMBER_ID` pra
   enviar; `META_VERIFY_TOKEN` e `META_APP_SECRET` pra receber. O código dos
   dois lados está pronto e testado — ver seções 5 e 6.
-- **Forma de pagamento** — só para mensagem iniciada pela empresa (o lembrete
-  da véspera). Dentro da janela funciona sem cartão, como o teste mostrou.
+- 🛑 **FORMA DE PAGAMENTO — É O BLOQUEIO PRINCIPAL, e passou o projeto
+  inteiro como nota de rodapé.**
+
+  Estava escrito aqui desde 06/09 que ela só afeta "mensagem iniciada pela
+  empresa". O que faltou dizer é o tamanho disso: **toda mensagem pra quem
+  marcou pelo site é iniciada pela empresa.** Quem marca nunca escreveu pro
+  studio antes, então a janela de 24 h está fechada, e a única forma de
+  alcançar essa pessoa é template — que é pago.
+
+  Em 13/09 o Kainã marcou pelo site pra dois números diferentes. Os dois
+  receberam **nada**. As evidências fecham:
+
+  | o que se sabe | onde |
+  |---|---|
+  | os 8 templates estão **aprovados** | Gerenciador → Modelos |
+  | o limite é 250/24 h e só **1** conversa foi iniciada em 7 dias | Gerenciador → Limites |
+  | texto livre DENTRO da janela **funciona** | a Karol recebe os avisos dela |
+  | template FORA da janela **nunca chegou** | dois números, zero entregas |
+
+  A única diferença entre o que funciona e o que não funciona é que um é
+  de graça e o outro é pago.
+
+  **O que fazer:** Gerenciador do WhatsApp → *Configurações de pagamento* →
+  adicionar cartão na conta do WhatsApp Business (a WABA), não no Ads.
+
+  ⚠️ Segundo suspeito, se o cartão não resolver: o app pode estar em
+  **modo de Desenvolvimento** no `developers.facebook.com`. Nesse modo a
+  API só alcança números cadastrados como testadores — o que explicaria
+  igualmente o número da Karol funcionar e os outros não. O botão fica no
+  topo do painel do app: *Desenvolvimento* → *Ativo*.
+
 - **Verificação da empresa** (Etapa 3) — pede documento. A Karol não tem CNPJ.
-  Não bloqueou o envio no teste.
+  Não bloqueou o envio no teste dentro da janela.
 
 ---
 
