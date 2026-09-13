@@ -1158,6 +1158,60 @@ texto caía nesse ramo.
 
 ---
 
+### Etapa 20 — 13/09/2026: a bancada de provas, e o que ela achou
+
+O Kainã testou o assistente e disse: *"ele está horrível, não faz nada e o
+diálogo dele é horrível"*. Até aqui, todo teste do assistente usava um
+modelo de mentira — o que é certo pra provar o nosso código, e inútil pra
+achar defeito que mora no modelo de verdade.
+
+Então montei uma bancada (`src/lib/bancada-de-provas.test.ts`): 16 casos
+difíceis, o roteiro e as ferramentas reais, o mesmo laço de leitura do
+assistente, rodando contra a API. Três modelos. Ela achou três coisas.
+
+**1. O modelo inventa `id`.** Os três inventaram pelo menos uma vez —
+`"ana-paula-2026-09-18-0730"`, `"pending_remarcar_ana"` — montados a
+partir do nome e da data, em vez do uuid que a leitura tinha acabado de
+devolver. O que ela via: pedia, ele parecia entender, e não acontecia
+nada, porque lá na frente `descrever` não achava o agendamento. **Era esta
+a queixa "ele não faz nada".** O conserto não avisa a Karol: avisa o
+MODELO. O erro volta como resultado de ferramenta, e a rodada seguinte
+chama `procurar` e acerta. Ela só vê funcionar.
+
+**2. A marcação interna dele ia pro WhatsApp dela.** Na última rodada o
+assistente tira as ferramentas da mesa de propósito. Sem poder chamar, o
+modelo escreve a chamada à mão — `<｜｜DSML｜｜invoke name="remarcar">` — e
+aquilo era mandado como se fosse fala. **Era este o "diálogo horrível".**
+Agora tudo que sai passa por `fala-do-modelo.ts`, e as rodadas subiram de
+3 pra 4, porque 3 não cabia o caso comum (`procurar` → `horarios_livres` →
+propor).
+
+**3. `deepseek-chat` é o pior modelo disponível hoje.** Perguntando a
+lista pra própria API, os modelos que existem são `deepseek-flash` e
+`deepseek-v4-pro`; `deepseek-chat` é apelido antigo e aponta pro mais
+fraco. Placar em duas rodadas completas: chat 14/16 e 15/16 (3 ids
+inventados, marcação vazada nas duas), flash 16/16 nas duas em 4,3 s,
+v4-pro 16/16 nas duas em 8,9 s. O padrão virou `flash` — mesmo acerto do mais
+forte, na metade do tempo. O Kainã pediu "a versão mais forte"; a medição
+diz que ela não é melhor aqui, só mais lenta, e trocar é uma variável
+(`IA_MODELO=deepseek-v4-pro`).
+
+Junto, dois defeitos que eu mesmo tinha deixado na validação de expediente
+do dia anterior: ela contava o próprio agendamento como ocupação (adiantar
+alguém em 15 min era recusado por colidir consigo mesmo), e só validava
+quando a proposta nascia, não quando ela tocava em Confirmar — e entre uma
+coisa e outra cabe uma cliente agendando pelo site.
+
+⚠️ **Metade das "falhas" da primeira rodada da bancada era erro meu, não
+do modelo.** Eu esperava 16:00 numa segunda, que está fora do expediente
+dela; o modelo estava certo em recusar. Quem for usar a bancada: leia o
+caso antes de culpar o modelo.
+
+Os quatro consertos têm teste de graça, e cada um foi conferido quebrando
+o conserto de propósito pra ver o teste reprovar. 386 testes passando.
+
+---
+
 ## 8. O que falta
 
 > Atualizado em 11/09/2026. A etapa 18 (seção 7) diz o que mudou.

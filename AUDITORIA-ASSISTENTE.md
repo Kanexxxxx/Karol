@@ -191,7 +191,7 @@ intenção arquitetural que a documentação descreve está cumprida.**
 | Parâmetro | Valor | Origem |
 |---|---|---|
 | Base URL | `https://api.deepseek.com` | `IA_BASE_URL` sobrescreve |
-| Modelo | `deepseek-chat` | `IA_MODELO` sobrescreve |
+| Modelo | `deepseek-flash` (medido em 13/09; era `deepseek-chat`) | `IA_MODELO` sobrescreve |
 | Chave | — | `DEEPSEEK_API_KEY`, obrigatória |
 | Endpoint | `POST /chat/completions` | dialeto OpenAI |
 | Temperatura | `0.2` | fixa no código |

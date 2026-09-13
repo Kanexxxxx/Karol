@@ -20,6 +20,7 @@ import { DIA_HORA_POR_EXTENSO, DIA_POR_EXTENSO, HORA } from "./datas";
 import { guardarAcao, registrarResultado, reservarAcao } from "./acoes-pendentes";
 import { iaConfigurada, lerArgumentos, perguntar, type Ferramenta, type Mensagem } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
+import { limparFala } from "./fala-do-modelo";
 import { expedientesDoDia, horarioDaCidade, paraChave } from "./agenda";
 import { roteiroDoAssistente } from "./roteiro-do-assistente";
 import { formatarWhatsapp, normalizarWhatsapp } from "./telefone";
@@ -59,8 +60,22 @@ import { formatarWhatsapp, normalizarWhatsapp } from "./telefone";
  * Karol decide; aqui a IA propõe e a Karol decide.
  */
 
-/** Quantas idas ao modelo por mensagem. Depois disso, ele responde em texto. */
-const MAX_RODADAS = 3;
+/**
+ * Quantas idas ao modelo por mensagem. Na última, as ferramentas saem da
+ * mesa e ele só pode responder em texto.
+ *
+ * ⚠️ ERAM 3, E 3 NÃO DAVA. O pedido mais comum dela — "remarca a Ana pra
+ * segunda às 19" — gasta duas leituras antes de conseguir propor:
+ * `procurar` pra achar quem é a Ana, `horarios_livres` pra ver se cabe.
+ * Isso já é a 3ª ida, justamente a que ficava sem ferramenta. Medido na
+ * bancada contra a API de verdade: o modelo, sem poder chamar, escrevia a
+ * chamada à mão como texto — e aquilo ia pro WhatsApp dela.
+ *
+ * 4 deixa o caso comum caber com folga de uma. Mais que isso é esperar
+ * demais: cada ida custa de 1 a 3 segundos, e ela está com o celular na
+ * mão.
+ */
+const MAX_RODADAS = 4;
 
 /** O prefixo dos botões do assistente, pra `recepcao.ts` saber rotear. */
 export const PREFIXO_BOTAO = "a:";
@@ -467,6 +482,12 @@ async function executar(
     case "remarcar": {
       const ag = await porId(args.id);
       if (!ag) return { ok: false, erro: "Não achei mais esse agendamento." };
+
+      // Mesma revalidação do `marcar`: o horário pode ter sido tomado
+      // entre a proposta e o toque dela.
+      const problemaAgora = await problemaComOHorario("remarcar", args);
+      if (problemaAgora) return { ok: false, erro: problemaAgora };
+
       return remarcarAgendamento(ag.id, String(args.dia), String(args.hora));
     }
 
@@ -480,6 +501,16 @@ async function executar(
       });
 
     case "marcar": {
+      /*
+        ⚠️ REVALIDAR NA EXECUÇÃO, e não só quando a proposta nasceu.
+
+        Entre propor e ela tocar no botão passam minutos — e nesse meio
+        uma cliente pode ter agendado o mesmo horário pelo site. Validar
+        só na proposta é confiar num estado que já pode ter mudado.
+      */
+      const problemaAgora = await problemaComOHorario("marcar", args);
+      if (problemaAgora) return { ok: false, erro: problemaAgora };
+
       const dia = String(args.dia);
       const cidade = cidadeDoDia(dia, String(args.hora));
       if (!cidade) return { ok: false, erro: "Nesse dia você não atende." };
@@ -587,7 +618,46 @@ export async function assistente(
     // ESCRITA: vira proposta com botão e a conversa para aqui.
     const escrita = resposta.chamadas.find((c) => ESCRITA.has(c.function.name));
     if (escrita) {
-      return propor(de, texto, escrita.function.name, lerArgumentos(escrita.function.arguments));
+      const args = lerArgumentos(escrita.function.arguments);
+
+      /*
+        ⚠️ O MODELO INVENTA `id`. NÃO É HIPÓTESE — ESTÁ MEDIDO.
+
+        Na bancada de 12–13/09, contra a API de verdade, os três modelos
+        fizeram isso pelo menos uma vez, com convicção total:
+
+            "ana-paula-2026-09-18-0730"
+            "clara-lima-2026-09-18-19:00"
+            "pending_remarcar_ana"
+
+        Em vez do uuid que a leitura tinha acabado de devolver. O que a
+        Karol via: ela pedia, ele parecia entender, e não acontecia nada
+        — porque lá na frente `descrever` não achava o agendamento e a
+        resposta virava um "não consegui entender direito". É a queixa
+        dela ("ele não faz nada"), com nome e sobrenome.
+
+        A saída não é avisar a Karol: é avisar o MODELO e deixar ele se
+        corrigir. O erro volta como resultado de ferramenta, com o
+        motivo, e a rodada seguinte quase sempre chama `procurar` e
+        acerta. Ela não vê nada disso — só vê funcionar.
+      */
+      const idRuim = await idQueNaoExiste(escrita.function.name, args);
+      if (idRuim && rodada < MAX_RODADAS - 1) {
+        mensagens.push({
+          role: "assistant",
+          content: resposta.texto,
+          reasoning_content: resposta.raciocinio,
+          tool_calls: resposta.chamadas,
+        });
+        mensagens.push({
+          role: "tool",
+          tool_call_id: escrita.id,
+          content: JSON.stringify({ erro: idRuim }),
+        });
+        continue;
+      }
+
+      return propor(de, texto, escrita.function.name, args);
     }
 
     const leituras = resposta.chamadas.filter((c) => LEITURA.has(c.function.name));
@@ -595,6 +665,8 @@ export async function assistente(
       mensagens.push({
         role: "assistant",
         content: resposta.texto,
+        // Sem isto, os modelos que pensam devolvem 400. Ver `ia.ts`.
+        reasoning_content: resposta.raciocinio,
         tool_calls: resposta.chamadas,
       });
 
@@ -609,8 +681,11 @@ export async function assistente(
       continue;
     }
 
-    // Texto puro: acabou.
-    const dito = resposta.texto?.trim();
+    /*
+      Texto puro: acabou. Mas o que veio pode não ser fala — ver
+      `fala-do-modelo.ts`. O que a Karol recebe passa por lá primeiro.
+    */
+    const dito = limparFala(resposta.texto);
     if (dito) {
       await enviarTexto(de, dito);
       await guardarFalas(de, [
@@ -653,6 +728,15 @@ async function problemaComOHorario(
   let servicoId: string | undefined;
   let dia: string | undefined;
   let hora: string | undefined;
+  /*
+    ⚠️ AO REMARCAR, O PRÓPRIO AGENDAMENTO NÃO CONTA COMO OCUPADO.
+
+    É o erro clássico desse fluxo, e a minha validação de ontem tinha ele:
+    mover a Ana das 07:00 pras 07:15 seria recusado, porque o horário novo
+    encosta no antigo — dela mesma. No banco isso não é conflito: a linha
+    é atualizada, e a trava compara com as OUTRAS.
+  */
+  let proprio: { inicio: Date; fim: Date } | null = null;
 
   if (ferramenta === "marcar") {
     servicoId = String(args.servico_id ?? "");
@@ -664,6 +748,7 @@ async function problemaComOHorario(
     servicoId = ag.servicoId;
     dia = String(args.dia ?? "");
     hora = String(args.hora ?? "");
+    proprio = { inicio: ag.inicio, fim: ag.fim };
   } else {
     return null;
   }
@@ -685,10 +770,50 @@ async function problemaComOHorario(
     return `${hora} não cabe nesse dia — em ${CIDADES[cidade].nome} o horário é ${horarioDaCidade(cidade)}. Quer que eu veja os livres?`;
   }
   if (!vaga.livre) {
-    return `${hora} desse dia já está ocupado. Quer que eu veja os livres?`;
+    // Ocupado por ele mesmo não é ocupado — ver a nota lá em cima.
+    const inicioNovo = new Date(`${dia}T${hora}:00`);
+    const encostaNoProprio =
+      proprio !== null &&
+      inicioNovo < proprio.fim &&
+      new Date(inicioNovo.getTime() + (servico.duracaoMaxMin + 10) * 60000) > proprio.inicio;
+    if (!encostaNoProprio) {
+      return `${hora} desse dia já está ocupado. Quer que eu veja os livres?`;
+    }
   }
   return null;
 }
+
+/**
+ * O `id` que o modelo mandou existe mesmo na agenda?
+ *
+ * Devolve a explicação do problema — escrita PRA O MODELO LER, não pra
+ * Karol — ou `null` se estiver tudo certo.
+ *
+ * ⚠️ Este texto é lido por uma máquina. Ele diz o que fazer em seguida
+ * ("chame `procurar`"), porque é isso que faz a rodada seguinte acertar.
+ * Nada daqui chega ao WhatsApp dela.
+ */
+async function idQueNaoExiste(
+  ferramenta: string,
+  args: Record<string, unknown>,
+): Promise<string | null> {
+  if (ferramenta !== "mudar_situacao" && ferramenta !== "remarcar") return null;
+
+  const id = typeof args.id === "string" ? args.id.trim() : "";
+
+  if (!UUID.test(id)) {
+    return `O id "${id}" não é um id de agendamento. Ids são uuid, e vêm do resultado de \`procurar\` ou \`ver_agenda\` — nunca podem ser montados a partir do nome ou da data. Chame \`procurar\` e use o id que voltar.`;
+  }
+
+  if (!(await porId(id))) {
+    return `Não existe agendamento com o id ${id}. Chame \`procurar\` pelo nome da cliente e use o id que voltar.`;
+  }
+
+  return null;
+}
+
+/** O formato de id que o banco usa. Nada fora disso é id. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function propor(
   de: string,

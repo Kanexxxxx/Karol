@@ -138,6 +138,47 @@ vez. Ver `PROGRESSO.md`, seção 8.1.
 
 ---
 
+## Qual modelo atende ela, e por quê
+
+⚠️ **`deepseek-chat` não é mais o que o nome sugere.** Perguntando a lista
+pra própria API em 12/09/2026, os modelos que existem hoje são
+`deepseek-flash` e `deepseek-v4-pro`. `deepseek-chat` e `deepseek-reasoner`
+ainda respondem, como apelidos antigos — e o apelido aponta pro mais fraco.
+
+A escolha não foi no chute. A bancada
+(`src/lib/bancada-de-provas.test.ts`) rodou 16 casos difíceis contra a API
+de verdade, com o roteiro e as ferramentas reais:
+
+Duas rodadas completas, pra separar acerto de sorte:
+
+| Modelo | Acertos | Tempo por caso | Id inventado |
+|---|---|---|---|
+| `deepseek-chat` (o apelido) | 14/16 e 15/16 | 3,0 s | 3 vezes |
+| **`deepseek-flash`** (padrão) | **16/16 nas duas** | **4,3 s** | nenhuma |
+| `deepseek-v4-pro` (o mais forte) | 16/16 nas duas | 8,9 s | nenhuma |
+
+O `chat` foi o único que oscilou entre as rodadas, e o único que deixou
+marcação interna vazar pro texto — as duas vezes.
+
+O `flash` e o `v4-pro` empatam em acerto, e o `v4-pro` cobra o dobro do
+tempo por isso. A Karol está com o celular na mão esperando: **o padrão é
+o `flash`**. Quem quiser o mais forte mesmo assim troca uma variável na
+Vercel, sem tocar em código:
+
+    IA_MODELO = deepseek-v4-pro
+
+O `flash` foi também o único que barrou sozinho um horário fora do
+expediente — respondeu que segunda às 16h não existe na agenda dela, sem
+precisar da trava do código.
+
+⚠️ **Modelo que pensa precisa do `reasoning_content` de volta.** Os dois
+modelos novos devolvem o raciocínio nesse campo, e a API EXIGE que ele
+volte na mensagem seguinte do assistente; sem isso, o laço de leitura
+quebra inteiro com 400. `ia.ts` e `assistente.ts` já fazem isso — quem
+mexer lá não pode tirar.
+
+---
+
 ## Trocar de provedor
 
 A API do DeepSeek fala o mesmo dialeto da OpenAI, então trocar é mudar duas
@@ -145,7 +186,7 @@ variáveis:
 
 | Provedor | `IA_BASE_URL` | `IA_MODELO` |
 |---|---|---|
-| DeepSeek (padrão) | `https://api.deepseek.com` | `deepseek-chat` |
+| DeepSeek (padrão) | `https://api.deepseek.com` | `deepseek-flash` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
 | Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
 
@@ -161,13 +202,21 @@ de quem estiver em uso.
 | `lib/recepcao.ts` | decide se quem falou é cliente ou a Karol |
 | `lib/assistente.ts` | as ferramentas, as propostas e a execução |
 | `lib/ia.ts` | só o transporte até o modelo. Não sabe o que é agendamento |
+| `lib/roteiro-do-assistente.ts` | o texto inteiro do que ele sabe e pode fazer |
+| `lib/fala-do-modelo.ts` | separa fala de marcação interna vazada |
 | `lib/acoes-pendentes.ts` | as propostas esperando o toque dela |
 | `lib/conversas.ts` | a janela de 24 h e a memória da conversa |
 
-Os testes que seguram tudo isso estão em `lib/assistente.test.ts` (18
+Os testes que seguram tudo isso estão em `lib/assistente.test.ts` (31
 casos, incluindo um que lê o texto do arquivo e prova que a escrita só
-acontece depois do botão) e `lib/recepcao.test.ts` (20 casos de
-roteamento).
+acontece depois do botão), `lib/fala-do-modelo.test.ts` (13) e
+`lib/recepcao.test.ts` (20 casos de roteamento).
+
+Fora deles, `lib/bancada-de-provas.test.ts` é a única coisa aqui que fala
+com a API de verdade — desligada por padrão, ligada com `BANCADA=1`. Ela
+não protege o código no dia a dia; serve pra descobrir o que o modelo faz
+de errado, que é uma classe de defeito que teste com modelo de mentira
+não mostra.
 
 ---
 

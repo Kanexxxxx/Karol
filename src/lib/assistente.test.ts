@@ -80,7 +80,7 @@ vi.mock("./bloqueios", () => ({ criarBloqueio: vi.fn(async () => ({ ok: true }))
 import { perguntar } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
 import { guardarAcao, reservarAcao } from "./acoes-pendentes";
-import { buscarAgendamento, gradeDoDiaNaAgenda, mudarSituacao, procurarAgendamentos, remarcarAgendamento } from "./agendamentos";
+import { buscarAgendamento, criarAgendamentoNoPainel, gradeDoDiaNaAgenda, mudarSituacao, procurarAgendamentos, remarcarAgendamento } from "./agendamentos";
 import { criarBloqueio } from "./bloqueios";
 import { assistente, cidadeDoDia, decisaoDoBotao } from "./assistente";
 
@@ -519,5 +519,138 @@ describe("horário impossível não vira proposta", () => {
 
     expect(guardarAcao).toHaveBeenCalledTimes(1);
     expect(r).toEqual({ fez: "propos", ferramenta: "marcar" });
+  });
+});
+
+/**
+ * Os três defeitos que a bancada de provas achou rodando contra a API de
+ * verdade, e não contra uma imitação dela.
+ *
+ * A bancada está em `bancada-de-provas.test.ts` — ela custa dinheiro e
+ * internet, então fica desligada por padrão. Estes aqui são de graça e
+ * rodam sempre: cada um congela um defeito que aconteceu mesmo.
+ */
+describe("o que a bancada de provas pegou", () => {
+  /*
+    ⚠️ ERA ESTA A QUEIXA "ELE NÃO FAZ NADA".
+
+    Os três modelos testados inventaram id pelo menos uma vez — montaram
+    "ana-paula-2026-09-18-0730" a partir do nome e da data, em vez de
+    usar o uuid que a leitura tinha acabado de devolver. Antes isso
+    morria calado num "não consegui entender direito".
+  */
+  it("id inventado volta pro modelo, e ele se corrige sozinho", async () => {
+    perguntarMock
+      .mockResolvedValueOnce(
+        chamando("mudar_situacao", { id: "larissa-souza-2026-10-08", situacao: "cancelado" }),
+      )
+      .mockResolvedValueOnce(chamando("mudar_situacao", { id: ID, situacao: "cancelado" }));
+
+    const r = await assistente(KAROL, "cancela a da larissa");
+
+    // Ele foi consultado de novo, e a proposta saiu com o id de verdade.
+    expect(perguntarMock).toHaveBeenCalledTimes(2);
+    expect(r).toEqual({ fez: "propos", ferramenta: "mudar_situacao" });
+    expect(vi.mocked(guardarAcao).mock.calls[0][0].argumentos).toEqual({
+      id: ID,
+      situacao: "cancelado",
+    });
+  });
+
+  it("o erro do id vai pro modelo, não pra Karol", async () => {
+    perguntarMock
+      .mockResolvedValueOnce(chamando("remarcar", { id: "nao-e-uuid", dia: "2026-10-09", hora: "08:00" }))
+      .mockResolvedValueOnce(chamando("remarcar", { id: ID, dia: "2026-10-09", hora: "08:00" }));
+
+    await assistente(KAROL, "passa a larissa pra amanhã às 8");
+
+    // A segunda ida levou o erro como resultado de ferramenta.
+    const segunda = perguntarMock.mock.calls[1][0];
+    const recado = segunda.find((m) => m.role === "tool");
+    expect(recado?.content).toContain("nao-e-uuid");
+    expect(recado?.content).toContain("procurar");
+
+    // E ela não viu nenhuma reclamação técnica.
+    expect(vi.mocked(enviarTexto)).not.toHaveBeenCalled();
+  });
+
+  /*
+    ⚠️ ERA ESTE O "DIÁLOGO HORRÍVEL".
+
+    Sem ferramenta na mesa, o modelo escreve a chamada à mão como texto —
+    e o assistente mandava aquilo inteiro pro WhatsApp dela.
+  */
+  it("marcação interna do modelo nunca chega no WhatsApp dela", async () => {
+    perguntarMock.mockResolvedValue(
+      falando('<｜｜DSML｜｜tool_calls>\n<｜｜DSML｜｜invoke name="remarcar">\n<｜｜DSML｜｜parameter name="id">1111'),
+    );
+
+    await assistente(KAROL, "remarca a larissa");
+
+    const dito = vi.mocked(enviarTexto).mock.calls.map(([, t]) => t).join(" ");
+    expect(dito).not.toContain("DSML");
+    expect(dito).not.toContain("invoke");
+    expect(dito.length).toBeGreaterThan(0); // ela recebeu ALGUMA resposta
+  });
+
+  /*
+    ⚠️ MOVER ALGUÉM PRA PERTO DO PRÓPRIO HORÁRIO NÃO É CONFLITO.
+
+    A validação de expediente que entrou ontem comparava o horário novo
+    com a agenda inteira — inclusive com a linha que está sendo movida.
+    Adiantar a Larissa das 10:00 pras 10:15 era recusado porque ela
+    colidia com ela mesma. No banco isso nunca foi conflito: a linha é
+    atualizada, e a trava compara com as outras.
+  */
+  it("adiantar alguém em 15 minutos não colide com o próprio horário", async () => {
+    vi.mocked(gradeDoDiaNaAgenda).mockResolvedValueOnce([
+      { inicio: 10 * 60 + 15, rotulo: "10:15", cidade: "pereira-barreto", livre: false },
+    ]);
+    perguntarMock.mockResolvedValue(
+      chamando("remarcar", { id: ID, dia: "2026-10-08", hora: "10:15" }),
+    );
+
+    const r = await assistente(KAROL, "adianta a larissa em 15 minutos");
+
+    expect(r).toEqual({ fez: "propos", ferramenta: "remarcar" });
+  });
+
+  it("mas horário ocupado por OUTRA pessoa continua recusado", async () => {
+    vi.mocked(gradeDoDiaNaAgenda).mockResolvedValueOnce([
+      { inicio: 7 * 60, rotulo: "07:00", cidade: "pereira-barreto", livre: false },
+    ]);
+    perguntarMock.mockResolvedValue(
+      chamando("remarcar", { id: ID, dia: "2026-10-08", hora: "07:00" }),
+    );
+
+    await assistente(KAROL, "passa a larissa pras 7");
+
+    expect(guardarAcao).not.toHaveBeenCalled();
+    expect(vi.mocked(enviarTexto).mock.calls[0][1]).toContain("ocupado");
+  });
+
+  /*
+    ⚠️ ENTRE PROPOR E ELA TOCAR NO BOTÃO, O MUNDO MUDA.
+
+    A proposta nasce validada, mas fica esperando. Nesse meio-tempo uma
+    cliente pode agendar o mesmo horário pelo site. Validar só no
+    nascimento é confiar num estado que já passou.
+  */
+  it("revalida na hora de executar, não só quando propõe", async () => {
+    vi.mocked(gradeDoDiaNaAgenda).mockResolvedValueOnce([
+      { inicio: 8 * 60, rotulo: "08:00", cidade: "pereira-barreto", livre: false },
+    ]);
+    reservarAcaoMock.mockResolvedValue({
+      id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      whatsapp: KAROL,
+      ferramenta: "marcar",
+      argumentos: { nome: "Ana", servico_id: "design-henna", dia: "2026-10-09", hora: "08:00", whatsapp: "18999998888" },
+      descricao: "MARCAR Ana",
+    });
+
+    const r = await decisaoDoBotao(KAROL, "a:ok:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+
+    expect(vi.mocked(criarAgendamentoNoPainel)).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ fez: "executou", ok: false });
   });
 });

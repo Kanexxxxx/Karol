@@ -18,7 +18,29 @@ import "server-only";
  */
 
 const BASE = process.env.IA_BASE_URL || "https://api.deepseek.com";
-const MODELO = process.env.IA_MODELO || "deepseek-chat";
+
+/**
+ * Qual modelo atende a Karol.
+ *
+ * ⚠️ `deepseek-chat` NÃO É MAIS O QUE ESTE NOME SUGERE. Perguntando a
+ * lista pra própria API em 12/09/2026, os modelos que existem hoje são
+ * `deepseek-flash` e `deepseek-v4-pro` — `deepseek-chat` e
+ * `deepseek-reasoner` continuam respondendo como apelidos antigos, e o
+ * apelido aponta pro mais fraco.
+ *
+ * Medido na bancada, nos casos difíceis (ver `PROGRESSO.md`): o apelido
+ * inventou id de agendamento duas vezes em oito casos, e errou o alvo de
+ * "pode ser o último". O `deepseek-flash` acertou os dois, e foi o único
+ * a barrar sozinho um horário fora do expediente — respondeu que segunda
+ * às 16h não existe na agenda dela, sem precisar da trava do código.
+ *
+ * Por que não o `v4-pro`, que é o mais forte: 10 s por resposta contra
+ * 2 a 4 s do flash, com o mesmo placar. A Karol está com o celular na
+ * mão, e o tempo aqui é o dela — não vale o triplo da espera por um
+ * empate. Trocar é uma variável na Vercel: `IA_MODELO=deepseek-v4-pro`,
+ * sem tocar em código.
+ */
+const MODELO = process.env.IA_MODELO || "deepseek-flash";
 
 /** Quanto tempo esperamos o modelo. Acima disso a Meta já desistiu de nós. */
 const TIMEOUT_MS = 20_000;
@@ -28,6 +50,20 @@ export type Papel = "system" | "user" | "assistant" | "tool";
 export type Mensagem = {
   role: Papel;
   content: string | null;
+  /*
+    ⚠️ O RACIOCÍNIO PRECISA VOLTAR JUNTO, E NÃO É OPCIONAL.
+
+    Os modelos que pensam antes de responder devolvem o pensamento neste
+    campo. Quando a conversa continua depois de uma chamada de
+    ferramenta, a API EXIGE que ele volte na mensagem do assistente — sem
+    ele, a resposta é 400 com "The `reasoning_content` in the thinking
+    mode must be passed back to the API".
+
+    Descoberto na bancada de 12–13/09: o laço de leitura do assistente
+    quebrava inteiro nos modelos novos, e só neles. Como o campo é
+    ignorado por quem não pensa, ele vai sempre.
+  */
+  reasoning_content?: string | null;
   tool_calls?: ChamadaDeFerramenta[];
   tool_call_id?: string;
 };
@@ -58,6 +94,11 @@ export function iaConfigurada(): boolean {
 
 export type Resposta = {
   texto: string | null;
+  /**
+   * O pensamento do modelo, quando ele pensa — os que não pensam não
+   * mandam nada, por isso é opcional. Volta pra API na ida seguinte.
+   */
+  raciocinio?: string | null;
   chamadas: ChamadaDeFerramenta[];
 };
 
@@ -111,6 +152,7 @@ export async function perguntar(
 
     return {
       texto: typeof msg.content === "string" ? msg.content : null,
+      raciocinio: typeof msg.reasoning_content === "string" ? msg.reasoning_content : null,
       chamadas: msg.tool_calls ?? [],
     };
   } catch (e) {
