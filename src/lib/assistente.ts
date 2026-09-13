@@ -345,10 +345,15 @@ export function instrucoes(): string {
     "10. Nas ferramentas: datas AAAA-MM-DD, horas HH:MM.",
     "11. Se ela pedir algo que não é da agenda, responda em uma frase que você só cuida da agenda e que o resto é com ela.",
     "12. Quando a busca achar UMA pessoa só e o pedido for claro, chame a ferramenta de mudança NA MESMA resposta. NUNCA escreva 'vou confirmar', 'vou cancelar' ou 'vou fazer' sem chamar a ferramenta — nada acontece sem ela, e a Karol fica esperando uma coisa que não vem.",
-    "13. VOCÊ NÃO MANDA MENSAGEM PRA CLIENTE. Não existe ferramenta pra isso. Se ela pedir ('avisa a fulana que vou atrasar', 'manda o endereço pra ela'), diga que quem fala com a cliente é ela e entregue o link: https://wa.me/ com o telefone que veio da busca. Nunca diga que avisou.",
+    "13. CANCELAR e REMARCAR já avisam a cliente sozinhos, por WhatsApp — diga isso quando ela perguntar, porque é verdade. O que você NÃO faz é escrever mensagem livre pra cliente ('manda o endereço pra ela', 'avisa que vou atrasar'): não existe ferramenta pra isso. Nesse caso entregue https://wa.me/ com o telefone que veio da busca. Nunca diga que avisou algo que você não avisou.",
     "14. Quem marca pelo site com serviço de R$ 80 ou mais entra como 'pendente' até pagar 50% por PIX. A cliente recebe esse pedido sozinha, pelo site — você não precisa fazer nada. Quando ela disser que o dinheiro caiu, é mudar_situacao para confirmado.",
     "15. Se ela perguntar algo que as ferramentas não respondem (quanto cobrar, que produto usar, o que postar), responda como amiga que entende do assunto, em duas linhas, sem inventar dado da agenda.",
     "16. Nunca invente que a agenda mudou. Depois de propor, o que existe é uma proposta esperando o toque dela — diga isso com as suas palavras, sem prometer que já está feito.",
+    "17. NUNCA escreva a proposta como texto. Nada de 'Propus: MARCAR Fulana' nem 'CANCELAR Fulana — confirma no botão'. Propor é CHAMAR A FERRAMENTA; o botão aparece sozinho. Texto imitando proposta é o pior erro daqui: ela lê 'confirma no botão' e botão nenhum existe.",
+    "18. UMA MUDANÇA POR VEZ. Se ela pedir duas ('marca a Ana e a Bia', 'cancela as duas'), chame a ferramenta da PRIMEIRA e diga que a segunda vem assim que ela confirmar. Nunca junte duas mudanças numa proposta só.",
+    "19. Linhas que começam com [sistema] no histórico são registro automático: dizem o que foi FEITO, o que ela recusou e o que só foi proposto. Confie nelas e NUNCA escreva uma linha nesse formato.",
+    "20. Só afirme que algo está marcado, cancelado ou remarcado se houver um [sistema] FEITO no histórico, ou se você acabou de ver com ver_agenda ou procurar. Na dúvida, confira antes de responder.",
+    "21. Pra achar 'os últimos que eu marquei', use ver_agenda com ate_dias 30 — o padrão de 7 dias esconde o que está mais pra frente.",
   ].join("\n");
 }
 
@@ -823,9 +828,23 @@ async function propor(
     { id: `${PREFIXO_BOTAO}no:${id}`, titulo: "❌ Deixa" },
   ]);
 
+  /*
+    ⚠️ O QUE VAI PRO HISTÓRICO ENSINA O MODELO.
+
+    Isto dizia `Propus: ${descricao}`. Nas conversas de teste de 12/09 o
+    modelo passou a ESCREVER "Propus: MARCAR Santa... confirma no botão"
+    como texto puro, sem chamar ferramenta nenhuma — imitando o registro
+    em vez de agir. A Karol lia "confirma no botão" e não havia botão.
+
+    Agora o registro é marcado como [sistema] e diz, com todas as letras,
+    que ainda NÃO está na agenda. O roteiro proíbe escrever nesse formato.
+  */
   await guardarFalas(de, [
     { papel: "user", texto: pedido },
-    { papel: "assistant", texto: `Propus: ${descricao}` },
+    {
+      papel: "assistant",
+      texto: `[sistema] Botão de confirmação enviado: ${descricao}. Ainda NÃO está na agenda.`,
+    },
   ]);
 
   return { fez: "propos", ferramenta };
@@ -864,6 +883,9 @@ export async function decisaoDoBotao(
   }
 
   if (acaoTocada !== "ok") {
+    await guardarFalas(de, [
+      { papel: "assistant", texto: `[sistema] Ela recusou: ${pendente.descricao}. Nada mudou.` },
+    ]);
     await enviarTexto(de, "Beleza, não mexi em nada. 💛");
     return { fez: "recusou" };
   }
@@ -871,10 +893,45 @@ export async function decisaoDoBotao(
   const r = await executar(pendente.ferramenta, pendente.argumentos);
   await registrarResultado(pendente.id, r.ok ? "ok" : (r.erro ?? "erro desconhecido"));
 
+  /*
+    ⚠️ O TOQUE DELA PRECISA ENTRAR NO HISTÓRICO.
+
+    Antes não entrava: o modelo propunha, ela confirmava, e a conversa
+    seguinte não tinha registro nenhum disso. Ele ficava cego — nas
+    conversas de 12/09 afirmou "tá fechado: Kainã 07:00 e Santa 08:30"
+    quando só a Kainã existia, e depois disse "não achei nenhum
+    agendamento" quando havia dois. Os dois erros vinham daqui.
+  */
+  await guardarFalas(de, [
+    {
+      papel: "assistant",
+      texto: r.ok
+        ? `[sistema] FEITO, já está na agenda: ${pendente.descricao}`
+        : `[sistema] NÃO deu certo: ${pendente.descricao} — ${r.erro ?? "erro"}`,
+    },
+  ]);
+
+  /*
+    "A cliente já foi avisada" é dito pelo SISTEMA, não pelo modelo.
+
+    Cancelar, remarcar e confirmar disparam mensagem pra cliente sozinhos
+    (ver `enviarEvento` em agendamentos.ts). O Kainã pediu isso na
+    conversa — "cancela e manda mensagem falando pra ela" — e o assistente
+    respondeu que não avisa cliente, o que era falso.
+
+    Deixar o modelo lembrar disso é apostar; aqui é consequência do que a
+    ferramenta faz.
+  */
+  const avisou =
+    r.ok &&
+    (pendente.ferramenta === "remarcar" ||
+      (pendente.ferramenta === "mudar_situacao" &&
+        ["cancelado", "confirmado"].includes(String(pendente.argumentos.situacao))));
+
   await enviarTexto(
     de,
     r.ok
-      ? `Feito. ✅\n\n${pendente.descricao}`
+      ? `Feito. ✅\n\n${pendente.descricao}${avisou ? "\n\nA cliente já foi avisada no WhatsApp." : ""}`
       : `Não deu certo: ${r.erro ?? "erro desconhecido"}`,
   );
 
