@@ -11,6 +11,7 @@ import {
   textoConfirmacao,
   textoLembrete,
   textoParaKarol,
+  textoSinalVencido,
   whatsappDaKarol,
   type DadosAgendamento,
 } from "./notificacoes";
@@ -499,5 +500,57 @@ describe("o template de quem deve o sinal", () => {
         "falar",
       ]);
     }
+  });
+});
+
+/**
+ * O aviso de que o horário voltou pra agenda por falta de pagamento.
+ *
+ * ⚠️ ESTE TEXTO EXISTE PORQUE O DE CANCELAMENTO QUASE FOI USADO NO LUGAR.
+ * Aquele diz "precisei cancelar o seu horário, me desculpa" — é a Karol
+ * desmarcando alguém. Pra quem não pagou, faz parecer que ela foi
+ * dispensada, e não explica nada.
+ */
+describe("horário solto por falta de pagamento", () => {
+  const dados = {
+    id: "8c6377a1-9f2b-4c3d-8e1a-5d6e7f809a0b",
+    cliente: "Larissa Souza",
+    whatsappCliente: "5518999998888",
+    servico: "Brow lamination",
+    cidade: "Pereira Barreto",
+    inicioISO: new Date(2026, 9, 8, 10, 0).toISOString(),
+    valorCentavos: 12000,
+  };
+
+  it("diz o motivo, e diz o prazo", () => {
+    const t = textoSinalVencido(dados);
+
+    expect(t).toContain("entrada não chegou");
+    expect(t).toContain(String(REGRAS.sinal.minutosParaPagar));
+  });
+
+  /*
+    A linha mais importante do texto. A cliente que pagou no minuto 31 vai
+    ler isto com o comprovante na mão — sem esta frase ela fica com o
+    dinheiro enviado, sem horário, e sem saber o que fazer.
+  */
+  it("diz o que fazer pra quem já tinha pagado", () => {
+    expect(textoSinalVencido(dados)).toContain("comprovante");
+  });
+
+  /*
+    Ninguém errou aqui: a mensagem anterior avisou do prazo. Pedir
+    desculpa por uma regra combinada soa falso, e ainda joga em cima da
+    Karol uma culpa que não é dela.
+  */
+  it("não pede desculpa nem finge que a Karol desmarcou", () => {
+    const t = textoSinalVencido(dados).toLowerCase();
+
+    expect(t).not.toContain("desculpa");
+    expect(t).not.toContain("precisei cancelar");
+  });
+
+  it("deixa a porta aberta pra remarcar", () => {
+    expect(textoSinalVencido(dados)).toContain("marcar de novo");
   });
 });

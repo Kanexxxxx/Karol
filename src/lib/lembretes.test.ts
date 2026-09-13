@@ -182,9 +182,21 @@ describe("soltar horário não pago", () => {
     const r = await expirarPendentes();
 
     expect(r).toEqual({ expirados: 1 });
-    // ⚠️ Tem que ser `mudarSituacao`, e não um update direto: é ela que
-    // manda o aviso. Cancelar calado é a pessoa aparecendo no studio.
-    expect(mudar).toHaveBeenCalledWith("11111111-1111-1111-1111-111111111111", "cancelado");
+    /*
+      Duas coisas nesta linha, e as duas importam:
+
+      - tem que ser `mudarSituacao`, e não um update direto no banco: é
+        ela que manda o aviso, e cancelar calado é a pessoa aparecendo no
+        studio;
+      - e com o motivo "sinal-vencido". Sem ele a cliente recebe "precisei
+        cancelar o seu horário, me desculpa" — que faz parecer que a Karol
+        desistiu dela e não fala nada de pagamento.
+    */
+    expect(mudar).toHaveBeenCalledWith(
+      "11111111-1111-1111-1111-111111111111",
+      "cancelado",
+      "sinal-vencido",
+    );
   });
 
   it("dia sem ninguém vencido não cancela nada", async () => {

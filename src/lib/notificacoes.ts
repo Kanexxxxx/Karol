@@ -80,6 +80,7 @@ export type Evento =
   | "confirmacao"
   | "remarcado"
   | "cancelado"
+  | "sinal-vencido"
   | "lembrete"
   | "agradecimento";
 
@@ -351,6 +352,38 @@ export function textoLembrete(a: DadosAgendamento): string {
 }
 
 
+/**
+ * O horário voltou pra agenda porque a entrada não foi paga no prazo.
+ *
+ * ⚠️ ISTO NÃO PODE USAR O TEXTO DE CANCELAMENTO, e por pouco usou.
+ *
+ * O de cancelamento diz "precisei cancelar o seu horário, me desculpa" —
+ * é a Karol desmarcando alguém. Mandar isso pra quem não pagou é errado
+ * de duas maneiras ao mesmo tempo: faz parecer que a Karol desistiu dela,
+ * e não diz uma palavra sobre pagamento, que é a única coisa que
+ * explicaria o que aconteceu.
+ *
+ * E tem o caso que mais dói: a cliente que pagou no minuto 31. Ela vai
+ * ler isto com o comprovante na mão. Por isso a última linha existe e é a
+ * mais importante do texto — sem ela, a pessoa fica com o dinheiro
+ * enviado, sem horário, e sem saber o que fazer.
+ *
+ * Sem "me desculpa": ninguém errou aqui, e pedir desculpa por uma regra
+ * que a mensagem anterior avisou soa falso.
+ */
+export function textoSinalVencido(a: DadosAgendamento): string {
+  return [
+    `Oi, ${primeiroNome(a.cliente)}! Como a entrada não chegou em ${REGRAS.sinal.minutosParaPagar} minutos, o horário voltou pra agenda.`,
+    "",
+    `💄 ${a.servico}`,
+    `🗓️ ${quandoBonito(a.inicioISO)}`,
+    "",
+    "Ainda dá pra marcar de novo, é só me chamar aqui 💛",
+    "",
+    "_Se você já pagou, me manda o comprovante que eu resolvo._",
+  ].join("\n");
+}
+
 export function textoAgradecimento(a: DadosAgendamento): string {
   return [
     `Foi muito bom te atender, ${primeiroNome(a.cliente)}! 🥰`,
@@ -403,6 +436,7 @@ const TEXTO: Record<Evento, (a: DadosAgendamento) => string> = {
   confirmacao: textoConfirmacao,
   remarcado: textoRemarcado,
   cancelado: textoCancelado,
+  "sinal-vencido": textoSinalVencido,
   lembrete: textoLembrete,
   agradecimento: textoAgradecimento,
 };
@@ -685,6 +719,15 @@ export function templateDoEvento(
         ],
       };
 
+    /*
+      Fora da janela de 24 h, o aviso de entrada vencida sai no template
+      de cancelamento. Não é o texto ideal — ele não fala de pagamento —
+      mas criar um template só pra isso significa a Karol esperando mais
+      uma aprovação da Meta, e o caso é raro: pra receber o PIX a cliente
+      tocou num botão, o que abre a janela por 24 h. Nos 30 minutos
+      seguintes ela está aberta, e quem sai é o texto de verdade.
+    */
+    case "sinal-vencido":
     case "cancelado":
       return {
         nome: "horario_cancelado",
@@ -1155,6 +1198,7 @@ function ligado(evento: Evento): boolean {
     // que a Karol fez no horário de alguém. Não avisar não é uma opção.
     case "remarcado":
     case "cancelado":
+    case "sinal-vencido":
       return true;
     case "lembrete":
       return NOTIFICACOES.lembreteUmDiaAntes;

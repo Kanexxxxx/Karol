@@ -493,7 +493,7 @@ async function soltarVencidosEm(inicio: Date, fim: Date): Promise<void> {
   if (error || !data?.length) return;
 
   for (const linha of data as { id: string }[]) {
-    await mudarSituacao(linha.id, "cancelado");
+    await mudarSituacao(linha.id, "cancelado", "sinal-vencido");
   }
 }
 
@@ -654,6 +654,16 @@ const SITUACOES: SituacaoAgendamento[] = [
 export async function mudarSituacao(
   id: string,
   situacao: string,
+  /*
+    POR QUE o horário está sendo cancelado — muda só a mensagem que a
+    cliente recebe, nada no banco.
+
+    "a Karol te desmarcou, desculpa" e "a entrada não chegou no prazo" são
+    duas notícias diferentes pra quem lê. Mandar a primeira pra quem não
+    pagou faz parecer que ela foi dispensada, e não explica nada; e quem
+    pagou no minuto 31 precisa ler que é só mandar o comprovante.
+  */
+  motivo: "karol" | "sinal-vencido" = "karol",
 ): Promise<{ ok: boolean; erro?: string }> {
   const bd = banco();
   if (!bd) return { ok: false, erro: "Banco não configurado." };
@@ -687,7 +697,7 @@ export async function mudarSituacao(
     antes.situacao !== "cancelado" &&
     antes.inicio.getTime() > Date.now()
   ) {
-    await enviarEvento("cancelado", {
+    await enviarEvento(motivo === "sinal-vencido" ? "sinal-vencido" : "cancelado", {
       id,
       cliente: antes.clienteNome,
       whatsappCliente: antes.clienteWhatsapp,

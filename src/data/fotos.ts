@@ -67,11 +67,25 @@ export const FOTOS = {
    * Do mesmo ensaio de estúdio. Estava no cartão do curso, e a Karol pediu
    * pra tirar de lá: a foto é dela, não do serviço. Agora abre a história.
    */
+  /*
+    ⚠️ `.png`, E NÃO `.jpg` POR DESCUIDO.
+
+    O Kainã trocou esta foto em 13/09/2026 por uma versão mais larga, e o
+    arquivo que chegou era um PNG salvo com o nome terminando em `.jpg`.
+    Isso não é frescura de nome: o servidor decide o cabeçalho
+    `Content-Type` pela EXTENSÃO, então a foto sairia anunciada como JPEG
+    sendo PNG — e o site manda `X-Content-Type-Options: nosniff`, que
+    proíbe o navegador de corrigir isso por conta própria.
+
+    Renomear resolve e não mexe num pixel. Se um dia alguém quiser o
+    arquivo mais leve (são 1,8 MB, contra uns 300 KB que um JPEG bom teria
+    aqui), o caminho é exportar de novo como JPEG — não renomear de volta.
+  */
   paleta: {
-    arquivo: `${P}/karol-paleta.jpg`,
+    arquivo: `${P}/karol-paleta.png`,
     alt: "Karol Carvalho aplicando maquiagem em si mesma, com a paleta na mão",
-    largura: 1200,
-    altura: 800,
+    largura: 2048,
+    altura: 768,
   },
   /**
    * O antes e depois que abre a seção do trabalho. É montado por ela, com a

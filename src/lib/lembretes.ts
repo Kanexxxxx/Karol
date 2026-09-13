@@ -67,7 +67,7 @@ export async function expirarPendentes(): Promise<{ expirados: number }> {
 
   let soltos = 0;
   for (const a of vencidos) {
-    const r = await mudarSituacao(a.id, "cancelado");
+    const r = await mudarSituacao(a.id, "cancelado", "sinal-vencido");
     if (r.ok) soltos++;
     else console.error(`não consegui soltar o horário ${a.id}: ${r.erro}`);
   }

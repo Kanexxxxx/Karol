@@ -161,6 +161,38 @@ describe("Karol muda a situação", () => {
     expect(eventos()).toEqual(["cancelado"]);
   });
 
+  /*
+    ⚠️ SOLTAR POR FALTA DE PAGAMENTO É OUTRA NOTÍCIA, e o banco não sabe a
+    diferença — as duas viram `cancelado` na coluna. Quem separa é o
+    terceiro argumento, e ele existe só pra escolher a MENSAGEM.
+
+    Sem isto, quem não pagou recebe "precisei cancelar o seu horário, me
+    desculpa": parece que a Karol desistiu dela, e não fala nada de
+    pagamento. E quem pagou no minuto 31 lê isso com o comprovante na mão,
+    sem saber o que fazer.
+  */
+  it("soltar por falta de pagamento manda a mensagem do sinal, não a de cancelamento", async () => {
+    usarBanco({
+      select: () => ({ data: linha(daquiATresDias()), error: null }),
+      update: () => ({ error: null }),
+    });
+
+    await mudarSituacao(id, "cancelado", "sinal-vencido");
+
+    expect(eventos()).toEqual(["sinal-vencido"]);
+  });
+
+  it("sem motivo, continua sendo a mensagem de cancelamento de sempre", async () => {
+    usarBanco({
+      select: () => ({ data: linha(daquiATresDias()), error: null }),
+      update: () => ({ error: null }),
+    });
+
+    await mudarSituacao(id, "cancelado");
+
+    expect(eventos()).toEqual(["cancelado"]);
+  });
+
   it("marcar como atendida ou faltou NÃO manda mensagem", async () => {
     // é registro do que já passou; mensagem aí seria constrangedora
     for (const situacao of ["concluido", "faltou", "confirmado"]) {
