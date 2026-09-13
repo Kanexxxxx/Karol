@@ -80,7 +80,9 @@ vi.mock("./bloqueios", () => ({ criarBloqueio: vi.fn(async () => ({ ok: true }))
 import { perguntar } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
 import { guardarAcao, reservarAcao } from "./acoes-pendentes";
-import { buscarAgendamento, criarAgendamentoNoPainel, gradeDoDiaNaAgenda, mudarSituacao, procurarAgendamentos, remarcarAgendamento } from "./agendamentos";
+import { agendaDaKarol, buscarAgendamento, criarAgendamentoNoPainel, gradeDoDiaNaAgenda, mudarSituacao, procurarAgendamentos, remarcarAgendamento } from "./agendamentos";
+import { guardarFalas } from "./conversas";
+import { ehLembreteDeLista } from "./lista-mostrada";
 import { criarBloqueio } from "./bloqueios";
 import { assistente, cidadeDoDia, decisaoDoBotao } from "./assistente";
 
@@ -652,5 +654,73 @@ describe("o que a bancada de provas pegou", () => {
 
     expect(vi.mocked(criarAgendamentoNoPainel)).not.toHaveBeenCalled();
     expect(r).toMatchObject({ fez: "executou", ok: false });
+  });
+});
+
+/**
+ * Os ids do que ele mostrou ficam na memória.
+ *
+ * Sem isso, na mensagem seguinte ele não tem mais os ids: ou relê a
+ * agenda inteira (uma ida à API a mais) ou inventa. Medido na bancada,
+ * lembrar cortou as idas e os tokens pela metade.
+ */
+describe("a última lista mostrada fica guardada", () => {
+  /** O modelo lê a agenda e depois responde em texto. */
+  function leEDepoisResponde(resposta: string) {
+    perguntarMock
+      .mockResolvedValueOnce(chamando("ver_agenda", { de_dias: 0, ate_dias: 7 }))
+      .mockResolvedValueOnce(falando(resposta));
+  }
+
+  it("os ids do que ela viu vão pra memória junto com a resposta", async () => {
+    vi.mocked(agendaDaKarol).mockResolvedValue([agendamento()]);
+    leEDepoisResponde("Sexta você tem a Larissa às 10:00. 💛");
+
+    await assistente(KAROL, "quem vem essa semana?");
+
+    const [, falas] = vi.mocked(guardarFalas).mock.calls[0];
+    const lembrete = falas.find((f) => ehLembreteDeLista(f.texto));
+
+    expect(lembrete).toBeDefined();
+    expect(lembrete!.texto).toContain("Larissa Souza");
+    expect(lembrete!.texto).toContain(ID);
+  });
+
+  /*
+    ⚠️ DUAS LISTAS NA MEMÓRIA SÃO DOIS CONJUNTOS DE IDS, e o modelo não
+    tem como saber qual é o de agora. Seria trocar um jeito de errar por
+    outro — por isso a antiga é descartada ao gravar a nova.
+  */
+  it("a lista velha é descartada quando entra uma nova", async () => {
+    vi.mocked(agendaDaKarol).mockResolvedValue([agendamento()]);
+    leEDepoisResponde("Sexta você tem a Larissa às 10:00.");
+
+    await assistente(KAROL, "quem vem essa semana?");
+
+    const [, , opcoes] = vi.mocked(guardarFalas).mock.calls[0];
+    expect(opcoes?.descartar).toBe(ehLembreteDeLista);
+  });
+
+  it("a proposta com botão também leva a lista junto", async () => {
+    perguntarMock
+      .mockResolvedValueOnce(chamando("procurar", { termo: "larissa" }))
+      .mockResolvedValueOnce(chamando("mudar_situacao", { id: ID, situacao: "cancelado" }));
+
+    await assistente(KAROL, "cancela a da larissa");
+
+    const [, falas] = vi.mocked(guardarFalas).mock.calls[0];
+    expect(falas.some((f) => ehLembreteDeLista(f.texto))).toBe(true);
+    // E a linha que diz que ainda não está na agenda continua lá.
+    expect(falas.some((f) => f.texto.includes("Ainda NÃO está na agenda"))).toBe(true);
+  });
+
+  it("conversa sem leitura nenhuma não inventa lembrete", async () => {
+    perguntarMock.mockResolvedValue(falando("Oi Karol! Tudo bem por aqui. 💛"));
+
+    await assistente(KAROL, "oi tudo bem?");
+
+    const [, falas] = vi.mocked(guardarFalas).mock.calls[0];
+    expect(falas.some((f) => ehLembreteDeLista(f.texto))).toBe(false);
+    expect(falas).toHaveLength(2);
   });
 });

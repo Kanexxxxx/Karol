@@ -162,11 +162,27 @@ export async function historicoDe(whatsapp: string): Promise<Fala[]> {
  * Nunca lança: perder a memória de uma conversa é bem menos grave do que
  * derrubar o webhook e fazer a Meta reenviar tudo.
  */
-export async function guardarFalas(whatsapp: string, novas: Fala[]): Promise<void> {
+export async function guardarFalas(
+  whatsapp: string,
+  novas: Fala[],
+  opcoes: { descartar?: (texto: string) => boolean } = {},
+): Promise<void> {
   const bd = banco();
   if (!bd || novas.length === 0) return;
 
-  const anterior = await historicoDe(whatsapp);
+  /*
+    `descartar` apaga falas antigas antes de gravar as novas.
+
+    Existe por causa do lembrete de lista do assistente: ele carrega os
+    ids do que foi mostrado, e duas listas guardadas seriam dois conjuntos
+    de ids sem o modelo saber qual vale. Quem decide o que é velho é quem
+    chama — aqui isto é só uma peneira, e este arquivo continua sem saber
+    o que é agendamento.
+  */
+  const anterior = opcoes.descartar
+    ? (await historicoDe(whatsapp)).filter((f) => !opcoes.descartar!(f.texto))
+    : await historicoDe(whatsapp);
+
   const historico = [...anterior, ...novas]
     .slice(-FALAS_GUARDADAS)
     .map((f) => ({ papel: f.papel, texto: f.texto.slice(0, 1000) }));

@@ -21,6 +21,12 @@ import { guardarAcao, registrarResultado, reservarAcao } from "./acoes-pendentes
 import { iaConfigurada, lerArgumentos, perguntar, type Ferramenta, type Mensagem } from "./ia";
 import { enviarTexto, enviarTextoComBotoes } from "./notificacoes";
 import { limparFala } from "./fala-do-modelo";
+import {
+  ehLembreteDeLista,
+  juntarMostrados,
+  lembreteDaLista,
+  type ItemMostrado,
+} from "./lista-mostrada";
 import { expedientesDoDia, horarioDaCidade, paraChave } from "./agenda";
 import { roteiroDoAssistente } from "./roteiro-do-assistente";
 import { formatarWhatsapp, normalizarWhatsapp } from "./telefone";
@@ -599,6 +605,12 @@ export async function assistente(
     { role: "user", content: texto },
   ];
 
+  /*
+    Tudo que as leituras mostraram nesta mensagem, com os ids. Vai pra
+    memória junto com a resposta — ver `lista-mostrada.ts`.
+  */
+  const mostrados: ItemMostrado[] = [];
+
   for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
     // Na última rodada tiramos as ferramentas: sem isso o modelo pode
     // ficar pedindo leitura pra sempre e a Karol nunca receber resposta.
@@ -657,7 +669,7 @@ export async function assistente(
         continue;
       }
 
-      return propor(de, texto, escrita.function.name, args);
+      return propor(de, texto, escrita.function.name, args, mostrados);
     }
 
     const leituras = resposta.chamadas.filter((c) => LEITURA.has(c.function.name));
@@ -672,6 +684,7 @@ export async function assistente(
 
       for (const c of leituras) {
         const dados = await executarLeitura(c.function.name, lerArgumentos(c.function.arguments));
+        juntarMostrados(mostrados, dados);
         mensagens.push({
           role: "tool",
           tool_call_id: c.id,
@@ -688,10 +701,9 @@ export async function assistente(
     const dito = limparFala(resposta.texto);
     if (dito) {
       await enviarTexto(de, dito);
-      await guardarFalas(de, [
-        { papel: "user", texto },
-        { papel: "assistant", texto: dito },
-      ]);
+      await guardarFalas(de, comALista(mostrados, texto, dito), {
+        descartar: ehLembreteDeLista,
+      });
       return { fez: "respondeu" };
     }
 
@@ -815,11 +827,31 @@ async function idQueNaoExiste(
 /** O formato de id que o banco usa. Nada fora disso é id. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * As falas pra guardar: o que ela pediu, o que ele mostrou, e a resposta.
+ *
+ * O lembrete entra no meio de propósito — na hora de ler, ele aparece
+ * ANTES da resposta, que é a ordem em que as coisas aconteceram.
+ */
+function comALista(
+  mostrados: ItemMostrado[],
+  pedido: string,
+  resposta: string,
+): { papel: "user" | "assistant"; texto: string }[] {
+  const lembrete = lembreteDaLista(mostrados);
+  return [
+    { papel: "user", texto: pedido },
+    ...(lembrete ? [{ papel: "assistant" as const, texto: lembrete }] : []),
+    { papel: "assistant", texto: resposta },
+  ];
+}
+
 async function propor(
   de: string,
   pedido: string,
   ferramenta: string,
   args: Record<string, unknown>,
+  mostrados: ItemMostrado[] = [],
 ): Promise<DesfechoAssistente> {
   const problema = await problemaComOHorario(ferramenta, args);
   if (problema) {
@@ -860,13 +892,15 @@ async function propor(
     Agora o registro é marcado como [sistema] e diz, com todas as letras,
     que ainda NÃO está na agenda. O roteiro proíbe escrever nesse formato.
   */
-  await guardarFalas(de, [
-    { papel: "user", texto: pedido },
-    {
-      papel: "assistant",
-      texto: `[sistema] Botão de confirmação enviado: ${descricao}. Ainda NÃO está na agenda.`,
-    },
-  ]);
+  await guardarFalas(
+    de,
+    comALista(
+      mostrados,
+      pedido,
+      `[sistema] Botão de confirmação enviado: ${descricao}. Ainda NÃO está na agenda.`,
+    ),
+    { descartar: ehLembreteDeLista },
+  );
 
   return { fez: "propos", ferramenta };
 }

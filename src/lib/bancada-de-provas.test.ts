@@ -58,6 +58,7 @@ vi.mock("./acoes-pendentes", () => ({ guardarAcao: vi.fn(), reservarAcao: vi.fn(
 vi.mock("./supabase", () => ({ banco: () => ({}) }));
 
 import { FERRAMENTAS, instrucoes } from "./assistente";
+import { lembreteDaLista } from "./lista-mostrada";
 
 /** Ligada só com `BANCADA=1`, e só se a chave existir nesta máquina. */
 const LIGADA = Boolean(process.env.BANCADA) && existsSync(".env.local");
@@ -378,4 +379,76 @@ describe.skipIf(!LIGADA || !chave)("bancada de provas (contra a API de verdade)"
       falhas.forEach((f) => console.log(`   x ${f}`));
     }
   }, 900_000);
+});
+
+/* ------------------------------------------------------------------ */
+/* A/B: vale a pena lembrar dos ids da última lista mostrada?          */
+/* ------------------------------------------------------------------ */
+
+/*
+  O buraco: `guardarFalas` guarda só o texto final da resposta. O
+  resultado da leitura — que é onde estão os ids — nunca é gravado. Então
+  na mensagem SEGUINTE o modelo não tem mais os ids, e ou ele lê de novo
+  (custa uma ida) ou inventa (foi o que aconteceu).
+
+  Este teste compara as duas situações no mesmo caso, com o modelo que
+  está em produção. Se lembrar não mudar nada, não vale a complexidade.
+*/
+const HOJE: Fala[] = [
+  { role: "user", content: "quem vem sexta?" },
+  { role: "assistant", content: "Sexta 18/09: 07:30 Ana Paula, 09:00 Beatriz Souza, 19:00 Clara Lima." },
+];
+
+const COM_LEMBRETE: Fala[] = [
+  ...HOJE,
+  {
+    role: "assistant",
+    /*
+      ⚠️ O TEXTO EXATO QUE VAI PRA PRODUÇÃO, e não uma imitação dele. Se
+      o formato mudar em `lista-mostrada.ts`, é o novo que é medido aqui.
+    */
+    content: lembreteDaLista(
+      [ANA, BIA, CLA].map((a) => ({
+        id: a.id,
+        cliente: a.cliente,
+        servico: a.servico,
+        quando: `${a.dia} ${a.hora}`,
+      })),
+    ),
+  },
+];
+
+const SEGUIDAS: { pedido: string; alvo: string }[] = [
+  { pedido: "cancela a segunda", alvo: BIA.id },
+  { pedido: "confirma a clara", alvo: CLA.id },
+  { pedido: "cancela o primeiro horario", alvo: ANA.id },
+  { pedido: "a beatriz desmarcou", alvo: BIA.id },
+];
+
+describe.skipIf(!LIGADA || !chave)("vale lembrar dos ids?", () => {
+  it("compara sem lembrete e com lembrete", async () => {
+    const modelo = "deepseek-flash";
+    for (const [rotulo, base] of [
+      ["hoje (sem os ids)", HOJE],
+      ["com os ids na memoria", COM_LEMBRETE],
+    ] as const) {
+      let acertos = 0;
+      let voltas = 0;
+      let tk = 0;
+      let ms = 0;
+      const falhas: string[] = [];
+      for (const caso of SEGUIDAS) {
+        const r = await rodar(modelo, [...base, { role: "user", content: caso.pedido }]);
+        voltas += r.voltas;
+        tk += r.tokens;
+        ms += r.ms;
+        if (r.escrita && r.escrita.args.id === caso.alvo) acertos++;
+        else falhas.push(`"${caso.pedido}" -> ${r.escrita ? r.escrita.args.id : `texto: ${r.texto.slice(0, 60)}`}`);
+      }
+      console.log(
+        `${rotulo.padEnd(24)} ${acertos}/${SEGUIDAS.length}  ${voltas} idas ao modelo  ${tk} tokens  ${Math.round(ms / SEGUIDAS.length)}ms/caso`,
+      );
+      falhas.forEach((f) => console.log(`   x ${f}`));
+    }
+  }, 600_000);
 });

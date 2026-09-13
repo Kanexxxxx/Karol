@@ -149,16 +149,19 @@ A escolha não foi no chute. A bancada
 (`src/lib/bancada-de-provas.test.ts`) rodou 16 casos difíceis contra a API
 de verdade, com o roteiro e as ferramentas reais:
 
-Duas rodadas completas, pra separar acerto de sorte:
+Quatro rodadas completas, pra separar acerto de sorte:
 
-| Modelo | Acertos | Tempo por caso | Id inventado |
-|---|---|---|---|
-| `deepseek-chat` (o apelido) | 14/16 e 15/16 | 3,0 s | 3 vezes |
-| **`deepseek-flash`** (padrão) | **16/16 nas duas** | **4,3 s** | nenhuma |
-| `deepseek-v4-pro` (o mais forte) | 16/16 nas duas | 8,9 s | nenhuma |
+| Modelo | Acertos (4 rodadas) | Pior | Tempo por caso | Id inventado |
+|---|---|---|---|---|
+| `deepseek-chat` (o apelido) | 14, 15, 16, 14 | 14/16 | 2,9 s | 4 vezes |
+| **`deepseek-flash`** (padrão) | 16, 16, 15, 16 | **15/16** | **4,4 s** | nenhuma |
+| `deepseek-v4-pro` (o mais forte) | 16, 16, 14, 16 | 14/16 | 10,5 s | 1 vez |
 
-O `chat` foi o único que oscilou entre as rodadas, e o único que deixou
-marcação interna vazar pro texto — as duas vezes.
+⚠️ **O placar tem ruído.** Rodada a rodada os três variam, e a diferença
+de acerto entre eles cabe dentro dessa variação — não dá pra dizer que o
+flash "é mais inteligente". O que NÃO é ruído, e se repetiu nas quatro:
+o `v4-pro` custa 2,4× o tempo do flash sem acertar mais, e o `chat` é o
+único que inventou id várias vezes.
 
 O `flash` e o `v4-pro` empatam em acerto, e o `v4-pro` cobra o dobro do
 tempo por isso. A Karol está com o celular na mão esperando: **o padrão é
@@ -170,6 +173,28 @@ Vercel, sem tocar em código:
 O `flash` foi também o único que barrou sozinho um horário fora do
 expediente — respondeu que segunda às 16h não existe na agenda dela, sem
 precisar da trava do código.
+
+### O que ele lembra entre uma mensagem e outra
+
+A memória guarda 30 falas — só o texto. O resultado das leituras, que é
+onde estão os **ids**, não era gravado: na mensagem seguinte o modelo não
+tinha mais como apontar pra ninguém, e ou relia a agenda ou inventava id.
+
+Agora, junto com a resposta, vai uma linha `[sistema]` com a lista e os
+ids (`lista-mostrada.ts`). Medido na bancada, quatro pedidos seguidos do
+tipo "cancela a segunda":
+
+| | acertos | idas à API | tokens | tempo |
+|---|---|---|---|---|
+| sem os ids (era assim) | 4/4 | 8 | 41.153 | 4,5 s |
+| **com os ids** | 4/4 | **5** | **25.836** | **2,8 s** |
+
+O acerto não subiu porque, sem os ids, o modelo se salvava relendo a
+agenda — o que ele nem sempre lembra de fazer. O que mudou é o custo: 37%
+menos token e 38% menos espera pra ela.
+
+⚠️ Só a lista MAIS NOVA fica. Duas listas guardadas são dois conjuntos de
+ids, e o modelo não teria como saber qual vale.
 
 ⚠️ **Modelo que pensa precisa do `reasoning_content` de volta.** Os dois
 modelos novos devolvem o raciocínio nesse campo, e a API EXIGE que ele
@@ -204,6 +229,7 @@ de quem estiver em uso.
 | `lib/ia.ts` | só o transporte até o modelo. Não sabe o que é agendamento |
 | `lib/roteiro-do-assistente.ts` | o texto inteiro do que ele sabe e pode fazer |
 | `lib/fala-do-modelo.ts` | separa fala de marcação interna vazada |
+| `lib/lista-mostrada.ts` | os ids do que ele acabou de mostrar pra ela |
 | `lib/acoes-pendentes.ts` | as propostas esperando o toque dela |
 | `lib/conversas.ts` | a janela de 24 h e a memória da conversa |
 
