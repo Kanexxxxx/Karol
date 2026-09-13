@@ -18,12 +18,13 @@ vi.mock("./notificacoes", () => ({ enviarEvento: vi.fn(async () => {}) }));
 import { banco } from "./banco";
 import { enviarEvento } from "./notificacoes";
 import {
-  criarAgendamento,
   criarAgendamentoNoPainel,
+  horariosDoDia,
   mudarSituacao,
   pendentesVencidos,
   remarcarAgendamento,
 } from "./agendamentos";
+import { buscarServico } from "@/data/servicos";
 
 const bancoMock = vi.mocked(banco);
 const avisar = vi.mocked(enviarEvento);
@@ -279,23 +280,52 @@ describe("horários presos por falta de pagamento", () => {
   });
 
   /*
-    O prazo é feito no banco, com `criado_em < hoje 00:00`. O teste prova
-    que o filtro FOI PEDIDO — sem ele, quem marcou agora mesmo e ainda
-    está com o aplicativo do banco aberto perderia o horário.
+    O prazo é feito no banco, comparando `criado_em` com "agora menos 30
+    minutos". O teste prova que o filtro FOI PEDIDO e com a conta certa —
+    sem ele, quem marcou agora mesmo e ainda está com o aplicativo do
+    banco aberto perderia o horário na hora.
   */
-  it("pede ao banco só o que foi criado antes de hoje", async () => {
+  it("pede ao banco só quem passou dos 30 minutos", async () => {
     const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    const agora = new Date("2026-09-20T14:00:00.000Z");
 
-    await pendentesVencidos();
+    await pendentesVencidos(agora);
 
     const lt = m.chamadas
       .find((c) => c.op === "select")
       ?.filtros?.find((f) => f.metodo === "lt");
     expect(lt?.coluna).toBe("criado_em");
+    expect(lt?.valor).toBe("2026-09-20T13:30:00.000Z");
+  });
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    expect(lt?.valor).toBe(hoje.toISOString());
+  /*
+    ⚠️ O CASO QUE MAIS DÓI SE ERRAR: quem acabou de marcar e está com o
+    aplicativo do banco aberto pra pagar. Se o filtro for pelo lado
+    errado, ela perde o horário no meio do pagamento.
+  */
+  it("quem marcou faz cinco minutos NÃO entra", async () => {
+    const agora = new Date("2026-09-20T14:00:00.000Z");
+    usarBanco({
+      select: () => ({
+        data: [
+          {
+            ...pendenteCriadoEm(new Date("2026-09-20T13:55:00.000Z"), "brow-lamination", daquiATresDias()),
+          },
+        ],
+        error: null,
+      }),
+    });
+
+    // O banco é quem filtra por data, então aqui o mock devolve a linha de
+    // propósito: o que se prova é que a CONTA pedida ao banco a excluiria.
+    const m = usarBanco({ select: () => ({ data: [], error: null }) });
+    await pendentesVencidos(agora);
+    const lt = m.chamadas
+      .find((c) => c.op === "select")
+      ?.filtros?.find((f) => f.metodo === "lt");
+    expect(new Date(String(lt?.valor)).getTime()).toBeLessThan(
+      new Date("2026-09-20T13:55:00.000Z").getTime(),
+    );
   });
 
   it("pede ao banco só quem está pendente", async () => {
@@ -318,64 +348,75 @@ describe("horários presos por falta de pagamento", () => {
 });
 
 /**
- * O teto de horários futuros por pessoa.
+ * O prazo de 30 minutos pra pagar a entrada.
  *
- * ⚠️ O ERRO CARO AQUI É O CONTRÁRIO DO USUAL: não é deixar passar quem
- * não devia, é BARRAR cliente de verdade. Quem é barrada some — ela não
- * chama no WhatsApp pra reclamar de um site, ela desiste. Por isso os
- * casos abaixo cobrem principalmente quem TEM que passar.
+ * ⚠️ QUEM ESCOLHEU O NÚMERO FOI A KAROL, em 13/09/2026, por escrito:
+ * "pode ser 30 minutos". No formulário ela tinha dito "até o fim do dia",
+ * e o Kainã apontou que isso trava a agenda o dia inteiro por causa de
+ * quem some.
+ *
+ * O prazo existe em três lugares, e os três precisam concordar:
+ *
+ * 1. a GRADE esconde quem venceu, pra outra cliente ver o horário livre;
+ * 2. o AGENDAMENTO solta a linha vencida antes de gravar, senão a trava
+ *    do banco recusa — horário livre na tela e recusado no envio;
+ * 3. a VARREDURA diária limpa o que ninguém chegou a tomar.
+ *
+ * O 1 sem o 2 é o pior dos mundos: a cliente vê livre, preenche tudo e
+ * leva erro na cara.
  */
-describe("teto de horários por pessoa", () => {
-  const pedido = {
-    servicoId: "design-simples",
-    chaveDia: diaUtilFuturo(),
-    inicioMin: 7 * 60,
-    nome: "Maria da Silva",
-    whatsapp: "18999998888",
-  };
+describe("prazo de 30 minutos pra pagar", () => {
+  const DIA = diaUtilFuturo();
 
-  /** Responde a contagem do teto e deixa o resto do fluxo seguir. */
-  function comContagem(quantos: number | null, erro: unknown = null) {
+  /** Uma linha de agendamento ocupando as 7h do dia escolhido. */
+  function ocupando(situacao: string, minutosAtras: number) {
+    const inicio = new Date(`${DIA}T07:00:00`);
+    const fim = new Date(inicio.getTime() + 50 * 60000);
+    return {
+      ...linha(inicio, situacao),
+      periodo: `["${inicio.toISOString()}","${fim.toISOString()}")`,
+      criado_em: new Date(Date.now() - minutosAtras * 60_000).toISOString(),
+    };
+  }
+
+  /** Só a tabela de agendamentos responde; bloqueios vem vazio. */
+  function agendaCom(linhas: Record<string, unknown>[]) {
     return usarBanco({
-      select: () => ({ data: [], error: null, count: quantos ?? undefined, ...(erro ? { error: erro } : {}) }),
-      insert: () => ({ data: null, error: { message: "parou depois do teto" } }),
+      select: (tabela) => (tabela === "agendamentos" ? { data: linhas, error: null } : { data: [], error: null }),
+      update: () => ({ data: [{ id: "x" }], error: null }),
     });
   }
 
-  it("barra quem já tem cinco horários marcados", async () => {
-    comContagem(5);
+  const servico = buscarServico("design-simples")!;
+  const seteHoras = async () =>
+    (await horariosDoDia(servico, DIA)).find((h) => h.inicio === 7 * 60);
 
-    const r = await criarAgendamento(pedido);
+  it("quem marcou faz 5 minutos e não pagou continua ocupando", async () => {
+    agendaCom([ocupando("pendente", 5)]);
 
-    expect(r.ok).toBe(false);
-    expect(r).toHaveProperty("erro");
-    if (!r.ok) {
-      // A saída tem que estar na mensagem: barrar sem dizer o que fazer
-      // é a pessoa fechando o site.
-      expect(r.erro).toContain("WhatsApp");
-    }
+    expect(await seteHoras()).toBeUndefined();
   });
 
-  it("quatro ainda passa — a mãe com duas filhas e o horário dela", async () => {
-    comContagem(4);
+  it("quem passou dos 30 minutos some da grade, e o horário reaparece", async () => {
+    agendaCom([ocupando("pendente", 45)]);
 
-    const r = await criarAgendamento(pedido);
-
-    // Passou do teto e morreu adiante, no insert de mentira. O que
-    // importa é que NÃO foi barrada pelo teto.
-    if (!r.ok) expect(r.erro).not.toContain("WhatsApp");
+    expect(await seteHoras()).toBeDefined();
   });
 
   /*
-    ⚠️ NA DÚVIDA, DEIXA PASSAR. Se a contagem falhar, barrar cliente de
-    verdade por causa de um erro nosso é o pior desfecho — e o que se
-    perde é um teto que nem existia até ontem.
+    ⚠️ SÓ `pendente` VENCE. Um horário confirmado é de quem já pagou — se
+    a idade da linha o tirasse da grade, a agenda inteira ficaria "livre"
+    depois de meia hora e duas clientes cairiam no mesmo horário.
   */
-  it("banco falhando na contagem não barra ninguém", async () => {
-    comContagem(null, { message: "caiu" });
+  it("confirmado NUNCA vence, por mais velho que seja", async () => {
+    agendaCom([ocupando("confirmado", 60 * 24 * 30)]);
 
-    const r = await criarAgendamento(pedido);
+    expect(await seteHoras()).toBeUndefined();
+  });
 
-    if (!r.ok) expect(r.erro).not.toContain("WhatsApp");
+  it("atendimento já concluído também continua ocupando", async () => {
+    agendaCom([ocupando("concluido", 60 * 24 * 30)]);
+
+    expect(await seteHoras()).toBeUndefined();
   });
 });

@@ -1454,18 +1454,33 @@ disse que faz. Já existe cron diário na Vercel pra pendurar isso.
 Um limite por telefone (uns 3 horários futuros ativos) é barato e fecha o
 resto.
 
+⚠️ **A KAROL DECIDIU O PRAZO EM 13/09.** O Kainã mandou pra ela a análise
+acima, explicando que "até o fim do dia" trava a agenda por causa de quem
+some, e propôs 30 minutos ou 1 hora. Ela respondeu, por escrito:
+
+> "pode ser 30 minutos e pode ser por pix diretamente pra mim"
+
+Duas decisões numa frase: **o prazo é 30 minutos**, e **não vai ter
+gateway de pagamento** — o PIX é direto pra ela, como já está.
+
 ✅ **FEITO NO MESMO DIA**, depois do "dá uma melhorada e corrija isso":
 
-- `pendentesVencidos` + `expirarPendentes` soltam o horário de quem marcou
-  e não pagou. Vence o que foi criado ANTES DE HOJE, e como a varredura
-  roda ao meio-dia a pessoa tem de 12 a 36 horas — sempre mais que o "fim
-  do dia" que ela prometeu. Cancela pelo caminho normal, então a cliente é
-  avisada; cancelar calado seria ela aparecer no studio.
-- `MAX_FUTUROS_POR_PESSOA = 5` fecha o outro lado: serviço barato confirma
-  na hora e nunca expira, então o teto é o que segura ali. Cinco cabe uma
-  mãe com duas filhas e ainda transforma "travar a agenda" em cinco
-  horários, não vinte. Quem esbarra recebe a mensagem mandando chamar no
-  WhatsApp.
+- o horário volta pra agenda **30 minutos** depois de marcado, se a
+  entrada não for paga. Em três camadas, porque uma só não bastava:
+  **(1)** a grade esconde quem venceu, então outra cliente vê o horário
+  livre na hora, sem depender de cron nenhum; **(2)** quem for gravar em
+  cima solta a linha vencida antes — sem isso a trava do banco recusaria,
+  e horário livre na tela que dá erro no envio é pior que horário
+  bloqueado; **(3)** a varredura diária limpa o que ninguém chegou a
+  tomar. Sempre por `mudarSituacao`, que avisa a cliente — cancelar calado
+  seria ela aparecer no studio.
+- ❌ **um teto de 5 horários futuros por telefone chegou a existir e foi
+  removido no mesmo dia.** O Kainã: *"se isso for opcional ter ou não ter,
+  eu não quero ter, porque está limitando"*. É opcional mesmo — com o
+  prazo de 30 minutos, uma enxurrada de horários não pagos se desfaz
+  sozinha. Sobra exposto só o serviço barato, que confirma na hora e nunca
+  vence; se um dia alguém encher a agenda de design de R$ 25, o teto está
+  no histórico do git.
 
 Os dois erram pro lado seguro de propósito: banco falhando na contagem
 **deixa passar**, e só entra na expiração quem pede entrada, tem horário no

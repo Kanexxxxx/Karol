@@ -110,7 +110,7 @@ function Sucesso({
       </h1>
       <p className="mb-8 text-tinta-2">
         {esperandoPagamento
-          ? `Seu horário está guardado até ${REGRAS.sinal.seguraAte}. Pague a entrada pelo QR abaixo — o valor já vai preenchido — e mande o comprovante pra Karol no WhatsApp. Assim que ela conferir, está fechado.`
+          ? `Seu horário fica guardado por ${REGRAS.sinal.minutosParaPagar} minutos. Pague a entrada pelo QR abaixo — o valor já vai preenchido — e mande o comprovante pra Karol no WhatsApp. Assim que ela conferir, está fechado.`
           : "O horário já está reservado no seu nome. Anote os detalhes:"}
       </p>
 

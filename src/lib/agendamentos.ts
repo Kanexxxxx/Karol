@@ -67,7 +67,35 @@ function linhaParaAgendamento(r: Record<string, unknown>): Agendamento {
   };
 }
 
-/** Lê o que já está ocupado num intervalo de dias, agrupado por data. */
+/**
+ * Este horário `pendente` já perdeu a vez?
+ *
+ * A cliente tem `REGRAS.sinal.minutosParaPagar` minutos pra pagar a
+ * entrada. Passado isso, ele não ocupa mais nada.
+ */
+function pendenteJaVenceu(situacao: unknown, criadoEm: unknown, agora = Date.now()): boolean {
+  if (situacao !== "pendente") return false;
+  if (typeof criadoEm !== "string") return false;
+  const nasceu = new Date(criadoEm).getTime();
+  if (Number.isNaN(nasceu)) return false;
+  return agora - nasceu > REGRAS.sinal.minutosParaPagar * 60_000;
+}
+
+/**
+ * Lê o que já está ocupado num intervalo de dias, agrupado por data.
+ *
+ * ⚠️ QUEM NÃO PAGOU NO PRAZO SAI DAQUI NA HORA, e é isto que faz o prazo
+ * de 30 minutos existir de verdade.
+ *
+ * A linha continua `pendente` no banco até alguém cancelar ela — a
+ * varredura diária, ou o próprio agendamento de quem pegar o horário. Mas
+ * do ponto de vista de QUEM ESTÁ OLHANDO O SITE, ela já não ocupa nada:
+ * passou meia hora, o horário reaparece livre, sem depender de cron
+ * nenhum ter rodado.
+ *
+ * É de propósito que não dependa: cron é coisa que para de funcionar sem
+ * ninguém perceber, e o estrago seria a agenda inteira travada.
+ */
 async function ocupadosNoPeriodo(
   de: Date,
   ate: Date,
@@ -80,7 +108,7 @@ async function ocupadosNoPeriodo(
   const [ags, blqs] = await Promise.all([
     bd
       .from("agendamentos")
-      .select("periodo")
+      .select("periodo, situacao, criado_em")
       .in("situacao", ["pendente", "confirmado", "concluido"])
       .overlaps("periodo", janela),
     bd.from("bloqueios").select("periodo").overlaps("periodo", janela),
@@ -99,7 +127,10 @@ async function ocupadosNoPeriodo(
     }
   };
 
-  (ags.data ?? []).forEach((r) => somar(r.periodo as string));
+  (ags.data ?? []).forEach((r) => {
+    if (pendenteJaVenceu(r.situacao, r.criado_em)) return;
+    somar(r.periodo as string);
+  });
   (blqs.data ?? []).forEach((r) => somar(r.periodo as string));
 
   return porDia;
@@ -272,13 +303,6 @@ export async function criarAgendamento(dados: {
   const servico = buscarServicoAgendavel(dados.servicoId);
   if (!servico) return { ok: false, erro: "Serviço não encontrado." };
 
-  if (await passouDoLimite(dados.whatsapp)) {
-    return {
-      ok: false,
-      erro: `Esse número já tem ${MAX_FUTUROS_POR_PESSOA} horários marcados. Pra marcar mais, me chama no WhatsApp.`,
-    };
-  }
-
   const dia = deChave(dados.chaveDia);
   const livres = await horariosDoDia(servico, dados.chaveDia);
   if (!livres.some((h) => h.inicio === dados.inicioMin)) {
@@ -305,6 +329,24 @@ export async function criarAgendamento(dados: {
   */
   const situacao =
     precisaDeSinal(servico) || REGRAS.aprovacaoManual ? "pendente" : "confirmado";
+
+  /*
+    ⚠️ SEM ISTO, O PRAZO DE 30 MINUTOS SERIA MENTIRA.
+
+    A grade já mostra o horário livre assim que o prazo de quem não pagou
+    vence — mas a linha dela continua `pendente` no banco, e o banco tem
+    uma trava (`sem_choque`) que recusa dois atendimentos no mesmo
+    período contando `pendente` como ocupado.
+
+    Resultado sem esta linha: a cliente vê o horário livre, escolhe,
+    preenche tudo, e leva "já existe atendimento nesse horário" na cara.
+    Pior que o horário estar bloqueado — é bloqueado fingindo estar livre.
+
+    Então quem chegou tomando o lugar de quem não pagou solta a vaga
+    primeiro. E solta pelo caminho normal, que avisa a outra cliente que o
+    horário caiu — é o momento certo pra ela saber.
+  */
+  await soltarVencidosEm(inicio, fim);
 
   const { data, error } = await bd
     .from("agendamentos")
@@ -376,16 +418,18 @@ export async function criarAgendamento(dados: {
  * pagar nenhum passa longe de qualquer freio por IP.
  *
  * ---------------------------------------------------------------------
- * O prazo, e por que ele é generoso
+ * O prazo é de 30 minutos, e quem escolheu foi ela
  * ---------------------------------------------------------------------
  *
- * Vence o que foi criado ANTES DE HOJE. Como a varredura roda uma vez por
- * dia, ao meio-dia, na prática a pessoa tem de 12 a 36 horas — sempre mais
- * que o "fim do dia" que ela prometeu.
+ * No formulário a Karol tinha escrito "até o fim do dia". O Kainã apontou
+ * que isso trava a agenda o dia inteiro por causa de quem some, propôs 30
+ * minutos ou 1 hora, e ela respondeu em 13/09/2026: **"pode ser 30
+ * minutos"**. O número mora em `REGRAS.sinal.minutosParaPagar`.
  *
- * É de propósito: o erro de cancelar cedo demais é cancelar o horário de
- * uma cliente que pagou e o comprovante demorou. O erro de cancelar tarde
- * é um horário vago por mais meio dia. Os dois não custam a mesma coisa.
+ * ⚠️ 30 MINUTOS É CURTO, E ISSO TEM PREÇO. Quem pagar no minuto 31 perde o
+ * horário com o dinheiro já enviado, e sobra pra Karol resolver na mão.
+ * Ela escolheu sabendo que a alternativa era a agenda travada. Se um dia
+ * doer, o conserto é aumentar o número — não desligar a soltura.
  *
  * ⚠️ SÓ QUEM ESTÁ ESPERANDO PAGAMENTO. Se um dia a aprovação manual for
  * ligada, um design de R$ 25 também fica `pendente` — e aquele está
@@ -399,13 +443,13 @@ export async function pendentesVencidos(agora = new Date()): Promise<Agendamento
   const bd = banco();
   if (!bd) return [];
 
-  const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  const limite = new Date(agora.getTime() - REGRAS.sinal.minutosParaPagar * 60_000);
 
   const { data, error } = await bd
     .from("agendamentos")
     .select("*")
     .eq("situacao", "pendente")
-    .lt("criado_em", hoje.toISOString())
+    .lt("criado_em", limite.toISOString())
     .order("periodo", { ascending: true });
 
   if (error) {
@@ -423,64 +467,34 @@ export async function pendentesVencidos(agora = new Date()): Promise<Agendamento
 }
 
 /**
- * Quantos horários futuros um mesmo telefone pode ter marcados.
+ * Cancela os `pendente` vencidos que estão em cima deste horário.
  *
- * ⚠️ NÃO É ANTI-ROBÔ. Quem quiser insistir troca o número, e nem precisa
- * de robô. Isto é o teto que faltava: até 13/09/2026 **nada no projeto
- * perguntava quantos horários uma pessoa já tinha**, e o freio por IP não
- * ajuda porque ele conta por HORA — dez horários marcados com calma ao
- * longo do mês passam longe dele.
+ * Roda antes de gravar um agendamento novo. O porquê está na chamada, em
+ * `criarAgendamento`: a grade já esconde quem venceu, mas a trava do banco
+ * não, e sem soltar a linha a gravação seria recusada.
  *
- * O irmão desta trava é `pendentesVencidos`, que solta o que não foi
- * pago. Os dois cobrem lados diferentes: aquele alcança os serviços com
- * entrada, este alcança os baratos, que confirmam na hora e portanto
- * nunca expiram.
- *
- * ---------------------------------------------------------------------
- * Por que CINCO
- * ---------------------------------------------------------------------
- *
- * Porque o erro de barrar cliente de verdade é muito pior que o de
- * deixar passar. Uma mãe marcando pra ela e duas filhas já são três; com
- * o horário dela do mês que vem, quatro. Cinco cabe a família inteira e
- * ainda assim transforma "travar a agenda" em cinco horários, não vinte.
- *
- * E quem esbarrar não fica sem saída: a mensagem manda chamar no
- * WhatsApp, onde a Karol resolve na mão em dez segundos.
+ * Nunca lança e nunca impede o agendamento: se falhar, a gravação segue e
+ * quem reclama é a trava do banco, com a mensagem que já existia. Perder
+ * um agendamento por causa da faxina seria pior que a sujeira.
  */
-export const MAX_FUTUROS_POR_PESSOA = 5;
-
-/**
- * Este número já tem horários demais marcados?
- *
- * ⚠️ NA DÚVIDA, DEIXA PASSAR. Se o banco falhar na contagem, o
- * agendamento segue — barrar cliente de verdade por causa de um erro
- * nosso é o pior desfecho possível aqui, e o que se perde no outro caso é
- * um teto que nem existia até ontem.
- *
- * Conta só o que ainda vai acontecer e o que ainda está de pé: horário
- * cancelado não ocupa nada, e o que já passou é histórico dela.
- */
-async function passouDoLimite(whatsappBruto: string): Promise<boolean> {
+async function soltarVencidosEm(inicio: Date, fim: Date): Promise<void> {
   const bd = banco();
-  if (!bd) return false;
+  if (!bd) return;
 
-  const whatsapp = normalizarWhatsapp(whatsappBruto);
-  if (!whatsapp) return false;
+  const limite = new Date(Date.now() - REGRAS.sinal.minutosParaPagar * 60_000);
 
-  const { count, error } = await bd
+  const { data, error } = await bd
     .from("agendamentos")
-    .select("id", { count: "exact", head: true })
-    .eq("cliente_whatsapp", whatsapp)
-    .in("situacao", ["pendente", "confirmado"])
-    .gte("periodo", new Date().toISOString());
+    .select("id")
+    .eq("situacao", "pendente")
+    .lt("criado_em", limite.toISOString())
+    .overlaps("periodo", montarPeriodo(inicio, fim));
 
-  if (error) {
-    console.error("não consegui contar os horários da pessoa:", error.message);
-    return false;
+  if (error || !data?.length) return;
+
+  for (const linha of data as { id: string }[]) {
+    await mudarSituacao(linha.id, "cancelado");
   }
-
-  return (count ?? 0) >= MAX_FUTUROS_POR_PESSOA;
 }
 
 /** Confirmados que começam amanhã — base do lembrete de 1 dia antes. */

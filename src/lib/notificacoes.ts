@@ -191,7 +191,7 @@ export function textoParaKarol(a: DadosAgendamento): string {
     ...(faltaSinal
       ? [
           "",
-          `Já mandei o PIX de ${valorSinal} pra ela. O horário fica guardado até ${REGRAS.sinal.seguraAte}.`,
+          `Já mandei o PIX de ${valorSinal} pra ela. O horário fica guardado por ${REGRAS.sinal.minutosParaPagar} minutos.`,
           "Quando o comprovante chegar, é só confirmar na agenda.",
         ]
       : []),
@@ -304,7 +304,7 @@ export function textoDoSinal(a: DadosAgendamento): string {
     ...(REGRAS.sinal.devolve
       ? []
       : [
-          `_Guardo o horário até ${REGRAS.sinal.seguraAte}. A entrada não volta em caso de desistência — é ela que garante que o horário não vai pra outra pessoa._`,
+          `_Guardo o horário por ${REGRAS.sinal.minutosParaPagar} minutos. Depois disso ele volta pra agenda. A entrada não volta em caso de desistência — é ela que garante que o horário não vai pra outra pessoa._`,
         ]),
   ].join("\n");
 }

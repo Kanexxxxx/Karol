@@ -252,10 +252,25 @@ export const REGRAS = {
     devolve: false,
 
     /**
-     * Até quando o horário fica segurado esperando o comprovante.
-     * Ela escolheu "até o fim do dia".
+     * Quantos minutos o horário fica segurado esperando o comprovante.
+     *
+     * ⚠️ ERA "O FIM DO DIA", RESPOSTA DELA NO FORMULÁRIO. O Kainã apontou
+     * o problema: uma cliente marca, some, e o horário fica travado o dia
+     * inteiro enquanto outra pessoa queria marcar. Ele propôs 30 minutos
+     * ou 1 hora; a Karol respondeu em 13/09/2026, por escrito:
+     *
+     *     "pode ser 30 minutos e pode ser por pix diretamente pra mim"
+     *
+     * Virou número em vez de frase porque agora o CÓDIGO usa isto pra
+     * soltar o horário — antes era só um texto que a cliente lia.
+     *
+     * ⚠️ O PREÇO DE 30 MINUTOS, pra quem for mexer: é curto. Quem paga no
+     * minuto 31 perde o horário com o dinheiro já enviado, e sobra pra
+     * Karol resolver na mão. Foi escolha dela, sabendo que a alternativa
+     * era a agenda travada. Se ela reclamar disso, o conserto é aumentar
+     * este número — não desligar a soltura.
      */
-    seguraAte: "o fim do dia",
+    minutosParaPagar: 30,
   },
 
   /**
