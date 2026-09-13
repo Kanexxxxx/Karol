@@ -236,8 +236,21 @@ cheio e sem uma palavra sobre o PIX — e não pagava.
 
 O truque está no botão: quando a cliente toca em **Receber o PIX**, o
 toque é uma mensagem DELA, a janela de 24 h abre, e o site responde na hora
-com o texto da entrada, o **QR Code com o valor já preenchido** e o **copia e
-cola** — tudo de graça, porque já está dentro da janela.
+— de graça, porque já está dentro da janela.
+
+⚠️ **A ÚLTIMA LINHA DO CORPO MUDOU. SE VOCÊ JÁ SUBMETEU ESTE TEMPLATE, ELE
+ESTÁ NA META COM O TEXTO ERRADO.**
+
+Ela prometia "a chave PIX e o QR Code", os dois. O fluxo mudou depois
+disso: mandar os dois de uma vez era informação demais numa tela só, então
+agora o site **pergunta qual** a cliente quer — dois botões, *QR Code* e
+*Copia e cola* — e manda só o escolhido. Uma promessa que a mensagem
+seguinte não cumpre é o tipo de detalhe que faz a pessoa parar de confiar
+no que está lendo.
+
+O corpo abaixo já está corrigido. Editar um template aprovado é permitido
+(Meta → o template → **Editar**), mas ele **volta pra análise**, então faça
+essa edição antes de contar com ele.
 
 | Campo | Valor |
 |---|---|
@@ -264,7 +277,7 @@ Oi, {{1}}. Recebi o seu pedido de horário e ele está aguardando o pagamento da
 
 A entrada desconta do valor final do atendimento.
 
-Toque no botão abaixo para receber a chave PIX e o QR Code com o valor. Assim que o pagamento for confirmado, o horário fica reservado. 💛
+Toque no botão abaixo e eu te mando o PIX do jeito que você preferir: QR Code ou copia e cola. Assim que o pagamento for confirmado, o horário fica reservado. 💛
 ```
 
 ### Rodapé

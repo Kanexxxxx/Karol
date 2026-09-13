@@ -1344,13 +1344,29 @@ WhatsApp dela**. Isso não é enfeite: link seco de formulário, sem dizer o
 tamanho nem o que acontece depois, é o que faz virar "amanhã eu respondo"
 pra sempre.
 
-| Pendência | Onde | Impacto |
+⚠️ **CORREÇÃO DE 13/09/2026 — ESTA SEÇÃO ESTAVA VELHA.** Em 13/09 eu li
+esta tabela e repeti pro Kainã que a Karol devia quase tudo isso. Ele
+respondeu que ela **já tinha respondido o formulário**, e ele estava
+certo: conferindo no código, **não existe mais nenhum `A_CONFIRMAR` em
+`src/`**. O sinal, que era a divergência que travava o pagamento, está
+documentado em `negocio.ts` com as respostas dela de 07/09, palavra por
+palavra.
+
+A lição não é sobre esta tabela: é sobre confiar em documento em vez de
+abrir o arquivo. **O código é a verdade; este arquivo é lembrança.** Onde
+os dois discordarem, o errado é este aqui.
+
+A tabela abaixo foi refeita contra o código, e as linhas resolvidas
+ficaram marcadas em vez de apagadas — some o item, some junto a memória de
+que ele existiu.
+
+| Pendência | Onde | Situação em 13/09 |
 |---|---|---|
-| 📋 **O que ela quis dizer com "sinal"** | `REGRAS.sinal` | ver seção 3 — divergência aberta. **Não construa pagamento antes disto** |
-| 📋 **Aprovação manual** | `REGRAS.aprovacaoManual = false` | ela pediu, está desligado. Colide com o sinal |
-| 📋 **Descrições dos serviços** | `servicos.ts` | são rascunho meu; precisam do aval dela |
-| 📋 **Qual capa** | `CAPA` em `fotos.ts` | branca ou laranja. A que ela NÃO escolher fica na `/sobre` |
-| 📋 **Local em Bandeirantes** | `CIDADES.bandeirantes.local` | publica só a cidade até ela passar |
+| ~~O que ela quis dizer com "sinal"~~ | `REGRAS.sinal` | ✅ **respondido em 07/09** — 50% do valor, chave dela, não devolve, só em serviços de R$ 80+ |
+| ~~Aprovação manual~~ | `REGRAS.aprovacaoManual = false` | ✅ **resolvido por consequência** — quem pede sinal fica pendente, quem não pede confirma na hora. Deixou de ser pergunta |
+| 📋 **Descrições dos serviços** | `servicos.ts` | preços e durações são dela (briefing 29/08); os **textos** ainda são meus. Nada quebra — é revisão de vitrine |
+| ❓ **Qual capa** | `CAPA` em `fotos.ts` | está em `"branca"`, e o comentário do arquivo ainda diz que espera a escolha dela. **Se ela respondeu, ninguém trouxe a resposta pro código** — conferir e trocar a linha, ou apagar o comentário |
+| ❓ **Local em Bandeirantes** | `CIDADES.bandeirantes.local` | `null`, então o site mostra só a cidade. O endereço EXISTE em `enderecoCompleto` e vai pro WhatsApp de quem já marcou — o que falta é a decisão de publicar o nome do local, não o endereço |
 | **Verificação da empresa na Meta** | — | pede CNPJ, ela não tem. Sem isso o WhatsApp mostra o número em vez de "Studio Karol Carvalho". O caminho real seria abrir MEI |
 | **Autorização foto a foto** | `public/fotos/` | são rostos de clientes reais. **Não cabe em formulário** — é olhar foto por foto com ela |
 | 📋 **O lembrete de 30 min** | `NOTIFICACOES.lembrete30MinAntes` | ela disse NÃO pra "lembrete de horas antes" no briefing 1; este é outro e está ligado |

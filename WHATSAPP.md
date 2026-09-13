@@ -359,8 +359,34 @@ a linha aparece na tabela `conversas` do Supabase.
 
 ## 8. O cron do lembrete de 30 minutos
 
-O plano Hobby da Vercel roda cron **1×/dia**, e um aviso de meia hora antes
-precisa de alguém batendo a cada 10–15 minutos. Sai por fora, de graça.
+O plano Hobby da Vercel roda cron **1×/dia** — conferido na documentação
+deles em 13/09/2026, e uma expressão mais frequente nem passa no deploy
+("Hobby accounts are limited to daily cron jobs"). A precisão ainda é de
+±59 minutos. Serve pro lembrete da véspera; não serve pra um aviso de meia
+hora antes, que precisa de alguém batendo a cada 10–15 minutos.
+
+### O jeito recomendado: o próprio Supabase
+
+Cole [`supabase/migracao-06-cron-lembrete-curto.sql`](./supabase/migracao-06-cron-lembrete-curto.sql)
+no SQL Editor — a mesma coisa que você já fez cinco vezes. Antes de rodar,
+troque as duas linhas marcadas com `<TROQUE>`: o `CRON_SECRET` e, se o
+domínio tiver mudado, o endereço do site.
+
+Ele liga o `pg_cron` (o relógio) e o `pg_net` (a chamada HTTP), guarda o
+segredo no cofre do Supabase e agenda uma batida de 10 em 10 minutos.
+
+**Por que aqui e não num serviço de fora:** o Supabase já está no projeto.
+Um serviço de terceiro seria mais uma conta pra criar, mais uma senha pra
+perder, mais uma empresa que precisa estar de pé pras clientes serem
+avisadas — e o `CRON_SECRET` guardado no servidor de outro.
+
+Como conferir se está funcionando de verdade está no fim da própria
+migração. ⚠️ Um detalhe que engana: `status = 'succeeded'` em
+`cron.job_run_details` só quer dizer que o banco conseguiu DISPARAR a
+chamada — um 401 do site também aparece como "succeeded". Quem conta a
+verdade é `select status_code, content from net._http_response`.
+
+### O caminho de trás, se o Supabase recusar as extensões
 
 Em **cron-job.org** (ou qualquer serviço parecido):
 
