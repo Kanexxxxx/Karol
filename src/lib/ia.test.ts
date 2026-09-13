@@ -30,12 +30,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { perguntar } from "./ia";
+import { iaConfigurada, perguntar, provedorAtual } from "./ia";
 
 type Corpo = Record<string, unknown>;
 
 /** Guarda o que foi enviado em cada ida, pra poder conferir depois. */
 const enviados: Corpo[] = [];
+/** E pra onde foi cada uma — é o que diz qual provedor atendeu. */
+const enderecos: string[] = [];
 
 /** Uma resposta da API, do jeito que ela vem. */
 function resposta({
@@ -57,19 +59,25 @@ function resposta({
 }
 
 /** Encadeia respostas: a primeira ida recebe a primeira, e assim por diante. */
-function apiResponde(...respostas: Response[]) {
+function apiResponde(...respostas: (Response | Error)[]) {
   let n = 0;
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (_url: string, init: { body: string }) => {
+    vi.fn(async (url: string, init: { body: string }) => {
+      enderecos.push(String(url));
       enviados.push(JSON.parse(init.body));
-      return respostas[Math.min(n++, respostas.length - 1)];
+      const r = respostas[Math.min(n++, respostas.length - 1)];
+      if (r instanceof Error) throw r;
+      return r;
     }),
   );
 }
 
 beforeEach(() => {
   enviados.length = 0;
+  enderecos.length = 0;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.IA_PROVEDOR;
   vi.clearAllMocks();
   process.env.DEEPSEEK_API_KEY = "sk-de-mentira";
 });
@@ -77,6 +85,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.DEEPSEEK_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.IA_PROVEDOR;
 });
 
 const pergunta = [{ role: "user" as const, content: "e aí?" }];
@@ -177,5 +187,94 @@ describe("o que vai no pedido", () => {
     }));
 
     await expect(perguntar(pergunta, [])).resolves.toBeNull();
+  });
+});
+
+/**
+ * Dois provedores, um cobrindo o outro.
+ *
+ * ⚠️ NÃO É PRA FICAR MAIS ESPERTO — É PRA NÃO FICAR MUDO. Quando a API do
+ * DeepSeek cai, ou a conta seca, o assistente hoje responde "não consegui
+ * pensar agora" e a Karol fica sem agenda no meio do expediente. Com o
+ * segundo provedor, ela nem percebe.
+ */
+describe("quando um provedor cai, o outro assume", () => {
+  it("só com a chave do DeepSeek, fala só com ele", async () => {
+    apiResponde(resposta());
+
+    await perguntar(pergunta, []);
+
+    expect(enderecos).toHaveLength(1);
+    expect(enderecos[0]).toContain("api.deepseek.com");
+    expect(provedorAtual()).toBe("deepseek");
+  });
+
+  it("com os dois, o DeepSeek caindo passa a bola pra OpenAI", async () => {
+    process.env.OPENAI_API_KEY = "sk-openai-de-mentira";
+    apiResponde(new Error("deepseek fora do ar"), resposta({ texto: "respondi eu" }));
+
+    const r = await perguntar(pergunta, []);
+
+    expect(enderecos[0]).toContain("api.deepseek.com");
+    expect(enderecos[1]).toContain("api.openai.com");
+    expect(r?.texto).toBe("respondi eu");
+  });
+
+  /*
+    Resposta ruim NÃO é falha. A gente já pagou por ela; chamar o segundo
+    seria pagar duas vezes pela mesma pergunta, e a Karol esperar o dobro.
+  */
+  it("resposta fraca não faz trocar de provedor", async () => {
+    process.env.OPENAI_API_KEY = "sk-openai-de-mentira";
+    apiResponde(resposta({ texto: "sei lá" }));
+
+    await perguntar(pergunta, []);
+
+    expect(enderecos).toHaveLength(1);
+    expect(enderecos[0]).toContain("api.deepseek.com");
+  });
+
+  it("IA_PROVEDOR=openai põe a OpenAI na frente", async () => {
+    process.env.OPENAI_API_KEY = "sk-openai-de-mentira";
+    process.env.IA_PROVEDOR = "openai";
+    apiResponde(resposta());
+
+    await perguntar(pergunta, []);
+
+    expect(enderecos[0]).toContain("api.openai.com");
+    expect(provedorAtual()).toBe("openai");
+  });
+
+  /*
+    ⚠️ `thinking` é coisa da DeepSeek. Mandar isso pra OpenAI é 400 — e
+    seria um 400 nascido justamente na hora em que o assistente está
+    tentando se recuperar de uma resposta vazia.
+  */
+  it("a OpenAI nunca recebe o parâmetro de pensamento", async () => {
+    process.env.OPENAI_API_KEY = "sk-openai-de-mentira";
+    process.env.IA_PROVEDOR = "openai";
+    apiResponde(resposta({ texto: "", motivo: "length" }), resposta({ texto: "agora foi" }));
+
+    await perguntar(pergunta, []);
+
+    for (const corpo of enviados) expect(corpo.thinking).toBeUndefined();
+  });
+
+  it("sem chave nenhuma, a IA está desligada", async () => {
+    apiResponde(resposta());
+    delete process.env.DEEPSEEK_API_KEY;
+
+    expect(iaConfigurada()).toBe(false);
+    expect(provedorAtual()).toBeNull();
+    expect(await perguntar(pergunta, [])).toBeNull();
+    expect(enderecos).toHaveLength(0);
+  });
+
+  it("os dois caindo devolve null, e não uma resposta inventada", async () => {
+    process.env.OPENAI_API_KEY = "sk-openai-de-mentira";
+    apiResponde(new Error("caiu"), new Error("caiu também"));
+
+    expect(await perguntar(pergunta, [])).toBeNull();
+    expect(enderecos).toHaveLength(2);
   });
 });

@@ -17,8 +17,6 @@ import "server-only";
  * do painel. Nada quebra, igual ao resto do projeto.
  */
 
-const BASE = process.env.IA_BASE_URL || "https://api.deepseek.com";
-
 /**
  * Qual modelo atende a Karol.
  *
@@ -44,6 +42,86 @@ const BASE = process.env.IA_BASE_URL || "https://api.deepseek.com";
  * em código.
  */
 const MODELO = process.env.IA_MODELO || "deepseek-flash";
+
+/* ------------------------------------------------------------------ */
+/* Os provedores, em ordem de preferência                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Quem responde, e quem cobre quando o primeiro cai.
+ *
+ * ⚠️ NÃO É PRA FICAR MAIS ESPERTO. É pra não ficar MUDO. Quando a API do
+ * DeepSeek está fora do ar, ou estoura o tempo, ou a conta secou, hoje o
+ * assistente responde "não consegui pensar agora" e a Karol fica sem
+ * agenda. Com dois provedores, o segundo assume e ela nem percebe.
+ *
+ * A ordem é a da lista. O segundo só é chamado se o primeiro devolver
+ * nada — nunca os dois em paralelo, que seria pagar duas vezes por uma
+ * resposta.
+ *
+ * Trocar a ordem é trocar `IA_PROVEDOR`: `openai` põe a OpenAI na frente.
+ * Sem a chave de um deles, ele simplesmente não entra na fila.
+ */
+type Provedor = {
+  nome: "deepseek" | "openai";
+  base: string;
+  chaveEnv: string;
+  modelo: string;
+  /**
+   * O corpo muda entre provedores, e as diferenças mordem em silêncio:
+   *
+   * - a OpenAI dos modelos novos recusa `max_tokens` e quer
+   *   `max_completion_tokens` — o pedido volta 400;
+   * - `thinking: { type: "disabled" }` é coisa da DeepSeek; mandar isso
+   *   pra OpenAI é 400 também.
+   *
+   * Por isso cada provedor monta o próprio corpo em vez de todo mundo
+   * compartilhar um só e rezar.
+   */
+  corpo: (base: Record<string, unknown>, semPensar: boolean) => Record<string, unknown>;
+};
+
+const PROVEDORES: Provedor[] = [
+  {
+    nome: "deepseek",
+    base: process.env.IA_BASE_URL || "https://api.deepseek.com",
+    chaveEnv: "DEEPSEEK_API_KEY",
+    modelo: MODELO,
+    corpo: (b, semPensar) => ({
+      ...b,
+      temperature: 0.2,
+      max_tokens: TETO_DE_TOKENS,
+      ...(semPensar ? { thinking: { type: "disabled" } } : {}),
+    }),
+  },
+  {
+    nome: "openai",
+    base: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+    chaveEnv: "OPENAI_API_KEY",
+    modelo: process.env.OPENAI_MODELO || "gpt-4o-mini",
+    corpo: (b) => ({
+      ...b,
+      temperature: 0.2,
+      max_tokens: TETO_DE_TOKENS,
+    }),
+  },
+];
+
+/** A fila de hoje: só quem tem chave, na ordem que `IA_PROVEDOR` pedir. */
+function fila(): Provedor[] {
+  const comChave = PROVEDORES.filter((p) => process.env[p.chaveEnv]);
+  const preferido = process.env.IA_PROVEDOR;
+  if (!preferido) return comChave;
+  return [...comChave].sort((a, b) => Number(b.nome === preferido) - Number(a.nome === preferido));
+}
+
+/**
+ * O teto de tokens da resposta.
+ *
+ * ⚠️ ELE INCLUI O PENSAMENTO nos modelos que pensam. Eram 700, e 700
+ * emudecia o assistente — ver a explicação em `perguntar`.
+ */
+const TETO_DE_TOKENS = 3000;
 
 /** Quanto tempo esperamos o modelo. Acima disso a Meta já desistiu de nós. */
 const TIMEOUT_MS = 20_000;
@@ -108,7 +186,12 @@ export type Ferramenta = {
 };
 
 export function iaConfigurada(): boolean {
-  return Boolean(process.env.DEEPSEEK_API_KEY);
+  return fila().length > 0;
+}
+
+/** Quem está atendendo agora. Serve pro log e pra bancada. */
+export function provedorAtual(): string | null {
+  return fila()[0]?.nome ?? null;
 }
 
 export type Resposta = {
@@ -139,7 +222,27 @@ export async function perguntar(
   mensagens: Mensagem[],
   ferramentas: Ferramenta[],
 ): Promise<Resposta | null> {
-  const primeira = await umaIda(mensagens, ferramentas);
+  /*
+    Um provedor de cada vez, na ordem da fila. O segundo só entra se o
+    primeiro devolver NADA — API fora do ar, tempo estourado, conta seca.
+    Resposta ruim não conta como falha: nesse caso a gente já pagou por
+    ela, e chamar o outro seria pagar duas vezes pela mesma pergunta.
+  */
+  for (const provedor of fila()) {
+    const r = await tentarNo(provedor, mensagens, ferramentas);
+    if (r) return r;
+    console.error(`IA: ${provedor.nome} não respondeu, indo pro próximo`);
+  }
+  return null;
+}
+
+/** Tudo o que a gente tenta dentro de UM provedor. */
+async function tentarNo(
+  provedor: Provedor,
+  mensagens: Mensagem[],
+  ferramentas: Ferramenta[],
+): Promise<Resposta | null> {
+  const primeira = await umaIda(provedor, mensagens, ferramentas, false);
   if (!primeira) return null;
 
   /*
@@ -169,7 +272,7 @@ export async function perguntar(
     silêncio e vira uma resposta um pouco pior.
   */
   if (precisaTentarSemPensar(primeira)) {
-    const segunda = await umaIda(mensagens, ferramentas, { thinking: { type: "disabled" } });
+    const segunda = await umaIda(provedor, mensagens, ferramentas, true);
     if (segunda && (segunda.texto?.trim() || segunda.chamadas.length > 0)) return segunda;
   }
 
@@ -181,44 +284,39 @@ function precisaTentarSemPensar(r: Resposta): boolean {
   return r.motivo === "length" && !r.texto?.trim() && r.chamadas.length === 0;
 }
 
-/** Uma ida só. `extra` entra no corpo da requisição. */
+/** Uma ida só, num provedor só. */
 async function umaIda(
+  provedor: Provedor,
   mensagens: Mensagem[],
   ferramentas: Ferramenta[],
-  extra: Record<string, unknown> = {},
+  semPensar: boolean,
 ): Promise<Resposta | null> {
-  const chave = process.env.DEEPSEEK_API_KEY;
+  const chave = process.env[provedor.chaveEnv];
   if (!chave) return null;
 
   try {
-    const resp = await fetch(`${BASE}/chat/completions`, {
+    const resp = await fetch(`${provedor.base}/chat/completions`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${chave}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        model: MODELO,
-        messages: mensagens,
-        ...(ferramentas.length > 0 ? { tools: ferramentas } : {}),
-        // Temperatura baixa de propósito. Isto não escreve texto criativo,
-        // decide o que fazer com a agenda de uma pessoa: a resposta certa
-        // pra "cancela a da Maria" é sempre a mesma.
-        temperature: 0.2,
-        /*
-          ⚠️ ESTE TETO INCLUI O PENSAMENTO. Eram 700, e 700 era pouco
-          demais — ver a explicação em `perguntar`. Uma resposta da Karol
-          chegou cortada no meio da frase por causa disto.
-        */
-        max_tokens: 3000,
-        ...extra,
-      }),
+      body: JSON.stringify(
+        provedor.corpo(
+          {
+            model: provedor.modelo,
+            messages: mensagens,
+            ...(ferramentas.length > 0 ? { tools: ferramentas } : {}),
+          },
+          semPensar,
+        ),
+      ),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
 
     if (!resp.ok) {
       const detalhe = await resp.text().catch(() => "");
-      console.error(`IA: ${resp.status} ${detalhe.slice(0, 300)}`);
+      console.error(`IA (${provedor.nome}): ${resp.status} ${detalhe.slice(0, 300)}`);
       return null;
     }
 
@@ -237,7 +335,7 @@ async function umaIda(
       motivo: escolha?.finish_reason ?? null,
     };
   } catch (e) {
-    console.error("IA falhou:", e);
+    console.error(`IA (${provedor.nome}) falhou:`, e);
     return null;
   }
 }
