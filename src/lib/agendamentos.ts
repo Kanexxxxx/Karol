@@ -424,6 +424,22 @@ export async function criarAgendamento(dados: {
     avisada, e não aparece.
   */
   if (!envioParaCliente.ok) {
+    /*
+      ⚠️ ESTE AVISO PODE FALHAR CALADO, e é o único que sobrou assim.
+
+      Ele vai por texto livre. Se a janela da Karol estiver fechada — ela
+      passou um dia sem falar com o número da API — a Meta não entrega, e
+      ela não fica sabendo que a cliente não foi avisada.
+
+      Ficou assim de propósito: não existe template pra "deu erro", e
+      criar um na Meta pra carregar código de diagnóstico seria pedir
+      aprovação de uma mensagem que ninguém quer que exista pra sempre.
+
+      O estrago é limitado: o aviso de agendamento novo, esse sim, passa
+      por `enviarEvento` e cai no template quando precisa. Então ela
+      SEMPRE sabe que a cliente marcou — o que ela pode perder é o detalhe
+      de que a cliente não foi avisada.
+    */
     await enviarTexto(
       whatsappDaKarol(),
       [
