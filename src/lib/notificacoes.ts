@@ -6,6 +6,7 @@ import { DIA_HORA_POR_EXTENSO } from "./datas";
 import { brCodeDoSinal } from "./pix";
 import type { Agendamento } from "./agendamentos";
 import { formatarWhatsapp } from "./telefone";
+import { janelaAberta } from "./conversas";
 
 /**
  * Notificações.
@@ -1181,11 +1182,37 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
   const botoes = evento === "sinal-vencido" ? BOTOES_SINAL_VENCIDO : BOTOES_CLIENTE;
 
   try {
-    const resp = metaConfigurada()
-      ? comBotoes
-        ? await enviarComBotoes(para, texto, botoes)
-        : await enviarPelaMeta(para, texto)
-      : await enviarPeloWebhook(webhook!, evento, a, para, texto);
+    /*
+      ⚠️ A JANELA É CONSULTADA ANTES, E ISSO CONSERTA O DEFEITO QUE CUSTOU
+      UM DIA INTEIRO.
+
+      O desenho antigo era reativo: mandava texto livre, e SE a Meta
+      recusasse com 131047 ("passaram 24 h desde que a cliente respondeu"),
+      trocava pelo template. Funcionava quando a recusa vinha na hora.
+
+      Só que ela nem sempre vem na hora. Em 13/09, duas clientes não
+      receberam nada e a API tinha respondido **200** nas duas — o 131047
+      chegou minutos depois, pelo webhook de entrega. Como não houve erro
+      síncrono, a troca pelo template nunca aconteceu, e a mensagem morreu
+      em silêncio.
+
+      Agora a pergunta é feita antes: janela fechada, vai template direto.
+
+      ⚠️ E DÚVIDA CONTA COMO FECHADA. `janelaAberta` devolve false tanto
+      pra "fechada" quanto pra "não sei" (banco fora, tabela nova). Errar
+      pro lado do template não custa nada — template de utilidade dentro
+      da janela é de graça — e errar pro outro lado é cliente sem aviso.
+    */
+    const aberta = metaConfigurada() ? await janelaAberta(para) : true;
+    const tpl = aberta ? null : templateDoEvento(evento, a);
+
+    const resp = tpl
+      ? await enviarTemplatePelaMeta(para, tpl.nome, tpl.components)
+      : metaConfigurada()
+        ? comBotoes
+          ? await enviarComBotoes(para, texto, botoes)
+          : await enviarPelaMeta(para, texto)
+        : await enviarPeloWebhook(webhook!, evento, a, para, texto);
 
     if (!resp.ok) {
       const detalhe = await resp.text().catch(() => "");

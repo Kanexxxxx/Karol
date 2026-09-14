@@ -115,12 +115,38 @@ O caminho está provado. O que sobra é ligar no código.
   mensagem"* e jogava fora. **A resposta esteve na nossa caixa de entrada
   o tempo todo.**
 
-  Desde 13/09 o `failed` vira mensagem pra Karol:
+  Desde 13/09 o `failed` vira mensagem pra Karol — e no primeiro teste ele
+  entregou a resposta na hora:
 
       ⚠️ O WhatsApp NÃO entregou a mensagem pra essa cliente.
       (16) 99706-2339
-      Motivo: 131030 — Recipient phone number not in allowed list
-      Chama ela por aqui: https://wa.me/5516997062339
+      Motivo: 131047 — Message failed to send because more than 24 hours
+      have passed since the customer last replied to this number.
+
+  ---
+
+  ### 🛑 A causa, enfim: o fallback era REATIVO
+
+  `131047` é "passaram 24 h desde que a cliente respondeu" — e o código
+  **já tratava esse erro**: quando ele vinha, trocava o texto livre pelo
+  template. O que ninguém previu é que ele **nem sempre vem na hora**.
+
+  Nos dois testes a Meta respondeu **200** no envio. O `131047` chegou
+  minutos depois, pelo webhook de entrega. Sem erro síncrono, a troca pelo
+  template nunca aconteceu — e a mensagem morreu no meio do caminho.
+
+  ⚠️ **Isso vinha acontecendo com TODA cliente que marcava pelo site**,
+  porque nenhuma delas escreveu pro studio antes. A confirmação nunca
+  chegava em ninguém.
+
+  **O conserto:** `enviarEvento` agora **pergunta se a janela está aberta
+  ANTES** de escolher, em vez de tentar e ver no que dá. Fechada, vai
+  template direto.
+
+  E dúvida conta como fechada: `janelaAberta` devolve false tanto pra
+  "fechada" quanto pra "não sei". Errar pro lado do template não custa —
+  template de utilidade dentro da janela é de graça — e errar pro outro
+  lado é cliente sem aviso.
 
   ⚠️ Segundo suspeito, se o cartão não resolver: o app pode estar em
   **modo de Desenvolvimento** no `developers.facebook.com`. Nesse modo a

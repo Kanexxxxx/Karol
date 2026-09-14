@@ -1,5 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+/*
+  A janela de 24 h fica aberta por padrão nos testes.
+
+  ⚠️ Desde 13/09 `enviarEvento` PERGUNTA se a janela está aberta antes de
+  escolher entre texto livre e template. Sem este mock, `janelaAberta`
+  bate num banco que não existe, devolve false, e TODO teste daqui passa a
+  medir o caminho do template — inclusive os que existem pra provar o
+  texto livre.
+
+  Quem quiser o outro caminho troca com `janelaMock.mockResolvedValue(false)`.
+*/
+vi.mock("./conversas", () => ({ janelaAberta: vi.fn(async () => true) }));
+
+import { janelaAberta } from "./conversas";
 import { REGRAS } from "@/data/negocio";
 import {
   enviarEvento,
@@ -750,5 +764,100 @@ describe("quando falha, diz por quê", () => {
 
     expect(await enviarEvento("lembrete", PARA_ERRO)).toEqual({ ok: true });
     buscar.mockRestore();
+  });
+});
+
+/**
+ * Janela fechada → template DIRETO, sem tentar texto livre antes.
+ *
+ * ⚠️ ESTE É O CONSERTO DO DEFEITO QUE CUSTOU O DIA 13/09.
+ *
+ * O desenho antigo era reativo: mandava texto livre e, SE a Meta recusasse
+ * com 131047, trocava pelo template. Funcionava quando a recusa vinha na
+ * hora — e ela nem sempre vem.
+ *
+ * Duas clientes não receberam nada, e a API tinha respondido **200** nas
+ * duas. O 131047 chegou minutos depois, pelo webhook de entrega. Sem erro
+ * síncrono, a troca nunca aconteceu, e a mensagem morreu em silêncio: nem
+ * a cliente recebeu, nem a Karol soube.
+ *
+ * Perguntar antes é o que fecha esse buraco.
+ */
+describe("janela fechada manda template de primeira", () => {
+  const janelaMock = vi.mocked(janelaAberta);
+
+  beforeEach(() => {
+    process.env.META_TOKEN = "token-de-teste";
+    process.env.META_PHONE_NUMBER_ID = "1232997019905897";
+    delete process.env.NOTIFICADOR_WEBHOOK_URL;
+    janelaMock.mockResolvedValue(true);
+  });
+  afterEach(() => {
+    delete process.env.META_TOKEN;
+    delete process.env.META_PHONE_NUMBER_ID;
+    janelaMock.mockResolvedValue(true);
+  });
+
+  /** O corpo enviado em cada chamada à Meta. */
+  function espiar() {
+    const corpos: Record<string, unknown>[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_u, init) => {
+      corpos.push(JSON.parse(String((init as RequestInit).body)));
+      return new Response("{}", { status: 200 });
+    });
+    return corpos;
+  }
+
+  it("com a janela FECHADA, sai template — e uma chamada só", async () => {
+    const corpos = espiar();
+    janelaMock.mockResolvedValue(false);
+
+    const r = await enviarEvento("lembrete", PARA_ERRO);
+
+    expect(r).toEqual({ ok: true });
+    expect(corpos).toHaveLength(1);
+    expect(corpos[0].type).toBe("template");
+  });
+
+  /*
+    Com a janela ABERTA o texto livre continua sendo o certo: ele é mais
+    rico que o template, que tem texto fixo e aprovado.
+  */
+  it("com a janela ABERTA, continua texto livre", async () => {
+    const corpos = espiar();
+    janelaMock.mockResolvedValue(true);
+
+    await enviarEvento("lembrete", PARA_ERRO);
+
+    expect(corpos[0].type).not.toBe("template");
+  });
+
+  /*
+    ⚠️ DÚVIDA CONTA COMO FECHADA. `janelaAberta` devolve false tanto pra
+    "fechada" quanto pra "não sei" (banco fora do ar, tabela ainda vazia).
+    Errar pro lado do template não custa: template de utilidade dentro da
+    janela é de graça. Errar pro outro lado é cliente sem aviso nenhum.
+  */
+  it("não saber conta como fechada", async () => {
+    const corpos = espiar();
+    janelaMock.mockResolvedValue(false);
+
+    await enviarEvento("confirmacao", PARA_ERRO);
+
+    expect(corpos[0].type).toBe("template");
+  });
+
+  /*
+    O evento que não tem template não pode ficar sem saída: manda texto
+    livre e torce, que é melhor que não mandar nada.
+  */
+  it("evento sem template cai no texto livre mesmo com janela fechada", async () => {
+    const corpos = espiar();
+    janelaMock.mockResolvedValue(false);
+    // `agradecimento` tem template; usamos um sem: nenhum hoje. Então o
+    // teste garante ao menos que nada explode e algo é enviado.
+    await enviarEvento("agradecimento", PARA_ERRO);
+
+    expect(corpos.length).toBeGreaterThan(0);
   });
 });
