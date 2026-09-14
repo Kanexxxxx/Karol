@@ -1,6 +1,13 @@
 import type { NextRequest } from "next/server";
 import { receber } from "@/lib/recepcao";
-import { assinaturaConfere, lerMensagem, respostaDaVerificacao } from "@/lib/webhook-meta";
+import {
+  assinaturaConfere,
+  lerFalhaDeEntrega,
+  lerMensagem,
+  respostaDaVerificacao,
+} from "@/lib/webhook-meta";
+import { enviarTexto, whatsappDaKarol } from "@/lib/notificacoes";
+import { formatarWhatsapp } from "@/lib/telefone";
 
 /**
  * Webhook do WhatsApp — o que a cliente responde chega aqui.
@@ -58,9 +65,37 @@ export async function POST(req: NextRequest) {
     return Response.json({ ok: true, ignorado: "json inválido" });
   }
 
+  /*
+    ⚠️ ENTREGA QUE FALHOU VEM POR AQUI, E ERA JOGADA FORA.
+
+    A Meta aceita o envio na hora (200 e um id) e só depois diz se
+    entregou. Quando não entrega, ela manda um `failed` com o motivo — e
+    este arquivo tratava isso como "recibo de entrega, não é problema de
+    ninguém".
+
+    Era exatamente a informação que faltou no dia 13/09, quando duas
+    clientes não receberam nada e ninguém soube por quê.
+  */
+  const falha = lerFalhaDeEntrega(payload);
+  if (falha) {
+    console.error(`entrega falhou pro ${falha.para}: ${falha.codigo} ${falha.motivo}`);
+    await enviarTexto(
+      whatsappDaKarol(),
+      [
+        "⚠️ O WhatsApp NÃO entregou a mensagem pra essa cliente.",
+        "",
+        formatarWhatsapp(falha.para),
+        `Motivo: ${falha.codigo ?? "?"} — ${falha.motivo}`.slice(0, 300),
+        "",
+        `Chama ela por aqui: https://wa.me/${falha.para}`,
+      ].join("\n"),
+    ).catch(() => {});
+    return Response.json({ ok: true, entregaFalhou: falha.codigo });
+  }
+
   const mensagem = lerMensagem(payload);
-  // Recibo de entrega, foto, figurinha: chega muito mais disso do que
-  // mensagem de texto, e nada disso é problema.
+  // Foto, figurinha, recibo de entrega que deu certo: chega muito mais
+  // disso do que mensagem de texto, e nada disso é problema.
   if (!mensagem) return Response.json({ ok: true, ignorado: true });
 
   if (jaProcessada(mensagem.id)) return Response.json({ ok: true, repetida: true });

@@ -242,3 +242,61 @@ export function lerIntencao(texto: string, botao?: string): Intencao {
   */
   return "outro";
 }
+
+/**
+ * Uma entrega que a Meta recusou DEPOIS de ter aceitado o envio.
+ *
+ * ---------------------------------------------------------------------
+ * Por que isto existe
+ * ---------------------------------------------------------------------
+ *
+ * ⚠️ ESTE ARQUIVO CHAMAVA `statuses` DE "recibo de entrega, não é
+ * mensagem" E JOGAVA FORA. Era ali que estava a resposta que faltou o dia
+ * inteiro de 13/09.
+ *
+ * O envio pela Meta tem DOIS momentos, e é isso que confunde:
+ *
+ * 1. **Aceitar.** A API responde 200 na hora e devolve um id. Isso quer
+ *    dizer "recebi o pedido", e não "entreguei".
+ * 2. **Entregar.** Minutos ou segundos depois, a Meta manda um webhook
+ *    dizendo `sent`, `delivered`, `read` — ou **`failed`**, com o motivo.
+ *
+ * O Kainã marcou pelo site pra dois números. Os dois foram ACEITOS (por
+ * isso nenhum alerta de falha saiu) e nenhum dos dois foi ENTREGUE. O
+ * porquê chegou aqui, no passo 2, e a gente descartou sem olhar.
+ *
+ * Só `failed` interessa. `sent`, `delivered` e `read` chegam o tempo todo
+ * e não são problema de ninguém.
+ */
+export type EntregaFalhou = {
+  /** Pra quem a mensagem ia, só dígitos. */
+  para: string;
+  /** O código da Meta: 131030, 131026, 470… */
+  codigo: number | null;
+  /** O texto curto que a Meta dá. Em inglês. */
+  motivo: string;
+};
+
+export function lerFalhaDeEntrega(payload: unknown): EntregaFalhou | null {
+  const valor = primeiroValor(payload);
+  const status = (valor?.statuses as Record<string, unknown>[] | undefined)?.[0];
+  if (!status || status.status !== "failed") return null;
+
+  const erro = (status.errors as Record<string, unknown>[] | undefined)?.[0];
+  const detalhes = erro?.error_data as { details?: string } | undefined;
+
+  return {
+    para: String(status.recipient_id ?? "").replace(/\D/g, ""),
+    codigo: typeof erro?.code === "number" ? erro.code : null,
+    // `details` é sempre mais específico que `title`: "Message failed to
+    // send because more than 24 hours have passed" contra "Re-engagement
+    // message".
+    motivo: String(detalhes?.details ?? erro?.title ?? erro?.message ?? "sem motivo"),
+  };
+}
+
+/** O `value` do primeiro evento do payload, que é onde tudo mora. */
+function primeiroValor(payload: unknown): Record<string, unknown> | null {
+  const p = payload as { entry?: { changes?: { value?: Record<string, unknown> }[] }[] };
+  return p?.entry?.[0]?.changes?.[0]?.value ?? null;
+}

@@ -91,10 +91,36 @@ O caminho está provado. O que sobra é ligar no código.
   | `130497` | país restrito | número de teste da Meta, não o de produção |
   | `131026` | número não recebe | não tem WhatsApp, ou é fixo |
 
-  ⚠️ **Suspeito de agora: modo de Desenvolvimento.** É o único que explica
-  o número do Kainã funcionar e os outros dois não, com cartão posto e
-  templates aprovados. O botão fica no topo do painel do app em
-  `developers.facebook.com`: *Desenvolvimento* → *Ativo*.
+  ❌ **Também errado.** O print do painel de apps mostra "Karol — Modo:
+  **Ativo**". Terceira hipótese minha derrubada no mesmo problema.
+
+  ---
+
+  ### O que realmente estava acontecendo
+
+  ⚠️ **ACEITAR E ENTREGAR SÃO DOIS MOMENTOS DIFERENTES, e eu tratei como
+  um só. Foi esse o erro que me fez chutar três vezes.**
+
+  1. **Aceitar.** A API responde 200 na hora, com um id. Isso quer dizer
+     "recebi o pedido" — **não** "entreguei".
+  2. **Entregar.** Depois, a Meta manda um webhook dizendo `sent`,
+     `delivered`, `read` — ou **`failed`**, com o motivo.
+
+  Os dois agendamentos de teste foram **aceitos** (por isso nenhum alerta
+  de falha saiu — conferido nos logs: os dois rodaram no deploy novo). E
+  nenhum foi entregue.
+
+  O motivo chegou no passo 2, no nosso próprio webhook — e
+  `webhook-meta.ts` chamava aquilo de *"recibo de entrega, não é
+  mensagem"* e jogava fora. **A resposta esteve na nossa caixa de entrada
+  o tempo todo.**
+
+  Desde 13/09 o `failed` vira mensagem pra Karol:
+
+      ⚠️ O WhatsApp NÃO entregou a mensagem pra essa cliente.
+      (16) 99706-2339
+      Motivo: 131030 — Recipient phone number not in allowed list
+      Chama ela por aqui: https://wa.me/5516997062339
 
   ⚠️ Segundo suspeito, se o cartão não resolver: o app pode estar em
   **modo de Desenvolvimento** no `developers.facebook.com`. Nesse modo a

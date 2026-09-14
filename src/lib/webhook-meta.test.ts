@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   assinaturaConfere,
+  lerFalhaDeEntrega,
   lerIntencao,
   lerMensagem,
   respostaDaVerificacao,
@@ -263,5 +264,101 @@ describe("botões", () => {
   it("sem botão, continua lendo o texto como antes", () => {
     expect(lerIntencao("quero cancelar")).toBe("cancelar");
     expect(lerIntencao("confirmo")).toBe("confirmar");
+  });
+});
+
+/**
+ * A entrega que a Meta recusou DEPOIS de aceitar o envio.
+ *
+ * ⚠️ ISTO CUSTOU UM DIA INTEIRO. Em 13/09 duas clientes não receberam
+ * nada. O envio tinha sido ACEITO (a API respondeu 200 e deu um id), então
+ * nenhum alerta de falha saiu — e o motivo de verdade chegou aqui, no
+ * webhook, num campo que este arquivo chamava de "recibo de entrega, não é
+ * mensagem" e descartava.
+ *
+ * Aceitar e entregar são dois momentos diferentes. Confundir os dois foi o
+ * que fez a gente adivinhar por horas.
+ */
+describe("entrega que falhou", () => {
+  const falha = (erro: Record<string, unknown>) => ({
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              statuses: [
+                {
+                  id: "wamid.XYZ",
+                  status: "failed",
+                  recipient_id: "5516997062339",
+                  errors: [erro],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  it("tira o número, o código e o motivo", () => {
+    const r = lerFalhaDeEntrega(
+      falha({
+        code: 131030,
+        title: "Re-engagement message",
+        error_data: { details: "Recipient phone number not in allowed list" },
+      }),
+    );
+
+    expect(r).toEqual({
+      para: "5516997062339",
+      codigo: 131030,
+      motivo: "Recipient phone number not in allowed list",
+    });
+  });
+
+  /*
+    `details` ganha de `title` de propósito: "Message failed to send
+    because more than 24 hours have passed" resolve o problema, "Re-
+    engagement message" não diz nada pra quem está tentando entender.
+  */
+  it("prefere o detalhe ao título", () => {
+    const r = lerFalhaDeEntrega(
+      falha({ code: 131047, title: "Re-engagement message", error_data: { details: "24 hours" } }),
+    );
+    expect(r?.motivo).toBe("24 hours");
+  });
+
+  it("sem detalhe, fica com o título", () => {
+    const r = lerFalhaDeEntrega(falha({ code: 470, title: "Message failed to send" }));
+    expect(r?.motivo).toBe("Message failed to send");
+  });
+
+  /*
+    ⚠️ `sent`, `delivered` e `read` chegam o tempo todo, pra TODA mensagem
+    que dá certo. Se qualquer um deles virasse alerta, a Karol receberia
+    uma dessas a cada mensagem enviada e desligaria o WhatsApp.
+  */
+  it.each(["sent", "delivered", "read"])("status %s não é falha", (status) => {
+    const p = falha({ code: 1 });
+    (p.entry[0].changes[0].value.statuses[0] as Record<string, unknown>).status = status;
+    expect(lerFalhaDeEntrega(p)).toBeNull();
+  });
+
+  it.each([
+    ["mensagem normal, não status", { entry: [{ changes: [{ value: { messages: [{ from: "1" }] } }] }] }],
+    ["payload vazio", {}],
+    ["nulo", null],
+    ["texto solto", "opa"],
+  ])("%s devolve null", (_, payload) => {
+    expect(lerFalhaDeEntrega(payload)).toBeNull();
+  });
+
+  it("falha sem detalhe de erro nenhum ainda devolve o número", () => {
+    const r = lerFalhaDeEntrega({
+      entry: [{ changes: [{ value: { statuses: [{ status: "failed", recipient_id: "5518999998888" }] } }] }],
+    });
+    expect(r?.para).toBe("5518999998888");
+    expect(r?.codigo).toBeNull();
   });
 });
