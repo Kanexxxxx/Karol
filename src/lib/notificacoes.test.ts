@@ -861,3 +861,76 @@ describe("janela fechada manda template de primeira", () => {
     expect(corpos.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * O pedido do sinal com a janela fechada.
+ *
+ * ⚠️ ERA O MESMO DEFEITO, ESCONDIDO NUM SEGUNDO LUGAR. Consertar só o
+ * caminho normal deu a impressão de resolvido — a confirmação passou a
+ * chegar — enquanto o PAGAMENTO continuava quebrado.
+ *
+ * `enviarPedidoDeSinal` manda texto livre com botões. Com a janela
+ * fechada, a Meta responde 200 e não entrega; ele devolve `true`; e
+ * `enviarEvento` retorna sem nunca chegar no template. Quem marcava brow
+ * lamination, maquiagem ou curso — justamente quem PAGA — não recebia
+ * nada.
+ */
+describe("pedido do sinal respeita a janela", () => {
+  const janelaMock = vi.mocked(janelaAberta);
+
+  const COM_SINAL: DadosAgendamento = {
+    id: "8c6377a1-9f2b-4c3d-8e1a-5d6e7f809a0b",
+    cliente: "Maria da Silva",
+    whatsappCliente: "5518999998888",
+    servico: "Brow lamination",
+    cidade: "Pereira Barreto",
+    inicioISO: new Date(2026, 9, 8, 10, 0).toISOString(),
+    valorCentavos: 12000,
+    situacao: "pendente",
+  };
+
+  beforeEach(() => {
+    process.env.META_TOKEN = "token-de-teste";
+    process.env.META_PHONE_NUMBER_ID = "1232997019905897";
+    delete process.env.NOTIFICADOR_WEBHOOK_URL;
+  });
+  afterEach(() => {
+    delete process.env.META_TOKEN;
+    delete process.env.META_PHONE_NUMBER_ID;
+    janelaMock.mockResolvedValue(true);
+  });
+
+  function espiarCorpos() {
+    const corpos: Record<string, unknown>[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_u, init) => {
+      corpos.push(JSON.parse(String((init as RequestInit).body)));
+      return new Response("{}", { status: 200 });
+    });
+    return corpos;
+  }
+
+  it("janela FECHADA manda o template do sinal, não o texto com botões", async () => {
+    const corpos = espiarCorpos();
+    janelaMock.mockResolvedValue(false);
+
+    await enviarEvento("confirmacao", COM_SINAL);
+
+    expect(corpos).toHaveLength(1);
+    expect(corpos[0].type).toBe("template");
+    expect((corpos[0].template as { name: string }).name).toBe("pedido_sinal");
+  });
+
+  /*
+    Com a janela aberta o caminho rico continua: texto com o valor, e os
+    dois botões pra ela escolher entre QR e copia e cola. Template não faz
+    isso — tem texto fixo e aprovado.
+  */
+  it("janela ABERTA continua mandando o texto com os dois botões", async () => {
+    const corpos = espiarCorpos();
+    janelaMock.mockResolvedValue(true);
+
+    await enviarEvento("confirmacao", COM_SINAL);
+
+    expect(corpos[0].type).toBe("interactive");
+  });
+});

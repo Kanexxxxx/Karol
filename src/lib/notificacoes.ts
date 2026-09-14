@@ -1161,7 +1161,23 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
     a cliente toca, manda a primeira mensagem, a janela abre, e aí o
     `atendente.ts` dispara esta sequência inteira de graça.
   */
-  if (evento === "confirmacao" && esperandoSinal(a) && metaConfigurada()) {
+  /*
+    ⚠️ A JANELA É PERGUNTADA AQUI EM CIMA, e não lá embaixo, porque o
+    pedido do sinal passa na frente de tudo.
+
+    Este era o MESMO defeito que deixou as clientes sem confirmação,
+    escondido num segundo lugar: `enviarPedidoDeSinal` manda texto livre,
+    a Meta responde 200 mesmo com a janela fechada, ele devolve `true`, e
+    a função retorna sem nunca chegar no template. Resultado: quem marcava
+    brow lamination, maquiagem ou curso — justamente os que PAGAM — não
+    recebia nada.
+
+    Consertar só o caminho de baixo teria dado a impressão de resolvido,
+    com o pagamento continuando quebrado.
+  */
+  const janelaEstaAberta = metaConfigurada() ? await janelaAberta(para) : true;
+
+  if (evento === "confirmacao" && esperandoSinal(a) && metaConfigurada() && janelaEstaAberta) {
     if (await enviarPedidoDeSinal(a)) return { ok: true };
   }
 
@@ -1203,8 +1219,7 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
       pro lado do template não custa nada — template de utilidade dentro
       da janela é de graça — e errar pro outro lado é cliente sem aviso.
     */
-    const aberta = metaConfigurada() ? await janelaAberta(para) : true;
-    const tpl = aberta ? null : templateDoEvento(evento, a);
+    const tpl = janelaEstaAberta ? null : templateDoEvento(evento, a);
 
     const resp = tpl
       ? await enviarTemplatePelaMeta(para, tpl.nome, tpl.components)
