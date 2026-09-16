@@ -389,9 +389,26 @@ describe("a escrita mora num lugar só", () => {
    */
   it("`executar` só é chamado pela decisão do botão", () => {
     const chamadas = [...fonte.matchAll(/\bexecutar\(/g)];
-    // uma na definição (`async function executar(`) e uma em decisaoDoBotao
-    expect(chamadas).toHaveLength(2);
+    /*
+      São três, e cada uma tem dono:
+
+        1. a definição            — `async function executar(`
+        2. `decisaoDoBotao`       — o único caminho externo, depois do toque
+        3. dentro do próprio `executar`, no `case "lote"`
+
+      ⚠️ A TERCEIRA ENTROU EM 16/09 com o botão único, e ela é recursiva:
+      o lote roda cada mudança pelo MESMO `executar`, o que é justamente o
+      que impede o lote de relaxar qualquer trava. Ela não abre caminho
+      novo — quem chega no lote já veio do toque da Karol.
+
+      O número continua travado de propósito. Se virar 4, alguém achou um
+      quarto jeito de executar escrita, e aí o teste tem que ser lido, não
+      atualizado: o caminho pode ser um que não passa por botão nenhum.
+    */
+    expect(chamadas).toHaveLength(3);
     expect(corpoDe("decisaoDoBotao")).toContain("executar(");
+    // A recursiva está DENTRO do executar, não espalhada pelo arquivo.
+    expect(corpoDe("executar")).toContain("executar(");
   });
 });
 
@@ -817,5 +834,155 @@ describe("marcar quem ainda não pagou", () => {
     expect(vi.mocked(criarAgendamentoNoPainel).mock.calls[0][0]).toMatchObject({
       aguardandoSinal: false,
     });
+  });
+});
+
+/**
+ * Um botão só pra várias mudanças.
+ *
+ * ---------------------------------------------------------------------
+ * O pedido, e o que ele custou
+ * ---------------------------------------------------------------------
+ *
+ * Kainã, 15/09/2026: *"se eu mandar ele fazer cinco agendamentos numa
+ * única mensagem, ele vai me pedir para confirmar cinco vezes (...) isso
+ * acaba me prendendo a um loop de confirmações."*
+ *
+ * A causa era uma linha: o laço fazia `.find` nas chamadas de escrita e
+ * descartava as outras. O modelo já mandava as cinco juntas.
+ *
+ * ⚠️ O RISCO É REAL E FOI ACEITO POR ELE: um toque errado agora mexe em
+ * cinco horários. A resposta dele foi que desfazer é pedir pro assistente
+ * excluir, já que o histórico lembra. Por isso os testes abaixo cobram o
+ * que NÃO se pode perder junto.
+ */
+describe("um botão só pra várias mudanças", () => {
+  const ID2 = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const LOTE = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
+  function loteDe(acoes: unknown[]) {
+    return {
+      id: LOTE,
+      whatsapp: KAROL,
+      ferramenta: "lote",
+      argumentos: { acoes },
+      descricao: "1. CANCELAR Larissa\n2. CANCELAR Ana",
+    };
+  }
+
+  it("um toque executa TODAS as mudanças do lote", async () => {
+    /*
+      O mock padrão devolve SEMPRE o mesmo agendamento, o que faria os
+      dois ids virarem um só e o teste passar sem provar nada. Aqui ele
+      devolve o agendamento do id pedido — que é o que o banco faz.
+    */
+    buscarMock.mockImplementation(async (id: string) => ({ ...agendamento(), id }));
+
+    reservarAcaoMock.mockResolvedValue(
+      loteDe([
+        { ferramenta: "mudar_situacao", argumentos: { id: ID, situacao: "cancelado" }, descricao: "CANCELAR Larissa" },
+        { ferramenta: "mudar_situacao", argumentos: { id: ID2, situacao: "cancelado" }, descricao: "CANCELAR Ana" },
+      ]),
+    );
+
+    const r = await decisaoDoBotao(KAROL, `a:ok:${LOTE}`);
+
+    expect(vi.mocked(mudarSituacao)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(mudarSituacao)).toHaveBeenCalledWith(ID, "cancelado");
+    expect(vi.mocked(mudarSituacao)).toHaveBeenCalledWith(ID2, "cancelado");
+    expect(r).toMatchObject({ fez: "executou", ok: true });
+  });
+
+  it("recusar o lote não executa nenhuma", async () => {
+    reservarAcaoMock.mockResolvedValue(
+      loteDe([
+        { ferramenta: "mudar_situacao", argumentos: { id: ID, situacao: "cancelado" }, descricao: "CANCELAR Larissa" },
+        { ferramenta: "mudar_situacao", argumentos: { id: ID2, situacao: "cancelado" }, descricao: "CANCELAR Ana" },
+      ]),
+    );
+
+    const r = await decisaoDoBotao(KAROL, `a:no:${LOTE}`);
+
+    expect(vi.mocked(mudarSituacao)).not.toHaveBeenCalled();
+    expect(r).toEqual({ fez: "recusou" });
+  });
+
+  /*
+    ⚠️ O TESTE MAIS IMPORTANTE DESTE BLOCO.
+
+    Cinco confirmadas, a terceira falha. Parar no erro deixaria a agenda
+    pela metade — e a Karol sem saber onde parou. As outras têm que
+    entrar, e ela tem que receber QUAIS não entraram.
+  */
+  it("uma que falha não impede as outras, e ela fica sabendo quais", async () => {
+    reservarAcaoMock.mockResolvedValue(
+      loteDe([
+        { ferramenta: "mudar_situacao", argumentos: { id: ID, situacao: "cancelado" }, descricao: "CANCELAR Larissa" },
+        { ferramenta: "mudar_situacao", argumentos: { id: ID2, situacao: "cancelado" }, descricao: "CANCELAR Ana" },
+        { ferramenta: "mudar_situacao", argumentos: { id: ID, situacao: "cancelado" }, descricao: "CANCELAR Bia" },
+      ]),
+    );
+    vi.mocked(mudarSituacao)
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({ ok: false, erro: "Horário já retomado." })
+      .mockResolvedValueOnce({ ok: true });
+
+    const r = await decisaoDoBotao(KAROL, `a:ok:${LOTE}`);
+
+    // As três foram TENTADAS: a do meio não travou a fila.
+    expect(vi.mocked(mudarSituacao)).toHaveBeenCalledTimes(3);
+    expect(r).toMatchObject({ ok: false });
+
+    const dito = vi.mocked(enviarTexto).mock.calls.at(-1)![1];
+    expect(dito).toContain("2 de 3");
+    // O nome de quem falhou, e o motivo. Sem isso ela confere as três na mão.
+    expect(dito).toContain("CANCELAR Ana");
+    expect(dito).toContain("Horário já retomado");
+  });
+
+  /*
+    A frase "as clientes já foram avisadas" é do SISTEMA, não do modelo.
+    Num lote a ferramenta é "lote" e os argumentos não têm `situacao` —
+    sem olhar dentro, a frase sumiria e a Karol avisaria todas de novo na
+    mão, achando que o sistema não fez.
+  */
+  it("diz que as clientes foram avisadas quando o lote cancela", async () => {
+    reservarAcaoMock.mockResolvedValue(
+      loteDe([
+        { ferramenta: "mudar_situacao", argumentos: { id: ID, situacao: "cancelado" }, descricao: "CANCELAR Larissa" },
+        { ferramenta: "mudar_situacao", argumentos: { id: ID2, situacao: "cancelado" }, descricao: "CANCELAR Ana" },
+      ]),
+    );
+
+    await decisaoDoBotao(KAROL, `a:ok:${LOTE}`);
+
+    expect(vi.mocked(enviarTexto).mock.calls.at(-1)![1]).toContain("já foram avisadas");
+  });
+
+  /*
+    ⚠️ LOTE NÃO É PORTA DOS FUNDOS. Bloquear agenda não avisa cliente
+    nenhuma; se a frase saísse aqui, seria mentira — e mentira do tipo que
+    faz a Karol NÃO ligar pra quem precisava.
+  */
+  it("não inventa aviso quando o lote não mexe com cliente", async () => {
+    reservarAcaoMock.mockResolvedValue({
+      ...loteDe([
+        { ferramenta: "bloquear", argumentos: { dia: "2026-09-20", motivo: "banco" }, descricao: "FECHAR a agenda" },
+      ]),
+      descricao: "1. FECHAR a agenda",
+    });
+
+    await decisaoDoBotao(KAROL, `a:ok:${LOTE}`);
+
+    expect(vi.mocked(enviarTexto).mock.calls.at(-1)![1]).not.toMatch(/avisad/i);
+  });
+
+  it("lote vazio não executa nada", async () => {
+    reservarAcaoMock.mockResolvedValue(loteDe([]));
+
+    const r = await decisaoDoBotao(KAROL, `a:ok:${LOTE}`);
+
+    expect(vi.mocked(mudarSituacao)).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ ok: false });
   });
 });

@@ -498,6 +498,46 @@ async function executar(
   args: Record<string, unknown>,
 ): Promise<{ ok: boolean; erro?: string }> {
   switch (ferramenta) {
+    /*
+      O LOTE: várias mudanças que a Karol confirmou num toque só.
+
+      ⚠️ CADA UMA PASSA PELO MESMO `executar` DAS OUTRAS, de propósito e
+      recursivamente. É isso que garante que o lote não relaxa nenhuma
+      trava: a revalidação de horário do `remarcar`, o "não achei mais
+      esse agendamento" do `mudar_situacao`, tudo continua valendo.
+
+      ⚠️ E UMA FALHA NÃO PARA AS OUTRAS. Se a Karol confirmou cinco e a
+      terceira dá choque de horário, as outras quatro têm que entrar —
+      parar no erro deixaria a agenda pela metade sem ninguém saber onde.
+
+      O que volta é o placar. Quando alguma falha, o `erro` diz QUAIS e
+      por quê, porque é isso que ela precisa pra consertar. "Não deu
+      certo" sozinho a faria conferir as cinco na mão.
+    */
+    case "lote": {
+      const acoes = Array.isArray(args.acoes) ? (args.acoes as SubAcao[]) : [];
+      if (acoes.length === 0) return { ok: false, erro: "O lote chegou vazio." };
+
+      const falhas: string[] = [];
+      let feitas = 0;
+
+      for (const a of acoes) {
+        const r = await executar(a.ferramenta, a.argumentos ?? {});
+        if (r.ok) feitas++;
+        else falhas.push(`${a.descricao.replace(/\n+/g, " — ")}: ${r.erro ?? "não deu certo"}`);
+      }
+
+      if (falhas.length === 0) return { ok: true };
+
+      return {
+        ok: false,
+        erro: [
+          `${feitas} de ${acoes.length} entraram. Não deu pra:`,
+          ...falhas.map((f) => `• ${f}`),
+        ].join("\n"),
+      };
+    }
+
     case "mudar_situacao": {
       const ag = await porId(args.id);
       if (!ag) return { ok: false, erro: "Não achei mais esse agendamento." };
@@ -647,8 +687,63 @@ export async function assistente(
       return { fez: "nada", motivo: "sem-resposta" };
     }
 
-    // ESCRITA: vira proposta com botão e a conversa para aqui.
-    const escrita = resposta.chamadas.find((c) => ESCRITA.has(c.function.name));
+    /*
+      ESCRITA: vira proposta com botão e a conversa para aqui.
+
+      ⚠️ AQUI ERA `.find`, E O `.find` ERA O "LOOP DE CONFIRMAÇÕES".
+
+      O modelo já devolve as cinco mudanças numa resposta só quando a
+      Karol pede cinco. A gente pegava a primeira e descartava o resto —
+      então ela confirmava uma, ele propunha a próxima, e assim cinco
+      vezes. Não era limitação do modelo; era esta linha.
+    */
+    const escritas = resposta.chamadas.filter((c) => ESCRITA.has(c.function.name));
+
+    if (escritas.length > 1) {
+      /*
+        Várias: o id inventado (ver o bloco abaixo) é conferido em TODAS
+        antes de propor. Se alguma vier com id que não existe, a rodada
+        devolve o erro pro modelo e ele se corrige — mesmo tratamento da
+        proposta única, só que para o conjunto.
+      */
+      const comArgs = escritas.map((c) => ({
+        chamada: c,
+        nome: c.function.name,
+        args: lerArgumentos(c.function.arguments),
+      }));
+
+      const ruins = [];
+      for (const e of comArgs) {
+        const idRuim = await idQueNaoExiste(e.nome, e.args);
+        if (idRuim) ruins.push({ e, idRuim });
+      }
+
+      if (ruins.length > 0 && rodada < MAX_RODADAS - 1) {
+        mensagens.push({
+          role: "assistant",
+          content: resposta.texto,
+          reasoning_content: resposta.raciocinio,
+          tool_calls: resposta.chamadas,
+        });
+        for (const { e, idRuim } of ruins) {
+          mensagens.push({
+            role: "tool",
+            tool_call_id: e.chamada.id,
+            content: JSON.stringify({ erro: idRuim }),
+          });
+        }
+        continue;
+      }
+
+      return proporLote(
+        de,
+        texto,
+        comArgs.map(({ nome, args }) => ({ nome, args })),
+        mostrados,
+      );
+    }
+
+    const escrita = escritas[0];
     if (escrita) {
       const args = lerArgumentos(escrita.function.arguments);
 
@@ -866,6 +961,140 @@ function comALista(
   ];
 }
 
+/**
+ * VÁRIAS mudanças, UM botão.
+ *
+ * ---------------------------------------------------------------------
+ * O pedido
+ * ---------------------------------------------------------------------
+ *
+ * Kainã, 15/09/2026: *"se eu mandar ele fazer cinco agendamentos numa
+ * única mensagem, ele vai me pedir para confirmar cinco vezes. É mais
+ * fácil ele gerar um único texto mostrando todos os horários e eu aperto
+ * uma única vez. Isso acaba me prendendo a um loop de confirmações."*
+ *
+ * Ele está certo sobre o incômodo, e a causa era uma linha: o laço fazia
+ * `.find` nas chamadas de escrita e jogava fora todas as outras. O modelo
+ * já devolvia as cinco de uma vez; a gente é que só olhava a primeira.
+ *
+ * ---------------------------------------------------------------------
+ * ⚠️ O RISCO, E A RESPOSTA DELE
+ * ---------------------------------------------------------------------
+ *
+ * Eu levantei que um toque errado passaria a mexer em cinco horários de
+ * uma vez. A resposta dele: *"se ela tocar errado, tem a opção dela pedir
+ * para ele excluir, já que ele vai lembrar de tudo."* É verdade — o
+ * histórico guarda o que foi feito, e desfazer é pedir. Decisão dele,
+ * registrada aqui porque o risco continua existindo.
+ *
+ * O que NÃO se abriu mão:
+ *
+ * - cada mudança é validada sozinha, com as mesmas travas de sempre.
+ *   Lote não pode virar porta dos fundos pra gravar o que uma proposta
+ *   única recusaria;
+ * - o que não passa na validação **fica de fora e é dito**. A descrição
+ *   que ela lê antes de tocar contém exatamente o que vai acontecer —
+ *   nem mais, nem menos. É o contrato do botão;
+ * - na execução, cada uma é revalidada de novo (ver `executar`), porque
+ *   entre a proposta e o toque a agenda pode ter mudado;
+ * - se três derem certo e duas não, ela recebe QUAIS falharam e por quê.
+ *   Silêncio parcial seria pior que o loop de confirmações.
+ */
+const MAX_LOTE = 10;
+
+type SubAcao = { ferramenta: string; argumentos: Record<string, unknown>; descricao: string };
+
+async function proporLote(
+  de: string,
+  pedido: string,
+  escritas: { nome: string; args: Record<string, unknown> }[],
+  mostrados: ItemMostrado[] = [],
+): Promise<DesfechoAssistente> {
+  const acoes: SubAcao[] = [];
+  const recusadas: string[] = [];
+
+  for (const e of escritas.slice(0, MAX_LOTE)) {
+    const problema = await problemaComOHorario(e.nome, e.args);
+    if (problema) {
+      recusadas.push(problema);
+      continue;
+    }
+    const descricao = await descrever(e.nome, e.args);
+    if (!descricao) {
+      recusadas.push("Uma das mudanças eu não consegui entender.");
+      continue;
+    }
+    acoes.push({ ferramenta: e.nome, argumentos: e.args, descricao });
+  }
+
+  // Nenhuma sobrou: não há botão a mandar, só o motivo.
+  if (acoes.length === 0) {
+    await enviarTexto(de, recusadas[0] ?? "Não consegui preparar essas mudanças. 🤍");
+    return { fez: "nada", motivo: "sem-resposta" };
+  }
+
+  // Sobrou uma só: é uma proposta comum, e o caminho comum é melhor
+  // testado. Sem lote de um item.
+  if (acoes.length === 1 && recusadas.length === 0) {
+    return propor(de, pedido, acoes[0].ferramenta, acoes[0].argumentos, mostrados);
+  }
+
+  /*
+    A descrição é o contrato: numerada, uma por linha, e cabendo nos 500
+    caracteres que a coluna aceita. Se estourar, o lote é cortado — e o
+    corte aparece na lista, porque um botão que faz mais do que a Karol
+    leu é exatamente o que não pode existir.
+  */
+  const cabem: SubAcao[] = [];
+  let descricao = "";
+  for (const a of acoes) {
+    const proxima = `${cabem.length + 1}. ${a.descricao.replace(/\n+/g, " — ")}`;
+    if ((descricao ? `${descricao}\n${proxima}` : proxima).length > 480) break;
+    descricao = descricao ? `${descricao}\n${proxima}` : proxima;
+    cabem.push(a);
+  }
+  const sobraram = acoes.length - cabem.length;
+
+  const id = await guardarAcao({
+    whatsapp: de,
+    ferramenta: "lote",
+    argumentos: { acoes: cabem },
+    descricao,
+  });
+
+  if (!id) {
+    await enviarTexto(de, `Não consegui preparar isso agora. Dá pra resolver no painel: ${SITE_URL}/painel`);
+    return { fez: "nada", motivo: "sem-resposta" };
+  }
+
+  const aviso = [
+    `Confere as ${cabem.length} de uma vez:`,
+    "",
+    descricao,
+    ...(recusadas.length > 0 ? ["", "Ficaram de fora:", ...recusadas.map((r) => `• ${r}`)] : []),
+    ...(sobraram > 0 ? ["", `Mais ${sobraram} não couberam — me peça depois.`] : []),
+    "",
+    "Um toque confirma todas.",
+  ].join("\n");
+
+  await enviarTextoComBotoes(de, aviso, [
+    { id: `${PREFIXO_BOTAO}ok:${id}`, titulo: "✅ Confirmar todas" },
+    { id: `${PREFIXO_BOTAO}no:${id}`, titulo: "❌ Deixa" },
+  ]);
+
+  await guardarFalas(
+    de,
+    comALista(
+      mostrados,
+      pedido,
+      `[sistema] Botão de confirmação enviado pra ${cabem.length} mudanças. NENHUMA está na agenda ainda.`,
+    ),
+    { descartar: ehLembreteDeLista },
+  );
+
+  return { fez: "propos", ferramenta: "lote" };
+}
+
 async function propor(
   de: string,
   pedido: string,
@@ -997,16 +1226,39 @@ export async function decisaoDoBotao(
     Deixar o modelo lembrar disso é apostar; aqui é consequência do que a
     ferramenta faz.
   */
+  /*
+    ⚠️ O LOTE PRECISA OLHAR DENTRO DE SI.
+
+    `avisou` decide se a Karol lê "a cliente já foi avisada". Num lote a
+    ferramenta é `"lote"` e os argumentos não têm `situacao` — então, sem
+    este `flat`, ela receberia cinco cancelamentos e a frase não sairia.
+    Ela avisaria as cinco clientes de novo, na mão, achando que o sistema
+    não tinha feito.
+  */
+  const daPraAvisar = (f: string, a: Record<string, unknown>) =>
+    f === "remarcar" ||
+    (f === "mudar_situacao" && ["cancelado", "confirmado"].includes(String(a.situacao)));
+
+  const dentroDoLote = Array.isArray(pendente.argumentos.acoes)
+    ? (pendente.argumentos.acoes as SubAcao[])
+    : null;
+
   const avisou =
     r.ok &&
-    (pendente.ferramenta === "remarcar" ||
-      (pendente.ferramenta === "mudar_situacao" &&
-        ["cancelado", "confirmado"].includes(String(pendente.argumentos.situacao))));
+    (dentroDoLote
+      ? dentroDoLote.some((s) => daPraAvisar(s.ferramenta, s.argumentos ?? {}))
+      : daPraAvisar(pendente.ferramenta, pendente.argumentos));
 
   await enviarTexto(
     de,
     r.ok
-      ? `Feito. ✅\n\n${pendente.descricao}${avisou ? "\n\nA cliente já foi avisada no WhatsApp." : ""}`
+      ? `Feito. ✅\n\n${pendente.descricao}${
+          avisou
+            ? dentroDoLote
+              ? "\n\nAs clientes já foram avisadas no WhatsApp."
+              : "\n\nA cliente já foi avisada no WhatsApp."
+            : ""
+        }`
       : `Não deu certo: ${r.erro ?? "erro desconhecido"}`,
   );
 
