@@ -7,6 +7,7 @@ import {
   respostaDaVerificacao,
 } from "@/lib/webhook-meta";
 import {
+  avisarTecnico,
   enviarTexto,
   temTecnicoSeparado,
   whatsappDaKarol,
@@ -149,6 +150,15 @@ export async function POST(req: NextRequest) {
     // webhook responde erro, e um defeito nosso viraria laço de reentrega
     // com a cliente recebendo a mesma resposta várias vezes.
     console.error("webhook do WhatsApp falhou:", e);
+    /*
+      A cliente escreveu e o sistema engasgou. Ela não recebe resposta e
+      não existe nenhum outro sinal disso — o 200 abaixo é de propósito,
+      pra Meta não reenviar em laço. Sem este aviso, ninguém saberia.
+    */
+    await avisarTecnico(
+      "O webhook do WhatsApp quebrou ao processar uma mensagem",
+      String(e).slice(0, 300),
+    ).catch(() => {});
     return Response.json({ ok: true, erro: true });
   }
 }

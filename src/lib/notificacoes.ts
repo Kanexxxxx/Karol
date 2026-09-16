@@ -143,6 +143,112 @@ export function temTecnicoSeparado(): boolean {
   return Boolean(tecnico) && tecnico !== whatsappDaKarol();
 }
 
+/**
+ * Manda um defeito do sistema pro WhatsApp de quem conserta.
+ *
+ * ---------------------------------------------------------------------
+ * Por que isto existe
+ * ---------------------------------------------------------------------
+ *
+ * Kainã, 16/09/2026: *"se tiver qualquer erro que der no sistema e que
+ * pode ser possível mandar para mim no WhatsApp, manda."*
+ *
+ * Ele achava que já recebia. Não recebia: só a falha de ENTREGA vinha pro
+ * WhatsApp dele. Os outros ~30 pontos de erro escreviam em `console.error`
+ * e nada mais — e no plano Hobby da Vercel o log de função praticamente
+ * não fica guardado. Na prática, sumiam.
+ *
+ * Entregar o sistema assim seria entregar no escuro: se quebrasse na
+ * semana seguinte, quem descobriria era a Karol reclamando, sem nenhum
+ * registro pra olhar.
+ *
+ * ---------------------------------------------------------------------
+ * ⚠️ AS TRÊS TRAVAS CONTRA VIRAR SPAM
+ * ---------------------------------------------------------------------
+ *
+ * Um aviso por erro parece inofensivo até o banco cair. Aí o MESMO erro
+ * acontece a cada acesso, e sem freio o número dele recebe centenas de
+ * mensagens em minutos — e o WhatsApp bloqueia quem dispara assim.
+ *
+ * 1. **Repetido não repete.** O mesmo assunto só sai uma vez a cada 15
+ *    minutos. Banco fora do ar vira 4 mensagens por hora, não 4 mil.
+ * 2. **Teto por processo.** Depois de 20 avisos, para. Um defeito novo a
+ *    cada requisição não fura a trava de cima, e este teto pega isso.
+ * 3. **Não avisa sobre o próprio envio.** Se o que falhou foi mandar
+ *    mensagem, avisar por mensagem entraria em laço. Quem chama daquele
+ *    caminho passa `ehEnvio`.
+ *
+ * E, como todo o resto deste arquivo: nunca lança. Um defeito no aviso de
+ * defeito não pode derrubar o que estava acontecendo.
+ */
+const HISTORICO = new Map<string, { ultimoAviso: number; calados: number }>();
+const ESPERA_MS = 15 * 60 * 1000;
+const TETO_DE_AVISOS = 30;
+let quantosAvisos = 0;
+
+export async function avisarTecnico(
+  assunto: string,
+  detalhe?: string,
+  opcoes?: { ehEnvio?: boolean },
+): Promise<void> {
+  // Sem técnico separado, isto cairia no WhatsApp da KAROL — que não tem o
+  // que fazer com "erro 23P01 ao gravar agendamento".
+  if (!temTecnicoSeparado()) return;
+
+  // Trava 3: o erro é do próprio envio. Avisar por envio seria laço.
+  if (opcoes?.ehEnvio) return;
+
+  const agora = Date.now();
+  const antes = HISTORICO.get(assunto);
+
+  /*
+    Já avisei disto há pouco. Fico calado — mas CONTANDO.
+
+    Esta contagem é a diferença entre "um erro aconteceu" e "o sistema
+    está no chão". Sem ela, o silêncio da trava esconderia justamente a
+    informação mais importante de um defeito grave: o tamanho dele.
+  */
+  if (antes && agora - antes.ultimoAviso < ESPERA_MS) {
+    antes.calados++;
+    return;
+  }
+
+  if (quantosAvisos >= TETO_DE_AVISOS) return;
+
+  const repeticoes = antes?.calados ?? 0;
+  HISTORICO.set(assunto, { ultimoAviso: agora, calados: 0 });
+  quantosAvisos++;
+
+  /*
+    A primeira vez é URGENTE e a repetição é PIOR — e a mensagem diz qual
+    das duas é, porque a reação dele muda: a primeira pode ser um caso
+    isolado; a segunda, com número, é o sistema no chão.
+  */
+  const cabecalho =
+    repeticoes > 0
+      ? `🔴 AINDA ACONTECENDO — ${repeticoes + 1}x nos últimos ${Math.round(ESPERA_MS / 60000)} min`
+      : "🔴 Erro no sistema da Karol";
+
+  try {
+    await enviarTexto(
+      whatsappDoTecnico(),
+      [
+        cabecalho,
+        "",
+        assunto,
+        ...(detalhe ? ["", detalhe.slice(0, 400)] : []),
+        "",
+        repeticoes > 0
+          ? "Está se repetindo. Vale olhar agora."
+          : "Se repetir, eu aviso de novo com a contagem.",
+      ].join("\n"),
+      { ehAvisoTecnico: true },
+    );
+  } catch {
+    // Já estamos tratando um erro. Não há a quem reclamar.
+  }
+}
+
 /** true se existe um webhook pra onde mandar os eventos. */
 export function notificadorConfigurado(): boolean {
   return Boolean(process.env.NOTIFICADOR_WEBHOOK_URL);
@@ -1168,17 +1274,43 @@ async function enviarPeloWebhook(
  * Nunca lança: quem chama é o webhook, e webhook que responde erro faz a
  * Meta reenviar o evento.
  */
-export async function enviarTexto(para: string, texto: string): Promise<boolean> {
+export async function enviarTexto(
+  para: string,
+  texto: string,
+  /*
+    ⚠️ `ehAvisoTecnico` EXISTE PRA QUEBRAR UM LAÇO, não por organização.
+
+    Quando um envio falha, `avisarTecnico` é chamado pra contar isso — e
+    ele conta MANDANDO UMA MENSAGEM. Se essa mensagem também falhar (o
+    token venceu, a Meta caiu: justamente os casos em que tudo falha), ela
+    chamaria `avisarTecnico` de novo, e de novo.
+
+    A bandeira corta o ciclo na raiz: o aviso técnico nunca gera aviso
+    técnico. O erro dele fica no log, que é o certo — não há a quem
+    reclamar quando o meio de reclamar é o que quebrou.
+  */
+  opcoes?: { ehAvisoTecnico?: boolean },
+): Promise<boolean> {
   if (!metaConfigurada()) return false;
   try {
     const resp = await enviarPelaMeta(para, texto);
     if (!resp.ok) {
       const detalhe = await resp.text().catch(() => "");
       console.error(`resposta pro ${para}: ${resp.status} ${detalhe.slice(0, 300)}`);
+      await avisarTecnico(
+        `Não consegui mandar mensagem pro ${formatarWhatsapp(para)}`,
+        `A Meta recusou com ${resp.status}. ${detalhe.slice(0, 200)}`,
+        { ehEnvio: opcoes?.ehAvisoTecnico },
+      );
     }
     return resp.ok;
   } catch (e) {
     console.error(`resposta pro ${para} falhou:`, e);
+    await avisarTecnico(
+      `Falhei ao falar com o WhatsApp da Meta`,
+      `Ao mandar pro ${formatarWhatsapp(para)}: ${String(e).slice(0, 200)}`,
+      { ehEnvio: opcoes?.ehAvisoTecnico },
+    );
     return false;
   }
 }

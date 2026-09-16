@@ -1034,3 +1034,112 @@ describe("o número do técnico", () => {
     }
   });
 });
+
+/**
+ * O aviso de erro que vai pro técnico.
+ *
+ * ---------------------------------------------------------------------
+ * O pedido, e o risco dentro dele
+ * ---------------------------------------------------------------------
+ *
+ * Kainã, 16/09/2026: *"se tiver qualquer erro que der no sistema e que
+ * pode ser possível mandar para mim no WhatsApp, manda."*
+ *
+ * Ele achava que já recebia. Não recebia: só a falha de ENTREGA vinha pro
+ * WhatsApp dele. Os outros ~30 pontos de erro escreviam em `console.error`
+ * — e no plano Hobby da Vercel o log de função praticamente não fica.
+ *
+ * ⚠️ MAS "TODOS OS ERROS" SEM FREIO É UM NÚMERO BLOQUEADO. Banco fora do
+ * ar significa o mesmo erro a cada acesso: centenas de mensagens em
+ * minutos, e o WhatsApp corta quem dispara assim. Ele mesmo levantou isso
+ * e sugeriu juntar tudo numa mensagem.
+ *
+ * O que ficou é melhor que juntar: o primeiro sai NA HORA, os repetidos
+ * ficam calados mas CONTADOS, e o próximo aviso traz a contagem. Ele sabe
+ * a hora e o tamanho, sem virar spam.
+ */
+describe("avisar o técnico sobre erro do sistema", () => {
+  const TECNICO = "5516997062339";
+  const antes = { ...process.env };
+
+  beforeEach(() => {
+    vi.resetModules();
+    process.env = { ...antes, TECNICO_WHATSAPP: TECNICO, META_TOKEN: "x", META_PHONE_NUMBER_ID: "y" };
+  });
+  afterEach(() => {
+    process.env = { ...antes };
+  });
+
+  async function comEnvio() {
+    const enviados: { para: string; texto: string }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_u: string, i: { body: string }) => {
+        const c = JSON.parse(i.body);
+        enviados.push({ para: c.to, texto: c.text?.body ?? "" });
+        return { ok: true, status: 200, text: async () => "" };
+      }),
+    );
+    const m = await import("./notificacoes");
+    return { m, enviados };
+  }
+
+  it("o primeiro erro sai na hora, pro número do técnico", async () => {
+    const { m, enviados } = await comEnvio();
+
+    await m.avisarTecnico("O banco não respondeu", "timeout após 5s");
+
+    expect(enviados).toHaveLength(1);
+    expect(enviados[0].para).toBe(TECNICO);
+    expect(enviados[0].texto).toContain("O banco não respondeu");
+    expect(enviados[0].texto).toContain("timeout após 5s");
+  });
+
+  /*
+    ⚠️ O TESTE QUE PROTEGE O NÚMERO DELE. Sem esta trava, um banco fora do
+    ar vira centenas de mensagens e o WhatsApp bloqueia a conta.
+  */
+  it("o mesmo erro repetido NÃO vira uma mensagem por vez", async () => {
+    const { m, enviados } = await comEnvio();
+
+    for (let i = 0; i < 50; i++) await m.avisarTecnico("O banco não respondeu");
+
+    expect(enviados).toHaveLength(1);
+  });
+
+  it("erros diferentes saem separados — a trava é por assunto", async () => {
+    const { m, enviados } = await comEnvio();
+
+    await m.avisarTecnico("O banco não respondeu");
+    await m.avisarTecnico("A IA não respondeu");
+
+    expect(enviados).toHaveLength(2);
+  });
+
+  /*
+    Sem número de técnico, isto cairia no WhatsApp da KAROL — que não tem
+    o que fazer com "erro 23P01 ao gravar agendamento", só susto.
+  */
+  it("sem técnico configurado, não manda nada pra ninguém", async () => {
+    delete process.env.TECNICO_WHATSAPP;
+    const { m, enviados } = await comEnvio();
+
+    await m.avisarTecnico("O banco não respondeu");
+
+    expect(enviados).toHaveLength(0);
+  });
+
+  /*
+    ⚠️ E ESTE IMPEDE O LAÇO INFINITO.
+
+    Quando o que falha é o próprio envio, avisar POR ENVIO chamaria a
+    falha de novo, e de novo. `ehEnvio` corta o ciclo na raiz.
+  */
+  it("erro do próprio envio não gera aviso por envio", async () => {
+    const { m, enviados } = await comEnvio();
+
+    await m.avisarTecnico("Falhei ao falar com a Meta", "500", { ehEnvio: true });
+
+    expect(enviados).toHaveLength(0);
+  });
+});

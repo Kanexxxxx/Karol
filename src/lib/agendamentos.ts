@@ -15,7 +15,7 @@ import {
   type VagaNaGrade,
 } from "./agenda";
 import { lerPeriodo, montarPeriodo } from "./periodo";
-import { enviarEvento, enviarTexto, whatsappDaKarol } from "./notificacoes";
+import { avisarTecnico, enviarEvento, enviarTexto, whatsappDaKarol } from "./notificacoes";
 import { normalizarWhatsapp } from "./telefone";
 import {
   buscarServico,
@@ -382,6 +382,22 @@ export async function criarAgendamento(dados: {
     if (error.code === "23P01") {
       return { ok: false, erro: "Esse horário acabou de ser ocupado. Escolha outro." };
     }
+    /*
+      ⚠️ ESTE É O ERRO MAIS CARO DO SISTEMA, e até 16/09 ele era mudo.
+
+      Uma cliente escolheu tudo, digitou o nome, tocou em confirmar — e a
+      gravação falhou. Ela vê "tente de novo em instantes", fecha a página
+      e vai marcar em outro lugar. A Karol perde a cliente e nunca fica
+      sabendo que existiu.
+
+      Diferente do 23P01 acima, que é normal (duas pessoas no mesmo
+      horário), aqui é defeito: banco fora, chave errada, tabela mudada.
+      Quem conserta precisa saber no minuto, não pela reclamação.
+    */
+    await avisarTecnico(
+      "Uma cliente tentou marcar e a gravação FALHOU",
+      `${error.code ?? "sem código"} — ${error.message}`,
+    ).catch(() => {});
     return { ok: false, erro: "Não consegui salvar agora. Tente de novo em instantes." };
   }
 
