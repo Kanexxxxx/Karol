@@ -833,3 +833,33 @@ describe("os botões do comprovante", () => {
     expect(vi.mocked(enviarTextoComBotoes)).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * O prazo do botão do comprovante.
+ *
+ * ⚠️ 30 MINUTOS SERIA UM BECO SEM SAÍDA, e foi o Kainã que puxou a
+ * revisão ("dá uma melhorada").
+ *
+ * A Karol pode estar com uma cliente na cadeira quando a foto chega. Com
+ * o prazo padrão, tocar quarenta minutos depois devolve "esse pedido já
+ * expirou, me manda de novo" — e não há o que mandar de novo: quem mandou
+ * o comprovante foi a cliente, uma vez só. Ela ficaria sem o botão e a
+ * cliente sem confirmação.
+ *
+ * Confirmar pagamento não envelhece como uma mudança de agenda envelhece:
+ * quando ela toca, o dinheiro já está na conta.
+ */
+describe("o botão do comprovante dura o expediente inteiro", () => {
+  it("vale bem mais que os 30 minutos padrão", async () => {
+    acharMock.mockResolvedValue({ ...agendamentoFalso(), situacao: "pendente" as const });
+    vi.mocked(esperandoSinal).mockReturnValue(true);
+
+    await atender({ de: CLIENTE, texto: "", id: "wamid.f", midiaId: "midia-1" });
+
+    const { validoPorMinutos } = vi.mocked(guardarAcao).mock.calls.at(-1)![0];
+    expect(validoPorMinutos).toBeGreaterThan(30);
+    // Um dia de trabalho dela cabe: a foto pode chegar de manhã e ela
+    // resolver à noite.
+    expect(validoPorMinutos).toBeGreaterThanOrEqual(12 * 60);
+  });
+});

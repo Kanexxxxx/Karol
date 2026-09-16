@@ -250,6 +250,42 @@ describe("Karol muda a situação", () => {
     expect(r.ok).toBe(true);
     expect(eventos()).toEqual(["confirmacao"]);
   });
+
+  /**
+   * ⚠️ O LOOP QUE ESTÁ A UMA PALAVRA DE EXISTIR.
+   *
+   * O Kainã descreveu o medo em 16/09/2026: a cliente manda o
+   * comprovante, a Karol confirma, e em vez de "seu horário está
+   * confirmado" chega o pedido de PIX de novo — "vai ficar nesse loop
+   * infinito".
+   *
+   * O medo é justo, e o que separa disso é UMA PALAVRA. `enviarEvento`
+   * faz um desvio antes de mandar a confirmação:
+   *
+   *     if (evento === "confirmacao" && esperandoSinal(a)) -> manda o PIX
+   *
+   * e `esperandoSinal` é `situacao === "pendente"`. A linha que salva é o
+   * `situacao: "confirmado"` que `mudarSituacao` escreve à mão nos dados
+   * do evento. Ela parece redundante — o agendamento ACABOU de virar
+   * confirmado — e é exatamente por parecer redundante que alguém a
+   * apagaria, trocando por `antes.situacao`, que ali vale "pendente".
+   *
+   * O resultado seria a cliente pagando e recebendo cobrança de novo.
+   */
+  it("o evento leva a situação NOVA, senão vira o pedido de PIX outra vez", async () => {
+    usarBanco({
+      // O agendamento AINDA é `pendente` quando `mudarSituacao` o lê —
+      // é justamente esse valor que não pode vazar pro evento.
+      select: () => ({ data: linha(daquiATresDias(), "pendente"), error: null }),
+      update: () => ({ error: null }),
+    });
+
+    await mudarSituacao(id, "confirmado");
+
+    const [, dados] = avisar.mock.calls.at(-1)!;
+    expect(dados.situacao).toBe("confirmado");
+    expect(dados.situacao).not.toBe("pendente");
+  });
 });
 
 /**

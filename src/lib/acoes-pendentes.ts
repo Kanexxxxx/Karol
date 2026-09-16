@@ -24,6 +24,34 @@ export type AcaoPendente = {
   argumentos: Record<string, unknown>;
   /** A frase que a Karol leu antes de confirmar. */
   descricao: string;
+  /**
+   * Quanto tempo o botão vale, em minutos. Sem isto, o banco decide: 30
+   * minutos, que é o prazo certo pra quase tudo.
+   *
+   * ---------------------------------------------------------------------
+   * ⚠️ POR QUE 30 MINUTOS NÃO SERVE PRO COMPROVANTE
+   * ---------------------------------------------------------------------
+   *
+   * O prazo curto existe por um bom motivo: uma proposta de mexer na
+   * agenda envelhece mal. A Karol pede de manhã, confirma à noite, e a
+   * agenda já é outra — o horário pode ter sido tomado.
+   *
+   * O comprovante é o contrário disso. Quando ela toca em "Confirmar", o
+   * dinheiro JÁ ESTÁ na conta. Confirmar duas horas depois não é confirmar
+   * um estado velho — é reconhecer um pagamento que aconteceu. Não tem
+   * como envelhecer.
+   *
+   * E o prazo curto ali é um beco sem saída: ela está atendendo, toca
+   * quarenta minutos depois, e lê "esse pedido já expirou, me manda de
+   * novo" — sem ter o que mandar de novo, porque quem mandou foi a
+   * cliente, uma vez só.
+   *
+   * O risco de um prazo longo é confirmar um horário que caiu por falta
+   * de pagamento no meio do caminho. Isso é o certo a fazer: a pessoa
+   * pagou. E se a vaga tiver sido retomada por outra, o banco recusa
+   * sozinho pela restrição de sobreposição.
+   */
+  validoPorMinutos?: number;
 };
 
 /**
@@ -66,6 +94,13 @@ export async function guardarAcao(
       ferramenta: a.ferramenta,
       argumentos: a.argumentos,
       descricao: a.descricao.slice(0, 500),
+      // Sem `validoPorMinutos`, a coluna usa o default do banco (30 min) —
+      // e é por isso que isto só entra quando alguém pede outro prazo.
+      ...(a.validoPorMinutos
+        ? {
+            expira_em: new Date(Date.now() + a.validoPorMinutos * 60_000).toISOString(),
+          }
+        : {}),
     })
     .select("id")
     .single();

@@ -220,6 +220,18 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
           avisarNaRecusa: m.de,
         },
         descricao: `CONFIRMAR o pagamento de ${quem}${oQue ? ` — ${oQue}` : ""}`,
+        /*
+          12 horas, e não os 30 minutos de sempre.
+
+          Ela pode estar com uma cliente na cadeira quando a foto chega. O
+          prazo curto a faria tocar no botão e ler "esse pedido já
+          expirou, me manda de novo" — sem ter o que mandar, porque quem
+          mandou o comprovante foi a cliente, uma vez só.
+
+          Confirmar pagamento não envelhece: o dinheiro já está na conta.
+          O porquê completo está em `validoPorMinutos`.
+        */
+        validoPorMinutos: 12 * 60,
       });
 
       if (acao) {
