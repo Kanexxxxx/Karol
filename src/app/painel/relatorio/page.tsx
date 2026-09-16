@@ -3,7 +3,12 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { sessaoAtiva } from "@/lib/sessao";
 import { bancoConfigurado } from "@/lib/banco";
-import { relatorioDoMes, type ItemRelatorio, type LinhaRelatorio } from "@/lib/agendamentos";
+import {
+  relatorioDoMes,
+  type ItemRelatorio,
+  type LinhaRelatorio,
+  type Relatorio,
+} from "@/lib/agendamentos";
 import { AcoesAgendamento } from "../AcoesAgendamento";
 import { Indicador, Indicadores } from "../Indicadores";
 import { CabecalhoPainel, LARGURA, RodapePainel } from "../Moldura";
@@ -113,6 +118,8 @@ export default async function Relatorio({
                 sem marcação, os números abaixo estão errados pra baixo. */}
             <SemMarcacao itens={r.aMarcar} valor={r.aMarcarValor} />
 
+            <Resumo r={r} mesAnterior={mesAnterior} />
+
             <Indicadores rotulo="Números do mês" className="grid-cols-2 sm:grid-cols-4">
               <Indicador
                 rotulo="Faturamento"
@@ -166,6 +173,81 @@ export default async function Relatorio({
 
       <RodapePainel />
     </main>
+  );
+}
+
+/**
+ * O mês em uma frase, antes da grade de números.
+ *
+ * ---------------------------------------------------------------------
+ * Por que uma frase, se os números já estão logo abaixo
+ * ---------------------------------------------------------------------
+ *
+ * Quatro números lado a lado não dizem se o mês foi bom. A Karol lê isto
+ * no celular, entre uma cliente e outra, e a pergunta que ela tem é
+ * "melhorou ou piorou?" — não "qual é o ticket médio".
+ *
+ * Então a frase responde essa pergunta primeiro, em português, e a grade
+ * fica pro detalhe. Quem quer o número continua tendo o número.
+ *
+ * ⚠️ NÃO INVENTA ÂNIMO. Mês ruim é dito como mês ruim, sem "mas não se
+ * preocupe". Ela sabe como foi o mês dela; um relatório que passa a mão
+ * na cabeça vira um relatório em que ela não confia. E quando não há mês
+ * anterior pra comparar, a frase não compara — não existe "primeiro mês
+ * foi ótimo".
+ */
+function Resumo({
+  r,
+  mesAnterior,
+}: {
+  r: Relatorio;
+  mesAnterior: string;
+}) {
+  // Mês sem nada ainda: a grade de zeros já diz tudo, e uma frase aqui
+  // seria enfeite em cima de tela vazia.
+  if (r.atendidas === 0 && r.faltaram === 0) return null;
+
+  const antes = r.anterior?.faturamento;
+  const variacao =
+    antes && antes > 0 ? Math.round(((r.faturamento - antes) / antes) * 100) : null;
+
+  const comparacao =
+    variacao === null
+      ? null
+      : variacao > 4
+        ? `${variacao}% acima de ${mesAnterior}`
+        : variacao < -4
+          ? `${Math.abs(variacao)}% abaixo de ${mesAnterior}`
+          : `praticamente igual a ${mesAnterior}`;
+
+  return (
+    <p className="border-l-2 border-ouro-claro bg-creme px-4 py-3.5 text-[15px] leading-relaxed">
+      <b className="font-titulo text-[21px]">{formatarPreco(r.faturamento / 100)}</b> em{" "}
+      {r.atendidas === 1 ? "1 atendimento" : `${r.atendidas} atendimentos`}
+      {comparacao ? ` — ${comparacao}` : ""}.
+      {r.faltaram > 0 && (
+        <>
+          {" "}
+          {r.faltaram === 1 ? "1 pessoa faltou" : `${r.faltaram} pessoas faltaram`} e levaram{" "}
+          {formatarPreco(r.perdidoComFaltas / 100)} junto.
+        </>
+      )}
+      {/*
+        O que está preso esperando ela marcar vem por último e com peso:
+        é dinheiro que JÁ aconteceu e não está na conta acima. Ver
+        `aMarcar` em agendamentos.ts.
+      */}
+      {r.aMarcar.length > 0 && (
+        <>
+          {" "}
+          <b>
+            Faltam {r.aMarcar.length} atendimento{r.aMarcar.length === 1 ? "" : "s"} pra você
+            marcar
+          </b>{" "}
+          — até lá esse valor está menor do que foi de verdade.
+        </>
+      )}
+    </p>
   );
 }
 

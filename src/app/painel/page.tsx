@@ -23,15 +23,58 @@ const SO_SEMANA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: 
 /** Ainda vai acontecer e segura o horário. */
 const marcado = (a: Agendamento) => a.situacao === "confirmado" || a.situacao === "pendente";
 
+/**
+ * Quanto da agenda aparece de uma vez.
+ *
+ * ---------------------------------------------------------------------
+ * Por que isto existe
+ * ---------------------------------------------------------------------
+ *
+ * Kainã, 16/09/2026: *"tá muito ruim, numa tela só aparece vários
+ * agendamentos, ela vai ter que arrastar lá pra baixão até achar o
+ * cliente. Deixe mais organizado e acessível pra celular."*
+ *
+ * Ele tem razão e o número explica: a página carregava **60 dias** e
+ * desenhava todos, um embaixo do outro. Numa semana cheia isso é dezenas
+ * de cartões num celular — e o que ela abre o painel pra ver quase sempre
+ * é hoje.
+ *
+ * ⚠️ O FILTRO É SÓ DE EXIBIÇÃO. Os 60 dias continuam vindo do banco, e é
+ * de propósito: os números do topo ("7 dias", "pendentes") contam a
+ * agenda inteira, e a contagem de cada aba também. Filtrar na consulta
+ * faria as abas mentirem sobre o que existe fora da aba aberta.
+ */
+const PERIODOS = [
+  { id: "hoje", rotulo: "Hoje", dias: 1 },
+  { id: "semana", rotulo: "7 dias", dias: 7 },
+  { id: "mes", rotulo: "30 dias", dias: 30 },
+  { id: "tudo", rotulo: "Tudo", dias: 999 },
+] as const;
+
+type PeriodoId = (typeof PERIODOS)[number]["id"];
+
+/*
+  O padrão é a SEMANA, e não "hoje".
+
+  "Hoje" seria mais curto, mas ela abre o painel à noite também — e um dia
+  já atendido mostrando tela vazia parece defeito. Sete dias sempre tem o
+  que mostrar quando há algo marcado, cabe no celular, e é o horizonte em
+  que ela se organiza.
+*/
+const PERIODO_PADRAO: PeriodoId = "semana";
+
 export default async function Painel({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; ver?: string }>;
 }) {
   if (!(await sessaoAtiva())) redirect("/painel/login");
 
-  const { q } = await searchParams;
+  const { q, ver } = await searchParams;
   const busca = (q ?? "").trim().slice(0, 80);
+
+  const periodo: PeriodoId =
+    PERIODOS.find((p) => p.id === ver)?.id ?? PERIODO_PADRAO;
 
   const agendamentos = bancoConfigurado() ? await agendaDaKarol(-1, 60) : [];
   const porDia = agruparPorDia(agendamentos);
@@ -75,6 +118,28 @@ export default async function Painel({
     if (k === chave.amanha) return "amanhã";
     return DIA_CURTO.format(d);
   };
+
+  /*
+    O recorte por período.
+
+    ⚠️ O CORTE É POR DIA, não por hora. Se fosse por `agora`, um horário
+    das 8h sumiria da tela às 8h01 — e ela precisa ver quem já passou pra
+    marcar "atendida" ou "faltou" no fim do dia. Ontem também fica na
+    visão de hoje, pelo mesmo motivo: é onde ela fecha o dia anterior.
+  */
+  /*
+    "Cabe neste período?" — um dia entra quando começa antes do fim da
+    janela. Ontem entra em TODOS: é a pendência mais provável dela (marcar
+    quem veio e quem faltou), e some da tela junto com o resto do passado
+    conforme os dias andam.
+  */
+  const cabeEm = (d: Date, dias: number) => d.getTime() < dia(dias).getTime();
+
+  const quantosEm = (dias: number) =>
+    porDia.reduce((n, d) => (cabeEm(d.data, dias) ? n + d.itens.length : n), 0);
+
+  const diasDoPeriodo = PERIODOS.find((p) => p.id === periodo)!.dias;
+  const diasVisiveis = porDia.filter((d) => cabeEm(d.data, diasDoPeriodo));
 
   return (
     <main className="flex min-h-dvh flex-col bg-osso">
@@ -145,11 +210,19 @@ export default async function Painel({
 
             <Aguardando itens={pendentes} />
 
-            {porDia.length === 0 ? (
-              <Vazio texto="Nenhum agendamento nos próximos 60 dias." />
+            <Periodos atual={periodo} contar={quantosEm} />
+
+            {diasVisiveis.length === 0 ? (
+              <Vazio
+                texto={
+                  porDia.length === 0
+                    ? "Nenhum agendamento nos próximos 60 dias."
+                    : `Nada marcado ${periodo === "hoje" ? "hoje" : "nesse período"}. Toque em “Tudo” pra ver o resto da agenda.`
+                }
+              />
             ) : (
               <div className="flex flex-col gap-10">
-                {porDia.map((d) => (
+                {diasVisiveis.map((d) => (
                   <Dia
                     key={d.chave}
                     {...d}
@@ -277,6 +350,60 @@ function agruparPorDia(agendamentos: Agendamento[]) {
     mapa.get(chave)!.itens.push(ag);
   }
   return [...mapa.values()];
+}
+
+/**
+ * As abas de período.
+ *
+ * ⚠️ SÃO LINKS, NÃO BOTÕES DE JAVASCRIPT — e isso é a coisa toda no
+ * celular dela: funciona com a página carregando devagar, o voltar do
+ * telefone faz o que se espera, e ela pode deixar salvo "a agenda de
+ * hoje" na tela inicial. Mesma decisão da busca, logo acima.
+ *
+ * Cada aba mostra QUANTOS existem dentro dela. Sem o número, esconder o
+ * resto da agenda seria esconder mesmo — ela abriria "Hoje", veria dois
+ * cartões e não teria como saber que há onze na semana.
+ *
+ * Os 44 px de altura mínima não são estética: é o alvo de toque que a
+ * Apple e o Google recomendam, e ela usa isto com a mão ocupada.
+ */
+function Periodos({
+  atual,
+  contar,
+}: {
+  atual: PeriodoId;
+  contar: (dias: number) => number;
+}) {
+  return (
+    <nav aria-label="Período da agenda" className="-mx-1 overflow-x-auto">
+      <ul className="flex gap-2 px-1">
+        {PERIODOS.map((p) => {
+          const aberta = p.id === atual;
+          const quantos = contar(p.dias);
+          return (
+            <li key={p.id}>
+              <Link
+                href={p.id === PERIODO_PADRAO ? "/painel" : `/painel?ver=${p.id}`}
+                aria-current={aberta ? "page" : undefined}
+                className={`inline-flex min-h-[44px] items-center gap-2 border px-4 text-[13px] whitespace-nowrap transition-colors ${FOCO} ${
+                  aberta
+                    ? "border-ouro bg-ouro-fundo font-semibold text-tinta"
+                    : "border-linha bg-papel text-tinta-2 hover:border-ouro-claro"
+                }`}
+              >
+                {p.rotulo}
+                <span
+                  className={`text-[12px] tabular-nums ${aberta ? "text-ouro" : "text-tinta-3"}`}
+                >
+                  {quantos}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
 }
 
 function Vazio({ texto }: { texto: string }) {

@@ -83,3 +83,54 @@ describe("pedir várias coisas de uma vez", () => {
     expect(roteiro).not.toMatch(/UMA MUDANÇA POR VEZ/);
   });
 });
+
+/**
+ * O dia a dia, e não só os comandos.
+ *
+ * ⚠️ O ROTEIRO DISPENSAVA TUDO QUE NÃO ERA AGENDA. "Coisa que não é do
+ * studio: uma frase dizendo que ali você não ajuda" — o que jogava
+ * "bom dia" e "tô cansada" na mesma caixa de uma pergunta sobre política.
+ *
+ * Kainã, 16/09/2026: *"garanta que o assistente entenderá tudo que ela
+ * mandar, não só o sistema dela, mas o dia a dia (...) o sistema tem que
+ * se adaptar a uma menina."*
+ *
+ * Uma secretária que responde "não posso ajudar com isso" a um bom dia é
+ * uma secretária que a Karol para de usar na primeira semana.
+ */
+describe("conversa de gente, não só comando", () => {
+  const roteiro = roteiroDoAssistente();
+
+  it("trata bom dia e cansaço como conversa, não como fora de assunto", () => {
+    expect(roteiro).toMatch(/bom dia/i);
+    expect(roteiro).toMatch(/NÃO é fora de assunto/);
+  });
+
+  it("proíbe responder o dia a dia com 'não posso ajudar'", () => {
+    expect(roteiro).toMatch(/Nunca responda dia a dia com/);
+  });
+
+  /*
+    O exemplo é literal, e está no roteiro porque um exemplo ensina o
+    registro certo melhor que três adjetivos. Foi a resposta que o Kainã
+    leu num teste e aprovou.
+  */
+  it("carrega o exemplo do tom aprovado", () => {
+    expect(roteiro).toContain("dia puxado");
+  });
+
+  it("manda ouvir desabafo sem dar sermão", () => {
+    expect(roteiro).toMatch(/desabaf/i);
+    expect(roteiro).toMatch(/sermão|lição/i);
+  });
+
+  /*
+    E a recusa continua existindo — só que restrita ao que é de fato
+    alheio. Sem isto, "adapte-se a ela" viraria licença pra conversar
+    sobre qualquer coisa e inventar o que não sabe.
+  */
+  it("ainda sabe recusar o que não é dela nem do studio", () => {
+    expect(roteiro).toMatch(/política|escola/i);
+    expect(roteiro).toMatch(/Nunca invente horário, nome, telefone/);
+  });
+});
