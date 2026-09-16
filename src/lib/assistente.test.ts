@@ -986,3 +986,89 @@ describe("um botão só pra várias mudanças", () => {
     expect(r).toMatchObject({ ok: false });
   });
 });
+
+/**
+ * Recusar o comprovante não é "não fazer nada".
+ *
+ * ---------------------------------------------------------------------
+ * Por que este caso é diferente de toda outra recusa
+ * ---------------------------------------------------------------------
+ *
+ * Quase toda proposta recusada acaba em silêncio, e está certo: a Karol
+ * desistiu, a agenda não mudou, fim.
+ *
+ * O comprovante não. Do outro lado existe uma cliente que MANDOU uma foto
+ * e está esperando resposta. Se a recusa fosse silenciosa, ela esperaria
+ * a confirmação até o horário cair sozinho no fim dos 30 minutos, sem
+ * entender por quê — e o mais provável é que ela só tenha mandado a foto
+ * errada.
+ */
+describe("recusar o comprovante avisa a cliente", () => {
+  const ACAO = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const CLIENTE = "5518999998888";
+
+  function propostaDeComprovante() {
+    reservarAcaoMock.mockResolvedValue({
+      id: ACAO,
+      whatsapp: KAROL,
+      ferramenta: "mudar_situacao",
+      argumentos: { id: ID, situacao: "confirmado", avisarNaRecusa: CLIENTE },
+      descricao: "CONFIRMAR o pagamento de Larissa Souza",
+    });
+  }
+
+  it("a cliente é avisada, e a agenda NÃO muda", async () => {
+    propostaDeComprovante();
+
+    const r = await decisaoDoBotao(KAROL, `a:no:${ACAO}`);
+
+    expect(r).toEqual({ fez: "recusou" });
+    expect(vi.mocked(mudarSituacao)).not.toHaveBeenCalled();
+
+    const paraCliente = vi.mocked(enviarTexto).mock.calls.find((c) => c[0] === CLIENTE);
+    expect(paraCliente).toBeDefined();
+    // Ela precisa saber o que fazer, não só que deu errado.
+    expect(paraCliente![1]).toMatch(/mandar de novo|manda de novo/i);
+  });
+
+  it("a Karol fica sabendo que a cliente foi avisada", async () => {
+    propostaDeComprovante();
+
+    await decisaoDoBotao(KAROL, `a:no:${ACAO}`);
+
+    const paraKarol = vi.mocked(enviarTexto).mock.calls.find((c) => c[0] === KAROL)![1];
+    expect(paraKarol).toMatch(/avisei/i);
+    // E não o "não mexi em nada", que aqui seria mentira por omissão.
+    expect(paraKarol).not.toMatch(/não mexi em nada/i);
+  });
+
+  /*
+    ⚠️ E O RESTO CONTINUA SILENCIOSO. Se toda recusa passasse a mandar
+    mensagem pra alguém, uma Karol desistindo de cancelar um horário
+    avisaria a cliente de um cancelamento que não aconteceu.
+  */
+  it("recusa comum continua sem avisar ninguém", async () => {
+    reservarAcaoMock.mockResolvedValue({
+      id: ACAO,
+      whatsapp: KAROL,
+      ferramenta: "mudar_situacao",
+      argumentos: { id: ID, situacao: "cancelado" },
+      descricao: "CANCELAR o horário de Larissa Souza",
+    });
+
+    await decisaoDoBotao(KAROL, `a:no:${ACAO}`);
+
+    const destinos = vi.mocked(enviarTexto).mock.calls.map((c) => c[0]);
+    expect(destinos).toEqual([KAROL]);
+    expect(vi.mocked(enviarTexto).mock.calls[0][1]).toMatch(/não mexi em nada/i);
+  });
+
+  it("confirmar continua confirmando o pagamento", async () => {
+    propostaDeComprovante();
+
+    const r = await decisaoDoBotao(KAROL, `a:ok:${ACAO}`);
+
+    expect(vi.mocked(mudarSituacao)).toHaveBeenCalledWith(ID, "confirmado");
+    expect(r).toMatchObject({ ok: true });
+  });
+});

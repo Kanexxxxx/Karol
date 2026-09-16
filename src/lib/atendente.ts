@@ -36,6 +36,7 @@ import {
   pedidoAberto,
   registrarEscolha,
 } from "./remarcacao";
+import { guardarAcao } from "./acoes-pendentes";
 import { linkWhatsapp } from "./whatsapp";
 import { formatarWhatsapp } from "./telefone";
 import { analisarComprovante } from "./comprovante";
@@ -180,6 +181,61 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
         .filter(Boolean)
         .join("\n"),
     );
+    /*
+      OS DOIS BOTÕES DA KAROL — pedido do Kainã em 16/09/2026.
+
+      Antes a foto chegava pra ela e parava aí: pra confirmar o pagamento
+      ela tinha que sair do WhatsApp, abrir o painel, achar a cliente e
+      mudar a situação. Com a cliente esperando e o relógio dos 30 minutos
+      correndo.
+
+      Agora a decisão é no mesmo lugar em que ela viu a foto.
+
+      ⚠️ ISTO REAPROVEITA A MÁQUINA DE PROPOSTAS, de propósito e inteira:
+      a mesma tabela, a mesma reserva contra toque duplo, a mesma
+      validade, o mesmo `executar`. Um caminho novo de escrita seria um
+      caminho novo pra auditar — e a regra do projeto é que a agenda muda
+      num lugar só.
+
+      Só aparece pra quem está ESPERANDO SINAL. Foto de quem já está
+      confirmada não tem o que confirmar, e o botão viraria um jeito de
+      mexer no horário de alguém sem querer.
+
+      A legenda da foto não pode levar botão (mídia com botão a Meta não
+      manda), então eles vêm logo abaixo, numa segunda mensagem.
+    */
+    if (ag && esperandoSinal(paraDados(ag))) {
+      const acao = await guardarAcao({
+        whatsapp: whatsappDaKarol(),
+        ferramenta: "mudar_situacao",
+        argumentos: {
+          id: ag.id,
+          situacao: "confirmado",
+          /*
+            O que fazer se ela disser que NÃO é comprovante. Sem isto, o
+            botão de recusar só responderia "não mexi em nada" pra ela — e
+            a cliente ficaria esperando uma confirmação que não vem, até o
+            horário cair sozinho. Ver `decisaoDoBotao` em assistente.ts.
+          */
+          avisarNaRecusa: m.de,
+        },
+        descricao: `CONFIRMAR o pagamento de ${quem}${oQue ? ` — ${oQue}` : ""}`,
+      });
+
+      if (acao) {
+        await enviarTextoComBotoes(
+          whatsappDaKarol(),
+          pareceOutraCoisa
+            ? "Essa foto não me pareceu um comprovante. Você que decide:"
+            : "Se o valor estiver certo, é só confirmar:",
+          [
+            { id: `a:ok:${acao}`, titulo: "✅ Confirmar" },
+            { id: `a:no:${acao}`, titulo: "❌ Não é comprovante" },
+          ],
+        );
+      }
+    }
+
     await enviarTexto(
       m.de,
       pareceOutraCoisa

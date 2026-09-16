@@ -1190,6 +1190,31 @@ export async function decisaoDoBotao(
     await guardarFalas(de, [
       { papel: "assistant", texto: `[sistema] Ela recusou: ${pendente.descricao}. Nada mudou.` },
     ]);
+
+    /*
+      ⚠️ RECUSAR NEM SEMPRE É "NÃO FAZER NADA".
+
+      Quase toda proposta recusada acaba aqui mesmo: a Karol desistiu, a
+      agenda não mudou, fim. Mas o comprovante é diferente — do outro lado
+      existe uma cliente que MANDOU uma foto e está esperando resposta.
+
+      Se a recusa fosse silenciosa, ela esperaria a confirmação até o
+      horário cair sozinho no fim dos 30 minutos, sem entender por quê. E
+      o mais provável é que ela só tenha mandado a foto errada.
+
+      Por isso a ação pode carregar `avisarNaRecusa` com o número dela. É
+      o único caso hoje, e é o motivo de este campo existir.
+    */
+    const avisar = pendente.argumentos.avisarNaRecusa;
+    if (typeof avisar === "string" && avisar) {
+      await enviarTexto(
+        avisar,
+        "Oi! A Karol deu uma olhada e essa foto não parece ser o comprovante do PIX 💛\n\nPode conferir e mandar de novo? Se já pagou e está tudo certo, me chama que a gente resolve.",
+      );
+      await enviarTexto(de, "Avisei ela que a foto não era o comprovante. 💛");
+      return { fez: "recusou" };
+    }
+
     await enviarTexto(de, "Beleza, não mexi em nada. 💛");
     return { fez: "recusou" };
   }

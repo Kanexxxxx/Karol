@@ -172,6 +172,14 @@ export const EXPEDIENTE: Expediente[] = [
   { dia: 0, cidade: "pereira-barreto", inicio: h(18, 30), fim: h(22) },
 ];
 
+/**
+ * A chave PIX da Karol de verdade — a conta pra onde o dinheiro TEM que ir.
+ *
+ * Fica separada da chave em uso de propósito: é a referência contra a
+ * qual o projeto sabe se está apontando pro lugar certo.
+ */
+export const CHAVE_DA_KAROL = "18997525291";
+
 export const REGRAS = {
   /** Intervalo entre uma cliente e outra, em minutos. */
   intervaloMin: 10,
@@ -223,27 +231,25 @@ export const REGRAS = {
     minimoCentavos: 80 * 100,
 
     /*
-      ⚠️ CHAVE DE TESTE — É A DO KAINÃ, NÃO A DA KAROL.
-      Trocada em 12/09/2026 a pedido dele, pra dar pra testar o pagamento
-      de ponta a ponta sem mexer no dinheiro dela.
+      A CONTA DA KAROL. É pra cá que vai o dinheiro das clientes.
 
-      ANTES DE ENTREGAR, VOLTAR PARA:
-        chavePix: CHAVE_DA_KAROL
-        banco: "Nubank"
-        favorecido: "Karolaine Carvalho"
+      ⚠️ ESTA LINHA JÁ ESTEVE ERRADA POR QUATRO DIAS. De 12 a 16/09/2026
+      ela apontava pra conta do Kainã (Inter, 16991557552), posta pra
+      testar pagamento sem mexer no dinheiro dela. O que lembrava de
+      desfazer era um comentário — e comentário não avisa ninguém.
 
-      Enquanto isto estiver aqui, todo QR e todo copia e cola do site
-      apontam pra conta dele.
+      O que protege agora não é comentário nem tarja na tela: é o teste
+      `data/pix-de-teste.test.ts`, que fica vermelho enquanto a chave não
+      for a dela. Se alguém trocar isto de novo pra testar, a suíte
+      inteira acusa antes do deploy.
 
-      Isto já dependeu só deste comentário pra ser lembrado, e comentário
-      não avisa ninguém. Agora o painel mostra uma tarja vermelha em toda
-      tela enquanto a chave não for a dela — ver `PIX_DE_TESTE` logo
-      abaixo. A tarja some sozinha quando a linha voltar ao normal.
+      Se precisar testar com outra conta, troque aqui, faça o teste, e
+      devolva. O teste vermelho é o lembrete.
     */
-    chavePix: "16991557552",
+    chavePix: CHAVE_DA_KAROL,
     tipoChave: "Telefone",
-    banco: "Inter",
-    favorecido: "Kaina Rodrigues Pinto",
+    banco: "Nubank",
+    favorecido: "Karolaine Carvalho",
 
     /**
      * NÃO devolve. Resposta literal: "Não volta — é justamente pra ela não
@@ -300,14 +306,6 @@ export const REGRAS = {
   /** Ela não quer que a cliente desmarque sozinha pelo site. */
   clientePodeCancelar: false,
 } as const;
-
-/**
- * A chave PIX da Karol de verdade — a conta pra onde o dinheiro TEM que ir.
- *
- * Fica separada da chave em uso de propósito: é a referência contra a
- * qual o projeto sabe se está apontando pro lugar certo.
- */
-export const CHAVE_DA_KAROL = "18997525291";
 
 /**
  * O site está mandando dinheiro de cliente pra uma conta que não é a dela?

@@ -50,6 +50,9 @@ vi.mock("./notificacoes", () => ({
   // agora recebe o TELEFONE da cliente, não um código derivado do id
   linkDoPainel: vi.fn((whatsapp: string) => `https://exemplo/painel?q=${whatsapp}`),
 }));
+vi.mock("./acoes-pendentes", () => ({
+  guardarAcao: vi.fn(async () => "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"),
+}));
 vi.mock("./remarcacao", () => ({
   horariosParaOferecer: vi.fn(async () => []),
   abrirPedido: vi.fn(async () => null),
@@ -64,6 +67,7 @@ import { abrirJanela, janelaAberta } from "./conversas";
 import { buscarAgendamento, proximoAgendamentoDe } from "./agendamentos";
 import {
   avisarComBotao,
+  enviarTextoComBotoes,
   enviarCodigoDoSinal,
   enviarPedidoDeSinal,
   enviarQrDoSinal,
@@ -71,6 +75,7 @@ import {
   esperandoSinal,
   reenviarMidia,
 } from "./notificacoes";
+import { guardarAcao } from "./acoes-pendentes";
 import { analisarComprovante } from "./comprovante";
 import { atender } from "./atendente";
 
@@ -730,5 +735,101 @@ describe("o botão do PIX sabe de qual agendamento ele é", () => {
 
     expect(r.fez).not.toBe("pediu-sinal");
     expect(vi.mocked(enviarQrDoSinal)).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * A Karol decidindo o comprovante sem sair do WhatsApp.
+ *
+ * ---------------------------------------------------------------------
+ * O pedido
+ * ---------------------------------------------------------------------
+ *
+ * Kainã, 16/09/2026: *"se o cliente mandar uma foto e o sistema falar que
+ * não parece um comprovante, quando chegar no WhatsApp da Carol, ela tem
+ * que ter a opção também de recusar, aceitar, confirmar."*
+ *
+ * Antes a foto chegava e parava ali. Pra confirmar o pagamento ela saía
+ * do WhatsApp, abria o painel, achava a cliente e mudava a situação — com
+ * a cliente esperando e o relógio dos 30 minutos correndo.
+ */
+describe("os botões do comprovante", () => {
+  const foto = { de: CLIENTE, texto: "", id: "wamid.foto", midiaId: "midia-1" };
+
+  function esperandoPagamento() {
+    acharMock.mockResolvedValue({ ...agendamentoFalso(), situacao: "pendente" as const });
+    vi.mocked(esperandoSinal).mockReturnValue(true);
+  }
+
+  it("a Karol recebe Confirmar e Não é comprovante", async () => {
+    esperandoPagamento();
+
+    await atender(foto);
+
+    const [para, , botoes] = vi.mocked(enviarTextoComBotoes).mock.calls.at(-1)!;
+    expect(para).toBe(KAROL);
+    expect(botoes!.map((b) => b.titulo)).toEqual(["✅ Confirmar", "❌ Não é comprovante"]);
+  });
+
+  /*
+    A proposta guardada é o que o toque dela vai executar. Se o alvo ou a
+    situação vierem errados, ela toca em "Confirmar" achando que liberou o
+    horário de uma pessoa e libera o de outra.
+  */
+  it("a proposta aponta pro agendamento certo e confirma o pagamento", async () => {
+    esperandoPagamento();
+
+    await atender(foto);
+
+    const proposta = vi.mocked(guardarAcao).mock.calls.at(-1)![0];
+    expect(proposta.ferramenta).toBe("mudar_situacao");
+    expect(proposta.argumentos).toMatchObject({
+      id: agendamentoFalso().id,
+      situacao: "confirmado",
+    });
+    // E o número da cliente vai junto, pro caso de ela recusar.
+    expect(proposta.argumentos.avisarNaRecusa).toBe(CLIENTE);
+    // A descrição é o que ela lê antes de tocar.
+    expect(proposta.descricao).toContain("Maria da Silva");
+  });
+
+  /*
+    ⚠️ ESTE É O TESTE QUE IMPEDE O BOTÃO DE VIRAR UM PERIGO.
+
+    Foto de quem já está confirmada não tem pagamento a confirmar. Se o
+    botão aparecesse assim mesmo, um toque distraído mexeria na situação
+    de um horário que estava resolvido.
+  */
+  it("NÃO aparece pra quem já está confirmada", async () => {
+    acharMock.mockResolvedValue(agendamentoFalso()); // confirmado
+    vi.mocked(esperandoSinal).mockReturnValue(false);
+
+    await atender(foto);
+
+    expect(vi.mocked(guardarAcao)).not.toHaveBeenCalled();
+    expect(vi.mocked(enviarTextoComBotoes)).not.toHaveBeenCalled();
+  });
+
+  it("sem agendamento nenhum, também não aparece", async () => {
+    acharMock.mockResolvedValue(null);
+
+    await atender(foto);
+
+    expect(vi.mocked(guardarAcao)).not.toHaveBeenCalled();
+  });
+
+  /*
+    A foto continua chegando pra ela em qualquer caso — os botões são um
+    acréscimo, não uma condição. Se `guardarAcao` falhar (banco fora), a
+    Karol ainda vê o comprovante e resolve pelo painel.
+  */
+  it("a foto chega mesmo quando a proposta não pôde ser guardada", async () => {
+    esperandoPagamento();
+    vi.mocked(guardarAcao).mockResolvedValueOnce(null);
+
+    await atender(foto);
+
+    expect(vi.mocked(reenviarMidia)).toHaveBeenCalled();
+    expect(vi.mocked(enviarTextoComBotoes)).not.toHaveBeenCalled();
   });
 });

@@ -198,17 +198,26 @@ function Diagnostico() {
               ? "As mensagens saem pelo WhatsApp oficial"
               : temWebhook
                 ? "As mensagens saem por um serviço externo"
-                : "Nada está saindo — falta ligar o WhatsApp (META_TOKEN)"}
+                : "Nada está saindo — o WhatsApp não está ligado"}
           </Estado>
           <Estado ok={recebimentoConfigurado()}>
             {recebimentoConfigurado()
               ? "O que a cliente responde chega até aqui"
-              : "O que a cliente responde NÃO chega (falta META_APP_SECRET)"}
+              : "O que a cliente responde NÃO chega até aqui"}
           </Estado>
+          {/*
+            ⚠️ SEM NOME DE VARIÁVEL. As três linhas acima diziam "(falta
+            META_TOKEN)", "(falta META_APP_SECRET)", "(falta CRON_SECRET)".
+
+            Quem lê esta tela é a KAROL. Nome de variável não a ajuda a
+            fazer nada — só transforma um diagnóstico em susto. O que ela
+            precisa saber é O QUE não está funcionando; quem conserta já
+            sabe onde procurar, e o arquivo diz.
+          */}
           <Estado ok={Boolean(process.env.CRON_SECRET)}>
             {process.env.CRON_SECRET
               ? "Os lembretes automáticos estão habilitados"
-              : "Os lembretes automáticos estão desligados (falta CRON_SECRET)"}
+              : "Os lembretes automáticos estão desligados"}
           </Estado>
         </ul>
 
@@ -225,22 +234,23 @@ function Diagnostico() {
 
         <p className="mt-4 text-[12.5px] text-tinta-3">
           {/*
-            ⚠️ O desvio do KAROL_WHATSAPP ficava num quadro laranja no topo
-            desta tela. Saiu daí a pedido do Kainã, e ele tem razão: o aviso
-            é PRA ELE, que foi quem configurou o desvio pra testar — e quem
-            abre esta tela é a KAROL, que leria um alerta vermelho sobre uma
-            variável de ambiente que ela não sabe o que é.
+            ⚠️ ESTE TEXTO É LIDO PELA KAROL, e por isso perdeu em 16/09 o
+            nome da variável de ambiente, o nome do arquivo e o nome do
+            Kainã. Ela leria "a variável KAROL_WHATSAPP" e não teria o que
+            fazer com aquilo.
 
-            Continua aqui dentro porque continua sendo a armadilha mais cara
-            do projeto: enquanto a variável existir, ela não recebe
-            agendamento nenhum e nada quebra pra denunciar isso. Este bloco
-            nasce fechado e é escrito pra quem for consertar.
+            O aviso continua existindo porque continua sendo a armadilha
+            mais cara do projeto: enquanto o desvio existir, ela não recebe
+            agendamento nenhum e NADA QUEBRA pra denunciar. Só que agora
+            ele diz a ela a única coisa acionável — que está errado e com
+            quem falar.
+
+            Depois de o desvio ser apagado, esta frase some sozinha e
+            sobra só "os avisos vão pro (18) ...".
           */}
           {avisosDesviadosPara()
-            ? `⚠️ Os avisos NÃO estão indo pra Karol — estão indo pro ${formatarWhatsapp(avisosDesviadosPara()!)}, por causa da variável KAROL_WHATSAPP. Apague ela na Vercel quando for entregar.`
-            : `Os avisos vão pro ${formatarWhatsapp(whatsappDaKarol())}.`}{" "}
-          Para mudar o que é enviado, edite <code>NOTIFICACOES</code> em{" "}
-          <code>src/data/negocio.ts</code>.
+            ? `⚠️ Os avisos não estão chegando no seu WhatsApp — estão indo pro ${formatarWhatsapp(avisosDesviadosPara()!)}. Fale com quem cuida do site antes de confiar na agenda.`
+            : `Os avisos vão pro ${formatarWhatsapp(whatsappDaKarol())}.`}
         </p>
       </div>
     </details>
