@@ -37,6 +37,7 @@ vi.mock("./notificacoes", () => ({
   esperandoSinal: vi.fn(() => false),
   paraDados: vi.fn((a: unknown) => a),
   enviarTextoComBotoes: vi.fn(async () => true),
+  avisarComBotao: vi.fn(async () => true),
   enviarTextoComLista: vi.fn(async () => true),
   whatsappDaKarol: vi.fn(() => "5518997525291"),
   linkDoPainel: vi.fn(() => "https://exemplo/painel?q=8C6377"),
@@ -53,6 +54,7 @@ vi.mock("./remarcacao", () => ({
 
 import { proximoAgendamentoDe, remarcarAgendamento } from "./agendamentos";
 import { enviarTexto, enviarTextoComBotoes, enviarTextoComLista } from "./notificacoes";
+import * as N from "./notificacoes";
 import * as R from "./remarcacao";
 import { atender } from "./atendente";
 
@@ -217,8 +219,19 @@ describe("3 e 4 — a Karol decide", () => {
     expect(mover).not.toHaveBeenCalled();
     expect(r).toEqual({ fez: "karol-recusou" });
     expect(vi.mocked(R.fechar)).toHaveBeenCalledWith(ID_PEDIDO, "recusado");
-    const paraCliente = texto.mock.calls.find((c) => c[0] === CLIENTE)![1];
-    expect(paraCliente).toMatch(/continua valendo/i);
+    /*
+      ⚠️ A RECUSA SAI POR `avisarComBotao` desde 16/09, não por texto puro:
+      leva o botão "Falar com a Karol" no lugar do link que ficava colado
+      na última linha.
+
+      O que se cobra continua igual — a cliente precisa ouvir que o
+      horário ANTIGO dela não se mexeu. É a única frase que evita ela
+      aparecer no studio no dia errado.
+    */
+    const paraCliente = vi.mocked(N.avisarComBotao).mock.calls.find((c) => c[0] === CLIENTE)!;
+    expect(paraCliente[1]).toMatch(/continua valendo/i);
+    expect(paraCliente[1]).not.toContain("http");
+    expect(paraCliente[3]).toContain("wa.me");
   });
 
   it("se o horário foi tomado no meio do caminho, os dois ficam sabendo", async () => {

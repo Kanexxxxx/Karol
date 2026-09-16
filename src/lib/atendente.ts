@@ -13,6 +13,7 @@ import {
   BOTAO_TEMPLATE,
   acaoDoBotao,
   agendamentoDoBotao,
+  avisarComBotao,
   enviarCodigoDoSinal,
   enviarPedidoDeSinal,
   enviarQrDoSinal,
@@ -289,7 +290,7 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
   }
 
   if (m.botao && m.botao === BOTAO_TEMPLATE.falar) {
-    await enviarTexto(m.de, encaminhamento());
+    await avisarComBotao(m.de, encaminhamento(), "Falar com a Karol", linkWhatsapp("Oi Karol!"));
     return { fez: "encaminhou-pra-karol" };
   }
 
@@ -313,7 +314,7 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
     // achou?" e a resposta morre num número que ninguém abre.
     await repassarParaKarol(m.de, m.texto);
     if (chegandoAgora) {
-      await enviarTexto(m.de, encaminhamento());
+      await avisarComBotao(m.de, encaminhamento(), "Falar com a Karol", linkWhatsapp("Oi Karol!"));
       return { fez: "encaminhou-pra-karol" };
     }
     return { fez: "repassou-pra-karol" };
@@ -331,8 +332,18 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
       return oferecerHorarios(ag, m);
 
     case "cancelar":
-      await enviarTexto(m.de, reciboDoPedido(ag, "cancelar"));
-      await enviarTexto(whatsappDaKarol(), avisoParaKarol(ag, "cancelar", m.texto));
+      await avisarComBotao(
+        m.de,
+        reciboDoPedido(ag, "cancelar"),
+        "Falar com a Karol",
+        linkWhatsapp(),
+      );
+      await avisarComBotao(
+        whatsappDaKarol(),
+        avisoParaKarol(ag, "cancelar", m.texto),
+        "Ver na agenda",
+        linkDoPainel(ag.clienteWhatsapp),
+      );
       return { fez: "avisou-karol", pedido: "cancelar" };
   }
 }
@@ -352,8 +363,18 @@ async function oferecerHorarios(ag: Agendamento, m: MensagemRecebida): Promise<D
   const pedido = opcoes.length > 0 ? await abrirPedido(ag, opcoes) : null;
 
   if (!pedido) {
-    await enviarTexto(m.de, reciboDoPedido(ag, "remarcar"));
-    await enviarTexto(whatsappDaKarol(), avisoParaKarol(ag, "remarcar", m.texto));
+    await avisarComBotao(
+      m.de,
+      reciboDoPedido(ag, "remarcar"),
+      "Falar com a Karol",
+      linkWhatsapp(),
+    );
+    await avisarComBotao(
+      whatsappDaKarol(),
+      avisoParaKarol(ag, "remarcar", m.texto),
+      "Ver na agenda",
+      linkDoPainel(ag.clienteWhatsapp),
+    );
     return { fez: "avisou-karol", pedido: "remarcar" };
   }
 
@@ -450,15 +471,17 @@ async function decisaoDaKarol(m: MensagemRecebida): Promise<Desfecho> {
 
   if (acao !== "ok") {
     await fechar(pedido.id, "recusado");
-    await enviarTexto(
+    await avisarComBotao(
       pedido.whatsapp,
       [
         `Oi! Esse horário acabou não dando pra ${primeiroNome(NEGOCIO.profissional)}. 🙏`,
         "",
         `Seu horário de ${DIA_HORA_POR_EXTENSO.format(ag.inicio)} continua valendo.`,
         "",
-        `Se quiser tentar outro, fala com ela por aqui: ${linkWhatsapp()}`,
+        "Se quiser tentar outro, é só falar com ela.",
       ].join("\n"),
+      "Falar com a Karol",
+      linkWhatsapp(),
     );
     return { fez: "karol-recusou" };
   }
@@ -559,7 +582,12 @@ function reciboDoPedido(ag: Agendamento, pedido: "cancelar" | "remarcar"): strin
     "",
     `${ag.servicoNome} — ${DIA_HORA_POR_EXTENSO.format(ag.inicio)}`,
     "",
-    `Pra resolver mais rápido, fala direto com ela aqui: ${linkWhatsapp()}`,
+    /*
+      ⚠️ O LINK VIROU BOTÃO em 16/09. "Chega de link", nas palavras do
+      Kainã. O caminho pra Karol continua existindo — como toque, e não
+      como URL colada no meio da frase.
+    */
+    "Pra resolver mais rápido, fala direto com ela.",
   ].join("\n");
 }
 
@@ -577,10 +605,14 @@ function avisoParaKarol(
     ag.cidade,
     "",
     `"${original.slice(0, 200)}"`,
-    "",
-    // Ela toca e cai no painel com esta cliente aberta, sem digitar nada.
-    // O filtro é o telefone: o código de seis caracteres saiu do projeto.
-    linkDoPainel(ag.clienteWhatsapp),
+    /*
+      ⚠️ O LINK DO PAINEL SAIU DAQUI em 16/09 — virou o BOTÃO da mensagem,
+      em quem chama esta função.
+
+      Deixar os dois seria mostrar o mesmo caminho duas vezes, que é
+      metade da confusão que o Kainã apontou nos prints. O filtro continua
+      sendo o telefone da cliente, como antes.
+    */
   ].join("\n");
 }
 
@@ -598,8 +630,9 @@ function encaminhamento(): string {
   return [
     `Oi! Este número é só dos avisos automáticos do ${NEGOCIO.nome} 💛`,
     "",
+    // ⚠️ O NÚMERO fica, o LINK sai. Ela lê "(18) 99752-5291" e o botão
+    // leva direto pra conversa, já com o "Oi Karol!" escrito.
     `Pra falar com a Karol, é no WhatsApp dela: ${NEGOCIO.whatsapp.exibicao}`,
-    linkWhatsapp("Oi Karol!"),
   ].join("\n");
 }
 
@@ -634,16 +667,26 @@ const NOTAS: Record<string, { resposta: string; aviso: string }> = {
 };
 
 async function repassarParaKarol(de: string, texto: string): Promise<void> {
-  await enviarTexto(
+  /*
+    ⚠️ AQUI O BOTÃO É "RESPONDER", não "Ver na agenda".
+
+    Nas outras mensagens o botão leva pro painel, porque é lá que a Karol
+    resolve. Nesta não: uma cliente acabou de ESCREVER, e a única coisa
+    que resolve isso é responder. Mandar pro painel seria um desvio no
+    meio de uma conversa que já começou.
+
+    Os dois links saíram do texto — eram parte do "vários links" de que o
+    Kainã reclamou olhando os prints dela.
+  */
+  await avisarComBotao(
     whatsappDaKarol(),
     [
       "💬 Uma cliente escreveu no número automático",
       "",
       formatarWhatsapp(de),
       `"${texto.slice(0, 300)}"`,
-      "",
-      `Responder: https://wa.me/${de}`,
-      linkDoPainel(de),
     ].join("\n"),
+    "Responder",
+    `https://wa.me/${de}`,
   );
 }

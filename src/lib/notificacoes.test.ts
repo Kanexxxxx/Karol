@@ -53,7 +53,14 @@ describe("templates", () => {
     const t = textoParaKarol(AG);
     expect(t).toContain("Design com henna");
     expect(t).toContain("Maria Silva Souza");
-    expect(t).toContain("5518999998888");
+    /*
+      ⚠️ FORMATADO, não os dígitos crus. O número só existia dentro do
+      "wa.me/5518999998888"; quando o link virou botão em 16/09, ele ia
+      sumir junto e a Karol ficaria sem saber de quem é o horário. Voltou
+      como texto legível — que é como ela lê de verdade.
+    */
+    expect(t).toContain("(18) 99999-8888");
+    expect(t).not.toContain("wa.me");
     expect(t).toMatch(/R\$\s?30/);
   });
 
@@ -392,11 +399,36 @@ describe("o recado da cliente chega na Karol", () => {
     expect(t).toMatch(/recado/i);
   });
 
-  it("vem ANTES do link do painel", () => {
-    // Ela lê a prévia da notificação sem abrir o WhatsApp. Se o recado
-    // ficar depois do link, some da prévia justamente quando importa.
-    const t = textoParaKarol(comRecado);
-    expect(t.indexOf("alérgica")).toBeLessThan(t.indexOf("/painel?q="));
+  /*
+    ⚠️ ESTE TESTE MUDOU DE FORMA em 16/09, porque o link saiu da mensagem.
+    Antes ele cobrava "o recado vem antes do link do painel"; hoje não há
+    link nenhum no texto — ele virou botão.
+
+    O que a regra protegia continua valendo e é o que se cobra agora: a
+    Karol lê a PRÉVIA da notificação sem abrir o WhatsApp, e o recado é a
+    única coisa ali que ela não consegue adivinhar. Ele tem que caber na
+    prévia, ou seja, ficar no começo — não no fim da mensagem.
+  */
+  it("vem ANTES do texto padrão do sinal", () => {
+    // `pendente` E acima do mínimo: são as duas condições do sinal.
+    const t = textoParaKarol({ ...comRecado, situacao: "pendente", valorCentavos: 8000 });
+    const recado = t.indexOf("alérgica");
+    const padrao = t.indexOf("Já mandei o PIX");
+
+    expect(recado).toBeGreaterThan(-1);
+    expect(padrao).toBeGreaterThan(-1);
+    // O bloco do sinal é longo e igual em toda mensagem. O recado é a
+    // única coisa ali que ela não adivinha — não pode ficar embaixo dele.
+    expect(recado).toBeLessThan(padrao);
+  });
+
+  /*
+    E a outra metade do pedido do Kainã: NENHUM link no texto da Karol.
+    Se alguém devolver uma URL aqui, a mensagem volta a ser a parede de
+    links que ele apontou nos prints.
+  */
+  it("não tem link nenhum — o caminho é o botão", () => {
+    expect(textoParaKarol(comRecado)).not.toContain("http");
   });
 
   it("não deixa buraco na mensagem quando não existe", () => {

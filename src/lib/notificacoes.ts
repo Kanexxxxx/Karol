@@ -224,6 +224,19 @@ export function textoParaKarol(a: DadosAgendamento): string {
     faltaSinal ? "🔑 *Pedido de horário — falta o sinal*" : "💛 *Novo agendamento*",
     "",
     `*${a.cliente}*`,
+    /*
+      ⚠️ O TELEFONE VOLTOU PRA CÁ em 16/09, e por pouco não se perdeu.
+
+      Ele nunca teve linha própria: aparecia só dentro do "Falar com
+      Fulana: wa.me/5518999998888". Quando os links saíram da mensagem
+      (pedido do Kainã — ver `enviarTextoComLink`), o número ia junto sem
+      ninguém notar, e a Karol ficaria sem saber de quem é o horário além
+      do primeiro nome.
+
+      Agora é texto formatado, não link: "(18) 99999-8888". Ela lê, e o
+      botão continua sendo o único caminho clicável.
+    */
+    formatarWhatsapp(a.whatsappCliente),
     quandoBonito(a.inicioISO),
     "",
     `${a.servico} · ${a.cidade}`,
@@ -247,11 +260,19 @@ export function textoParaKarol(a: DadosAgendamento): string {
         ]
       : []),
 
-    "",
-    `Falar com ${primeiroNome(a.cliente)}: https://wa.me/${a.whatsappCliente}`,
-    // Ela toca e cai no painel já filtrado nesta cliente. Sem código, sem
-    // digitar nada.
-    `Ver na agenda: ${linkDoPainel(a.whatsappCliente)}`,
+    /*
+      ⚠️ OS DOIS LINKS SAÍRAM DAQUI em 16/09/2026.
+
+      Eram "Falar com Fulana: wa.me/..." e "Ver na agenda: painel?q=...".
+      O Kainã olhou os prints do WhatsApp dela e disse: *"tem vários
+      links, ela vai ficar confusa. Eu quero botões."*
+
+      Quem leva ela pra agenda agora é o botão da mensagem (`cta_url`), e
+      o WhatsApp da cliente está NO PAINEL — que é onde ele disse que
+      link pode ficar. Um caminho, não dois.
+
+      Quem monta o botão é `enviarEvento`; este texto é só o recado.
+    */
   ].join("\n");
 }
 
@@ -924,6 +945,101 @@ async function enviarComBotoes(
   );
 }
 
+/**
+ * Texto + UM botão que abre um link.
+ *
+ * ---------------------------------------------------------------------
+ * Por que um só, e não dois
+ * ---------------------------------------------------------------------
+ *
+ * Pedido do Kainã, 15/09/2026: *"eu não quero que seja enviado nem o link,
+ * eu quero botões — tanto botão pra ir pro painel quanto botão pra ir pro
+ * WhatsApp da pessoa. No painel, só os links."*
+ *
+ * A primeira metade não dá pra fazer como ele pediu, e o limite é da Meta:
+ * numa mensagem cabe `cta_url` com **UM** botão de link, OU até três
+ * botões de resposta (que não abrem link nenhum, só devolvem um toque).
+ * As duas coisas juntas, não.
+ *
+ * Então cada mensagem ganha o botão da ação que a Karol faria ali, e o
+ * outro caminho sai da mensagem — porque a segunda metade da frase dele
+ * resolve: **no painel tem os links**. Da agenda ela chega no WhatsApp da
+ * cliente sem precisar de um segundo botão aqui.
+ *
+ * O resultado é o que ele queria de verdade: a mensagem dela deixa de ser
+ * uma parede de URL.
+ *
+ * ⚠️ Fora da janela de 24 h isto NÃO sai, igual a texto livre. Quem chama
+ * tem que ter um caminho de volta — ver `enviarEvento`.
+ *
+ * Limites da Meta cortados aqui porque estourar recusa a mensagem inteira:
+ * corpo 1024, texto do botão 20.
+ */
+export async function enviarTextoComLink(
+  para: string,
+  texto: string,
+  rotulo: string,
+  url: string,
+): Promise<boolean> {
+  if (!metaConfigurada()) return false;
+  try {
+    const resp = await fetch(
+      `https://graph.facebook.com/v23.0/${process.env.META_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${process.env.META_TOKEN}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: para,
+          type: "interactive",
+          interactive: {
+            type: "cta_url",
+            body: { text: texto.slice(0, 1024) },
+            action: {
+              name: "cta_url",
+              parameters: { display_text: rotulo.slice(0, 20), url },
+            },
+          },
+        }),
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+      console.error(`botão de link pro ${para}: ${resp.status} ${detalhe.slice(0, 300)}`);
+    }
+    return resp.ok;
+  } catch (e) {
+    console.error(`botão de link pro ${para} falhou:`, e);
+    return false;
+  }
+}
+
+/**
+ * Aviso pra Karol com botão — e o link de volta se o botão não sair.
+ *
+ * ⚠️ ISTO É O QUE IMPEDE O AVISO DE SUMIR. O `cta_url` é mais frágil que
+ * texto: a Meta recusa por url malformada, por rótulo grande, por
+ * mudança de versão da API. Sem a queda pro texto, um aviso recusado
+ * viraria silêncio — e o silêncio aqui é a Karol não sabendo que uma
+ * cliente marcou.
+ *
+ * Trocar bonito por entregue é sempre o certo neste projeto.
+ */
+export async function avisarComBotao(
+  para: string,
+  texto: string,
+  rotulo: string,
+  url: string,
+): Promise<boolean> {
+  if (await enviarTextoComLink(para, texto, rotulo, url)) return true;
+  return enviarTexto(para, `${texto}\n\n${url}`);
+}
+
 /** Texto + botões, sem lançar. Devolve false quando não deu. */
 export async function enviarTextoComBotoes(
   para: string,
@@ -1282,6 +1398,27 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
 
   if (evento === "confirmacao" && esperandoSinal(a) && metaConfigurada() && janelaEstaAberta) {
     if (await enviarPedidoDeSinal(a)) return { ok: true };
+  }
+
+  /*
+    O AVISO DA KAROL VAI COM BOTÃO, não com link.
+
+    Pedido do Kainã em 15/09, olhando os prints do WhatsApp dela: *"tem
+    vários links, ela vai ficar confusa. Eu quero botões."* O texto perdeu
+    as duas linhas de URL (ver `textoParaKarol`) e ganhou um toque só.
+
+    ⚠️ É "Ver na agenda" e não "Falar com a cliente" porque a Meta só
+    deixa UM botão de link por mensagem. A agenda ganha porque leva aos
+    dois lugares: de lá ela vê tudo e chega no WhatsApp da cliente. O
+    contrário não é verdade.
+
+    `avisarComBotao` cai pro texto com o link se o botão for recusado, e
+    o `return` só acontece se alguma das duas saiu — senão a função segue
+    pro caminho normal, que ainda tenta o template.
+  */
+  if (evento === "novo-agendamento" && metaConfigurada() && janelaEstaAberta) {
+    const foi = await avisarComBotao(para, texto, "Ver na agenda", linkDoPainel(a.whatsappCliente));
+    if (foi) return { ok: true };
   }
 
   // A confirmação da cliente vai COM BOTÕES: ela acabou de marcar e é o

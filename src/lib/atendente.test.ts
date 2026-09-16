@@ -44,6 +44,7 @@ vi.mock("./notificacoes", () => ({
   esperandoSinal: vi.fn(() => false),
   paraDados: vi.fn((a: unknown) => a),
   enviarTextoComBotoes: vi.fn(async () => true),
+  avisarComBotao: vi.fn(async () => true),
   enviarTextoComLista: vi.fn(async () => true),
   whatsappDaKarol: vi.fn(() => "5518997525291"),
   // agora recebe o TELEFONE da cliente, não um código derivado do id
@@ -62,6 +63,7 @@ vi.mock("./remarcacao", () => ({
 import { abrirJanela, janelaAberta } from "./conversas";
 import { buscarAgendamento, proximoAgendamentoDe } from "./agendamentos";
 import {
+  avisarComBotao,
   enviarCodigoDoSinal,
   enviarPedidoDeSinal,
   enviarQrDoSinal,
@@ -102,9 +104,24 @@ function agendamentoFalso() {
   };
 }
 
-/** Tudo que foi enviado, como pares [para, texto]. */
+/**
+ * Tudo que foi enviado, como pares [para, texto].
+ *
+ * ⚠️ JUNTA OS DOIS TRANSPORTES de propósito. Desde 16/09 os avisos da
+ * Karol saem por `avisarComBotao` (texto + botão de link) em vez de texto
+ * puro — mas pro teste "a Karol foi avisada?" é a mesma pergunta. Olhando
+ * só `enviarTexto`, os testes passariam a dizer que ela não foi avisada.
+ */
 function enviados(): [string, string][] {
-  return enviarMock.mock.calls.map((c) => [c[0], c[1]]);
+  return [
+    ...enviarMock.mock.calls.map((c) => [c[0], c[1]] as [string, string]),
+    ...vi.mocked(avisarComBotao).mock.calls.map((c) => [c[0], c[1]] as [string, string]),
+  ];
+}
+
+/** O link que foi pro BOTÃO desta mensagem — hoje ele não está no texto. */
+function linkDoBotaoPara(numero: string): string | undefined {
+  return vi.mocked(avisarComBotao).mock.calls.find((c) => c[0] === numero)?.[3];
 }
 
 beforeEach(() => {
@@ -183,8 +200,14 @@ describe("cliente pede pra cancelar ou remarcar", () => {
       seis caracteres, que saiu do projeto inteiro: era mais uma coisa pra
       Karol decorar, e ela já acha qualquer pessoa pelo nome ou pelo
       número que está na conversa.
+
+      E desde 16/09 ele não está mais NO TEXTO: virou o botão. O Kainã
+      olhou os prints dela e disse que tanto link ia confundir. As duas
+      linhas abaixo são o par que garante isso — o link existe, e existe
+      SÓ no botão.
     */
-    expect(paraKarol).toContain("/painel?q=" + CLIENTE);
+    expect(linkDoBotaoPara(KAROL)).toContain("/painel?q=" + CLIENTE);
+    expect(paraKarol).not.toContain("http");
     expect(paraKarol).not.toMatch(/C[óo]digo /);
   });
 
@@ -198,7 +221,9 @@ describe("cliente pede pra cancelar ou remarcar", () => {
     expect(paraCliente).toMatch(/Karol/);
     // Vai junto o WhatsApp PESSOAL dela: quem quer desmarcar resolve
     // falando com a Karol, nao com o robo.
-    expect(paraCliente).toContain("wa.me/5518997525291");
+    // O caminho pra Karol agora é o botão, não uma URL no texto.
+    expect(paraCliente).not.toContain("http");
+    expect(linkDoBotaoPara(CLIENTE)).toContain("wa.me/5518997525291");
   });
 
   it("repassa o que ela escreveu, pra Karol ver o contexto", async () => {
@@ -450,8 +475,15 @@ describe("os botões dos templates", () => {
     expect(r.fez).toBe("encaminhou-pra-karol");
     const [para, texto] = enviados().at(-1)!;
     expect(para).toBe(CLIENTE);
+    /*
+      ⚠️ O NÚMERO fica no texto, o LINK vira botão. "Chega de link" —
+      Kainã, 16/09. As três linhas juntas são o par que protege isso:
+      ela consegue LER o número, consegue TOCAR pra abrir a conversa, e
+      não sobra URL nenhuma no meio da frase.
+    */
     expect(texto).toContain("99752-5291");
-    expect(texto).toContain("wa.me/5518997525291");
+    expect(texto).not.toContain("http");
+    expect(linkDoBotaoPara(CLIENTE)).toContain("wa.me/5518997525291");
   });
 
   it("mensagem livre no meio da conversa não repete o encaminhamento", async () => {

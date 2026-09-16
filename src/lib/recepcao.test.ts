@@ -24,6 +24,7 @@ vi.mock("./conversas", () => ({ abrirJanela: vi.fn(async () => {}) }));
 vi.mock("./notificacoes", () => ({
   whatsappDaKarol: vi.fn(() => "5518997525291"),
   enviarTexto: vi.fn(async () => true),
+  avisarComBotao: vi.fn(async () => true),
   // ⚠️ Estas três vão as DE VERDADE, não stub. São funções puras que
   // separam a ação do agendamento no payload do botão ("pix_qr:<uuid>"),
   // e é exatamente esse roteamento que os testes abaixo cobram. Um stub
