@@ -276,7 +276,7 @@ Oi, {{1}}. Recebi o seu pedido de horário e ele está aguardando o pagamento da
 
 A entrada desconta do valor final do atendimento.
 
-Toque no botão abaixo e eu te mando o PIX do jeito que você preferir: QR Code ou copia e cola. Assim que o pagamento for confirmado, o horário fica reservado. 💛
+Toque no botão abaixo para receber a chave PIX e o QR Code com o valor. Assim que o pagamento for confirmado, o horário fica reservado. 💛
 ```
 
 ### Rodapé
@@ -292,6 +292,31 @@ Tipo: **Resposta rápida** — **nesta ordem**
 |---|---|
 | 1 | `Receber o PIX` |
 | 2 | `Falar com a Karol` |
+
+> ⚠️ **ESTE CORPO ESTÁ DESATUALIZADO DE PROPÓSITO, e é o que está no ar.**
+>
+> Ele promete "a chave PIX **e** o QR Code". O sistema, quando a cliente
+> toca em `Receber o PIX`, **pergunta qual ela prefere** — QR Code ou
+> copia e cola. Foi pedido do Kainã ("era informação demais pra cliente"),
+> e o template nunca acompanhou.
+>
+> **O custo é um toque a mais, e nada além disso.** O que faz a mensagem
+> ser ENTREGUE continua certo: 5 variáveis, nesta ordem, e os dois botões
+> nesta ordem. Isso está travado por `templates-da-meta.test.ts`.
+>
+> **Por que não foi corrigido antes da entrega (16/09/2026):** editar o
+> corpo manda o template de volta pra análise da Meta. Enquanto ele
+> estiver em análise — ou se for recusado — TODA cliente que paga fica sem
+> receber nada. É exatamente o caminho que custou dias de conserto em
+> setembro. Uma frase não vale esse risco no dia da entrega.
+>
+> O texto que deveria estar aqui, pra quando for seguro trocar:
+>
+> ```
+> Toque no botão abaixo e eu te mando o PIX do jeito que você preferir:
+> QR Code ou copia e cola. Assim que o pagamento for confirmado, o
+> horário fica reservado. 💛
+> ```
 
 ### Exemplos
 
