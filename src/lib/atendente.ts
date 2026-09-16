@@ -2,6 +2,7 @@ import "server-only";
 
 import { NEGOCIO, SITE_URL } from "@/data/negocio";
 import {
+  buscarAgendamento,
   proximoAgendamentoDe,
   remarcarAgendamento,
   type Agendamento,
@@ -10,6 +11,8 @@ import { abrirJanela, janelaAberta } from "./conversas";
 import { DIA_HORA_POR_EXTENSO, HORA } from "./datas";
 import {
   BOTAO_TEMPLATE,
+  acaoDoBotao,
+  agendamentoDoBotao,
   enviarCodigoDoSinal,
   enviarPedidoDeSinal,
   enviarQrDoSinal,
@@ -192,12 +195,33 @@ export async function atender(m: MensagemRecebida): Promise<Desfecho> {
     seguidas (texto, QR e código) — o Kainã leu e disse que era
     informação demais pra cliente, e é.
   */
-  if (m.botao && (m.botao === BOTAO_TEMPLATE.pixQr || m.botao === BOTAO_TEMPLATE.pixCodigo)) {
-    const pendente = await proximoAgendamentoDe(m.de);
+  const acaoPix = m.botao ? acaoDoBotao(m.botao) : null;
+  if (acaoPix === BOTAO_TEMPLATE.pixQr || acaoPix === BOTAO_TEMPLATE.pixCodigo) {
+    /*
+      ⚠️ O AGENDAMENTO VEM DO BOTÃO, não de "qual o próximo desse número".
+
+      Era assim antes, e quebrava quando a pessoa tinha mais de um
+      horário: em 15/09 a Julia tocou em "QR Code" e o código foi buscar
+      o próximo horário do número dela — que era o design da Santa, já
+      confirmado. Como aquele não esperava sinal, nada saiu, e a mensagem
+      caiu solta no colo da Karol.
+
+      Ver `botaoComAgendamento` em notificacoes.ts pro caso completo.
+
+      O `?? proximoAgendamentoDe` é pros botões antigos, sem id, que já
+      estavam no celular das clientes quando isto subiu. Eles continuam
+      errando no caso de vários horários — mas errar como antes é melhor
+      que parar de responder.
+    */
+    const doBotao = m.botao ? agendamentoDoBotao(m.botao) : null;
+    const pendente = doBotao
+      ? await buscarAgendamento(doBotao)
+      : await proximoAgendamentoDe(m.de);
+
     if (pendente) {
       const dados = paraDados(pendente);
       if (esperandoSinal(dados)) {
-        if (m.botao === BOTAO_TEMPLATE.pixQr) await enviarQrDoSinal(dados);
+        if (acaoPix === BOTAO_TEMPLATE.pixQr) await enviarQrDoSinal(dados);
         else await enviarCodigoDoSinal(dados);
         return { fez: "pediu-sinal", valorCentavos: dados.valorCentavos };
       }

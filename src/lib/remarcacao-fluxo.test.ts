@@ -25,6 +25,12 @@ vi.mock("./agendamentos", () => ({
   remarcarAgendamento: vi.fn(async () => ({ ok: true })),
 }));
 vi.mock("./notificacoes", () => ({
+  // As de verdade: funções puras que separam "pix_qr:<uuid>" em ação e
+  // agendamento. Stub aqui esconderia roteamento quebrado.
+  acaoDoBotao: (p: string) => (p.indexOf(":") < 0 ? p : p.slice(0, p.indexOf(":"))),
+  agendamentoDoBotao: (p: string) =>
+    p.indexOf(":") < 0 ? null : p.slice(p.indexOf(":") + 1) || null,
+  botaoComAgendamento: (a: string, id: string) => (id ? `${a}:${id}` : a),
   enviarTexto: vi.fn(async () => true),
   BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback", notaOtimo: "nota_otimo", notaBom: "nota_bom", notaRuim: "nota_ruim", pixQr: "pix_qr", pixCodigo: "pix_codigo" },
   enviarPedidoDeSinal: vi.fn(async () => true),

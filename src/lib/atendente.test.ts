@@ -23,11 +23,20 @@ vi.mock("./conversas", () => ({
 }));
 vi.mock("./agendamentos", () => ({
   proximoAgendamentoDe: vi.fn(),
+  buscarAgendamento: vi.fn(),
   remarcarAgendamento: vi.fn(async () => ({ ok: true })),
 }));
 vi.mock("./notificacoes", () => ({
   enviarTexto: vi.fn(async () => true),
   BOTAO_TEMPLATE: { confirmar: "confirmar", remarcar: "remarcar", falar: "falar", pix: "pix", feedback: "feedback", notaOtimo: "nota_otimo", notaBom: "nota_bom", notaRuim: "nota_ruim", pixQr: "pix_qr", pixCodigo: "pix_codigo" },
+  // ⚠️ Estas três vão as DE VERDADE, não stub. São funções puras que
+  // separam a ação do agendamento no payload do botão ("pix_qr:<uuid>"),
+  // e é exatamente esse roteamento que os testes abaixo cobram. Um stub
+  // aqui faria o teste passar com o roteamento quebrado.
+  acaoDoBotao: (p: string) => (p.indexOf(":") < 0 ? p : p.slice(0, p.indexOf(":"))),
+  agendamentoDoBotao: (p: string) =>
+    p.indexOf(":") < 0 ? null : p.slice(p.indexOf(":") + 1) || null,
+  botaoComAgendamento: (a: string, id: string) => (id ? `${a}:${id}` : a),
   enviarPedidoDeSinal: vi.fn(async () => true),
   enviarQrDoSinal: vi.fn(async () => true),
   enviarCodigoDoSinal: vi.fn(async () => true),
@@ -51,7 +60,7 @@ vi.mock("./remarcacao", () => ({
 }));
 
 import { abrirJanela, janelaAberta } from "./conversas";
-import { proximoAgendamentoDe } from "./agendamentos";
+import { buscarAgendamento, proximoAgendamentoDe } from "./agendamentos";
 import {
   enviarCodigoDoSinal,
   enviarPedidoDeSinal,
@@ -286,6 +295,18 @@ describe("o atendimento automático não pode mexer na agenda", () => {
     expect(fonte).not.toContain(nome);
   });
 
+  /*
+    ⚠️ ESTA LISTA SÓ CRESCE COM LEITURA, e cada nome novo precisa de um
+    motivo escrito aqui.
+
+    `buscarAgendamento` entrou em 16/09/2026 com o id no botão do PIX: o
+    botão passou a dizer de QUAL agendamento ele é, e carregar por id é
+    uma consulta — não move nada na agenda.
+
+    O teste reprovou a mudança antes de ela subir, que é o trabalho dele.
+    Se o próximo nome a aparecer aqui for um que ESCREVE, o certo é
+    recusar a mudança, não ampliar a lista.
+  */
   it("do banco de agendamentos, importa só o ler e o remarcar", () => {
     const importados = fonte.match(/import \{([^}]+)\} from "\.\/agendamentos"/)?.[1] ?? "";
     const nomes = importados
@@ -294,6 +315,7 @@ describe("o atendimento automático não pode mexer na agenda", () => {
       .filter(Boolean);
     expect(nomes.sort()).toEqual([
       "Agendamento",
+      "buscarAgendamento",
       "proximoAgendamentoDe",
       "remarcarAgendamento",
     ]);
@@ -573,5 +595,108 @@ describe("o pagamento pelo WhatsApp", () => {
     await atender({ ...mensagem(""), midiaId: "media-9", tipoMidia: "image" });
 
     expect(vi.mocked(reenviarMidia).mock.calls[0][3]).toContain("Comprovante");
+  });
+});
+
+/**
+ * Duas clientes no MESMO número de WhatsApp.
+ *
+ * ---------------------------------------------------------------------
+ * O caso real
+ * ---------------------------------------------------------------------
+ *
+ * 15/09/2026, número 5516996154877. Três agendamentos nele: um design da
+ * "Santa" já confirmado (18/09 07:00), um brow lamination da "Julia"
+ * esperando sinal (18/09 18:30), e depois um da "Santa" (17/09 18:45).
+ *
+ * A Julia tocou em "QR Code" e não recebeu nada. A mensagem caiu solta no
+ * colo da Karol como "uma cliente escreveu no número automático".
+ *
+ * O botão não dizia de quem era, e o código perguntava ao banco "qual o
+ * PRÓXIMO horário desse número?". Veio o design da Santa — confirmado,
+ * não esperava sinal — e nada foi enviado.
+ *
+ * ⚠️ PARECIA PRAZO. Entre o pedido da Julia e o toque dela passaram 4
+ * minutos; o toque que funcionou (da Santa) veio 1 minuto depois do
+ * dela. A conclusão natural foi "a mensagem expira em 5 minutos", e é
+ * falsa: o que mudou nesse meio não foi o relógio, foi ter nascido um
+ * agendamento mais cedo que também esperava sinal.
+ *
+ * Por isso os dois testes de baixo NÃO mexem em tempo nenhum.
+ */
+describe("o botão do PIX sabe de qual agendamento ele é", () => {
+  const JULIA = "11111111-1111-1111-1111-111111111111";
+
+  /** A Julia: esperando sinal. É dela o botão. */
+  function daJulia() {
+    return { ...agendamentoFalso(), id: JULIA, clienteNome: "Julia Pereira", situacao: "pendente" as const };
+  }
+
+  /** A Santa: confirmada, e é ela que `proximoAgendamentoDe` devolve. */
+  function daSanta() {
+    return { ...agendamentoFalso(), id: "22222222-2222-2222-2222-222222222222", clienteNome: "Santa Ferreira" };
+  }
+
+  beforeEach(() => {
+    vi.mocked(buscarAgendamento).mockReset();
+    // Só a Julia espera sinal — igual ao caso real.
+    vi.mocked(esperandoSinal).mockImplementation(
+      (a: unknown) => (a as { id: string }).id === JULIA,
+    );
+  });
+
+  it("manda o QR da Julia mesmo com a Santa sendo a próxima do número", async () => {
+    acharMock.mockResolvedValue(daSanta());
+    vi.mocked(buscarAgendamento).mockResolvedValue(daJulia());
+
+    const r = await atender({ de: CLIENTE, texto: "QR Code", id: "wamid.x", botao: `pix_qr:${JULIA}` });
+
+    expect(r.fez).toBe("pediu-sinal");
+    expect(vi.mocked(buscarAgendamento)).toHaveBeenCalledWith(JULIA);
+    // E o QR que saiu é o DELA, não o da Santa.
+    expect(vi.mocked(enviarQrDoSinal).mock.calls[0][0]).toMatchObject({ id: JULIA });
+  });
+
+  it("no copia e cola é a mesma coisa", async () => {
+    acharMock.mockResolvedValue(daSanta());
+    vi.mocked(buscarAgendamento).mockResolvedValue(daJulia());
+
+    await atender({ de: CLIENTE, texto: "Copia e cola", id: "wamid.y", botao: `pix_codigo:${JULIA}` });
+
+    expect(vi.mocked(enviarCodigoDoSinal).mock.calls[0][0]).toMatchObject({ id: JULIA });
+    expect(vi.mocked(enviarQrDoSinal)).not.toHaveBeenCalled();
+  });
+
+  /*
+    Botão antigo, sem id, já entregue no celular de quem recebeu o pedido
+    antes deste deploy. Ele volta ao comportamento velho — que erra quando
+    há vários horários, mas responde. Parar de responder seria pior.
+  */
+  it("botão sem id ainda funciona, pelo caminho antigo", async () => {
+    acharMock.mockResolvedValue(daJulia());
+
+    const r = await atender({ de: CLIENTE, texto: "QR Code", id: "wamid.z", botao: "pix_qr" });
+
+    expect(r.fez).toBe("pediu-sinal");
+    expect(vi.mocked(buscarAgendamento)).not.toHaveBeenCalled();
+  });
+
+  /*
+    ⚠️ E o id NÃO pode virar um jeito de pedir o PIX de qualquer horário.
+    `esperandoSinal` continua sendo a trava: horário já confirmado não
+    gera cobrança nova, mesmo que o id venha certinho no botão.
+  */
+  it("id de agendamento que não espera sinal não manda PIX nenhum", async () => {
+    vi.mocked(buscarAgendamento).mockResolvedValue(daSanta());
+
+    const r = await atender({
+      de: CLIENTE,
+      texto: "QR Code",
+      id: "wamid.w",
+      botao: "pix_qr:22222222-2222-2222-2222-222222222222",
+    });
+
+    expect(r.fez).not.toBe("pediu-sinal");
+    expect(vi.mocked(enviarQrDoSinal)).not.toHaveBeenCalled();
   });
 });

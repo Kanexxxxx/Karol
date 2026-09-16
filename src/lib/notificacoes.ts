@@ -579,6 +579,58 @@ export const BOTAO_TEMPLATE = {
 } as const;
 
 /**
+ * O botão carregando DE QUAL agendamento ele é.
+ *
+ * ---------------------------------------------------------------------
+ * O defeito que criou isto
+ * ---------------------------------------------------------------------
+ *
+ * 15/09/2026, no WhatsApp de teste. Três agendamentos no mesmo número
+ * (5516996154877): um design da "Santa" já confirmado, um lamination da
+ * "Julia" esperando sinal, e depois um lamination da "Santa".
+ *
+ * A Julia tocou em "QR Code" e não recebeu nada — a mensagem caiu solta
+ * no colo da Karol como "uma cliente escreveu no número automático".
+ *
+ * O botão não dizia de quem era. O código perguntava ao banco "qual é o
+ * PRÓXIMO horário desse número?" e vinha o design da Santa, que estava
+ * confirmado e não esperava sinal nenhum — então nada era enviado.
+ *
+ * ⚠️ PARECIA PRAZO, E NÃO ERA. O Kainã mediu 4 minutos entre o pedido e o
+ * toque e concluiu que a mensagem tinha expirado. A coincidência é
+ * convincente: o toque que funcionou veio 1 minuto depois. Mas o que
+ * mudou nesses dois minutos não foi o relógio — foi ter nascido um
+ * agendamento MAIS CEDO que o outro, e esse esperava sinal.
+ *
+ * Com o id no botão, não importa quantos horários a pessoa tenha, nem
+ * quanto tempo ela demore pra tocar.
+ *
+ * O separador é `:`, o mesmo que os botões da Karol já usam (`k:acao:id`).
+ * O limite da Meta pro payload é 256 caracteres; ação + `:` + uuid dá 45.
+ */
+export function botaoComAgendamento(acao: string, agendamentoId: string): string {
+  return agendamentoId ? `${acao}:${agendamentoId}` : acao;
+}
+
+/**
+ * Só a ação, sem o agendamento — pra quem só quer saber QUAL botão foi.
+ *
+ * Botão antigo, sem `:`, volta inteiro. Isso não é detalhe: no minuto do
+ * deploy existem mensagens já entregues no celular das clientes com o
+ * payload no formato velho, e elas têm que continuar funcionando.
+ */
+export function acaoDoBotao(payload: string): string {
+  const corte = payload.indexOf(":");
+  return corte < 0 ? payload : payload.slice(0, corte);
+}
+
+/** O agendamento que o botão carrega, ou null se ele não carrega nenhum. */
+export function agendamentoDoBotao(payload: string): string | null {
+  const corte = payload.indexOf(":");
+  return corte < 0 ? null : payload.slice(corte + 1) || null;
+}
+
+/**
  * Manda mensagem usando TEMPLATE aprovado na Meta.
  *
  * Necessário quando a janela de 24 h da conversa está fechada (ex: cliente
@@ -1099,9 +1151,11 @@ export async function enviarPedidoDeSinal(a: DadosAgendamento): Promise<boolean>
   const sinal = sinalDoAgendamento(a);
   if (sinal <= 0) return false;
 
+  // O id do agendamento vai junto: é o que faz o botão saber de quem ele é
+  // quando a cliente tem mais de um horário. Ver `botaoComAgendamento`.
   return enviarTextoComBotoes(a.whatsappCliente, textoDoSinal(a), [
-    { id: BOTAO_TEMPLATE.pixQr, titulo: "QR Code" },
-    { id: BOTAO_TEMPLATE.pixCodigo, titulo: "Copia e cola" },
+    { id: botaoComAgendamento(BOTAO_TEMPLATE.pixQr, a.id), titulo: "QR Code" },
+    { id: botaoComAgendamento(BOTAO_TEMPLATE.pixCodigo, a.id), titulo: "Copia e cola" },
   ]);
 }
 

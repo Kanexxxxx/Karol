@@ -3,7 +3,12 @@ import "server-only";
 import { atender, type Desfecho } from "./atendente";
 import { assistente, decisaoDoBotao, PREFIXO_BOTAO, type DesfechoAssistente } from "./assistente";
 import { abrirJanela } from "./conversas";
-import { BOTAO_TEMPLATE, enviarTexto, whatsappDaKarol } from "./notificacoes";
+import {
+  BOTAO_TEMPLATE,
+  acaoDoBotao,
+  enviarTexto,
+  whatsappDaKarol,
+} from "./notificacoes";
 import type { MensagemRecebida } from "./webhook-meta";
 
 /**
@@ -109,7 +114,14 @@ export async function receber(m: MensagemRecebida): Promise<DesfechoRecepcao> {
     estes payloads só existem em template de cliente: quem toca neles
     está agindo como cliente, venha de onde vier. Vai pro atendimento.
   */
-  if (m.botao && BOTOES_DE_CLIENTE.has(m.botao)) {
+  /*
+    ⚠️ `acaoDoBotao` e não `m.botao` cru: os botões do PIX passaram a
+    carregar o agendamento a que pertencem (`pix_qr:<uuid>`). Comparando o
+    payload inteiro, o Set nunca mais bateria e o toque da cliente cairia
+    solto no colo da Karol — que é exatamente o defeito que o id veio
+    consertar, só que pior, porque valeria pra todo mundo.
+  */
+  if (m.botao && BOTOES_DE_CLIENTE.has(acaoDoBotao(m.botao))) {
     return { quem: "cliente", ...(await atender(m)) };
   }
 

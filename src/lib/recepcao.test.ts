@@ -24,6 +24,14 @@ vi.mock("./conversas", () => ({ abrirJanela: vi.fn(async () => {}) }));
 vi.mock("./notificacoes", () => ({
   whatsappDaKarol: vi.fn(() => "5518997525291"),
   enviarTexto: vi.fn(async () => true),
+  // ⚠️ Estas três vão as DE VERDADE, não stub. São funções puras que
+  // separam a ação do agendamento no payload do botão ("pix_qr:<uuid>"),
+  // e é exatamente esse roteamento que os testes abaixo cobram. Um stub
+  // aqui faria o teste passar com o roteamento quebrado.
+  acaoDoBotao: (p: string) => (p.indexOf(":") < 0 ? p : p.slice(0, p.indexOf(":"))),
+  agendamentoDoBotao: (p: string) =>
+    p.indexOf(":") < 0 ? null : p.slice(p.indexOf(":") + 1) || null,
+  botaoComAgendamento: (a: string, id: string) => (id ? `${a}:${id}` : a),
   BOTAO_TEMPLATE: {
     confirmar: "confirmar",
     remarcar: "remarcar",
