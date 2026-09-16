@@ -1297,17 +1297,31 @@ export async function enviarTexto(
     if (!resp.ok) {
       const detalhe = await resp.text().catch(() => "");
       console.error(`resposta pro ${para}: ${resp.status} ${detalhe.slice(0, 300)}`);
+      /*
+        ⚠️ O ASSUNTO NÃO PODE CONTER O NÚMERO DA CLIENTE.
+
+        O assunto é a chave da trava anti-spam. Com o telefone dentro
+        dele, cada cliente vira um assunto diferente — e uma queda da Meta
+        (em que TODOS os envios falham) passaria direto pela trava: vinte
+        clientes, vinte assuntos, vinte mensagens. Era exatamente o spam
+        que a trava existe pra evitar.
+
+        O telefone é detalhe, e detalhe vai no corpo. O código HTTP entra
+        no assunto de propósito: um 401 (token vencido) e um 400 (mensagem
+        malformada) são problemas diferentes e merecem avisos separados.
+      */
       await avisarTecnico(
-        `Não consegui mandar mensagem pro ${formatarWhatsapp(para)}`,
-        `A Meta recusou com ${resp.status}. ${detalhe.slice(0, 200)}`,
+        `A Meta recusou um envio (${resp.status})`,
+        `Destino: ${formatarWhatsapp(para)}. ${detalhe.slice(0, 200)}`,
         { ehEnvio: opcoes?.ehAvisoTecnico },
       );
     }
     return resp.ok;
   } catch (e) {
     console.error(`resposta pro ${para} falhou:`, e);
+    // Mesmo motivo: assunto genérico, telefone no corpo.
     await avisarTecnico(
-      `Falhei ao falar com o WhatsApp da Meta`,
+      "Não consegui falar com o WhatsApp da Meta",
       `Ao mandar pro ${formatarWhatsapp(para)}: ${String(e).slice(0, 200)}`,
       { ehEnvio: opcoes?.ehAvisoTecnico },
     );

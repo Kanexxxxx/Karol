@@ -1143,3 +1143,113 @@ describe("avisar o técnico sobre erro do sistema", () => {
     expect(enviados).toHaveLength(0);
   });
 });
+
+/**
+ * A trava anti-spam contra o caso que ela realmente precisa segurar.
+ *
+ * ---------------------------------------------------------------------
+ * ⚠️ ESTE BLOCO NASCEU DE UM BUG QUE EU MESMO INTRODUZI
+ * ---------------------------------------------------------------------
+ *
+ * A trava agrupa por ASSUNTO. A primeira versão do aviso de falha de
+ * envio escrevia o assunto assim:
+ *
+ *     `Não consegui mandar mensagem pro (18) 99999-8888`
+ *
+ * Com o telefone dentro, cada cliente virava um assunto diferente — e o
+ * cenário que a trava existe pra segurar é justamente aquele em que TODOS
+ * os envios falham (token vencido, Meta fora do ar). Vinte clientes,
+ * vinte assuntos, vinte mensagens no WhatsApp dele.
+ *
+ * Os testes que eu tinha escrito passavam: repetiam o MESMO erro cinquenta
+ * vezes, que é o caso fácil. Nenhum repetia erros PARECIDOS, que é o caso
+ * real.
+ */
+describe("a trava aguenta uma queda geral, não só o erro repetido", () => {
+  const TECNICO = "5516997062339";
+  const antes = { ...process.env };
+
+  beforeEach(() => {
+    vi.resetModules();
+    process.env = { ...antes, TECNICO_WHATSAPP: TECNICO, META_TOKEN: "x", META_PHONE_NUMBER_ID: "y" };
+  });
+  afterEach(() => {
+    process.env = { ...antes };
+  });
+
+  it("vinte clientes diferentes falhando geram UM aviso, não vinte", async () => {
+    const paraTecnico: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_u: string, i: { body: string }) => {
+        const c = JSON.parse(i.body);
+        // O envio pro técnico "funciona"; o envio pra cliente falha.
+        if (c.to === TECNICO) {
+          paraTecnico.push(c.text?.body ?? "");
+          return { ok: true, status: 200, text: async () => "" };
+        }
+        return { ok: false, status: 401, text: async () => "token expirado" };
+      }),
+    );
+
+    const m = await import("./notificacoes");
+    for (let i = 0; i < 20; i++) {
+      await m.enviarTexto(`551899999${String(i).padStart(4, "0")}`, "oi");
+    }
+
+    expect(paraTecnico).toHaveLength(1);
+  });
+
+  /*
+    E o telefone não some — ele continua no CORPO, que é onde ele serve
+    sem quebrar o agrupamento. Um aviso que não diz quem ficou sem
+    mensagem é um aviso que não resolve nada.
+  */
+  it("o telefone de quem falhou continua no corpo do aviso", async () => {
+    const paraTecnico: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_u: string, i: { body: string }) => {
+        const c = JSON.parse(i.body);
+        if (c.to === TECNICO) {
+          paraTecnico.push(c.text?.body ?? "");
+          return { ok: true, status: 200, text: async () => "" };
+        }
+        return { ok: false, status: 401, text: async () => "token expirado" };
+      }),
+    );
+
+    const m = await import("./notificacoes");
+    await m.enviarTexto("5518999998888", "oi");
+
+    expect(paraTecnico[0]).toContain("(18) 99999-8888");
+  });
+
+  /*
+    Códigos HTTP diferentes SÃO problemas diferentes: 401 é token vencido,
+    400 é mensagem malformada. Agrupar os dois esconderia um atrás do
+    outro.
+  */
+  it("erros de natureza diferente continuam avisando separado", async () => {
+    const paraTecnico: string[] = [];
+    let codigo = 401;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_u: string, i: { body: string }) => {
+        const c = JSON.parse(i.body);
+        if (c.to === TECNICO) {
+          paraTecnico.push(c.text?.body ?? "");
+          return { ok: true, status: 200, text: async () => "" };
+        }
+        return { ok: false, status: codigo, text: async () => "erro" };
+      }),
+    );
+
+    const m = await import("./notificacoes");
+    await m.enviarTexto("5518999998888", "oi");
+    codigo = 400;
+    await m.enviarTexto("5518999997777", "oi");
+
+    expect(paraTecnico).toHaveLength(2);
+  });
+});
