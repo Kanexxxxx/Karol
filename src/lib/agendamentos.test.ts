@@ -9,11 +9,14 @@ vi.mock("./banco", () => ({
 
 import { banco } from "./banco";
 import {
+  agendamentosConcluidosOntem,
+  agendamentosDeAmanha,
   buscarAgendamento,
   mesDeVagas,
   criarAgendamento,
   criarAgendamentoNoPainel,
   horaEmMinutos,
+  marcarAvisoEnviado,
   mudarSituacao,
   procurarAgendamentos,
   relatorioDoMes,
@@ -786,5 +789,104 @@ describe("mesDeVagas: o que o calendário tem que saber dizer", () => {
 
     expect(sabadoPB.every((d) => d.atende === false)).toBe(true);
     expect(sabadoBD.every((d) => d.atende === true)).toBe(true);
+  });
+});
+
+/**
+ * As duas varreduras de aviso, e a marca que impede a repetição.
+ *
+ * ---------------------------------------------------------------------
+ * Por que o filtro é testado aqui e não em `lembretes.test.ts`
+ * ---------------------------------------------------------------------
+ *
+ * Lá o módulo inteiro é mockado — a consulta ao banco não existe. Quem
+ * testa a costura é lá; quem testa a CONSULTA é aqui, e sem isto o
+ * `is("lembrete_enviado_em", null)` podia sumir num refactor sem nenhum
+ * teste ficar vermelho.
+ *
+ * O defeito real: em 07/09/2026 a mesma cliente recebeu o mesmo lembrete
+ * às 7:03 e às 7:46, porque o botão do painel chama a mesma varredura que
+ * o cron e nada marcava quem já tinha sido avisado.
+ */
+describe("varreduras de aviso: não pegar quem já foi avisado", () => {
+  const filtrosDe = (c: { filtros: { metodo: string; coluna?: string; valor?: unknown }[] }) =>
+    c.filtros.map((f) => `${f.metodo}:${f.coluna}=${String(f.valor)}`);
+
+  it("o lembrete da véspera só pega quem ainda não recebeu", async () => {
+    const m = usarBanco({ select: () => ({ data: [] }) });
+
+    await agendamentosDeAmanha();
+
+    expect(filtrosDe(m.chamadas[0])).toContain("is:lembrete_enviado_em=null");
+    // E continua pegando só confirmado: lembrar quem cancelou é pior que
+    // não lembrar ninguém.
+    expect(filtrosDe(m.chamadas[0])).toContain("eq:situacao=confirmado");
+  });
+
+  it("o agradecimento tem o filtro DELE, não o do lembrete", async () => {
+    const m = usarBanco({ select: () => ({ data: [] }) });
+
+    await agendamentosConcluidosOntem();
+
+    /*
+      ⚠️ Copiar a linha do lembrete pra cá é o erro fácil, e ele não
+      quebra nada: as duas consultas são quase idênticas. O agradecimento
+      passaria a depender da marca do lembrete — quem recebeu o lembrete
+      da véspera nunca receberia o agradecimento.
+    */
+    expect(filtrosDe(m.chamadas[0])).toContain("is:agradecimento_enviado_em=null");
+    expect(filtrosDe(m.chamadas[0])).not.toContain("is:lembrete_enviado_em=null");
+    expect(filtrosDe(m.chamadas[0])).toContain("eq:situacao=concluido");
+  });
+});
+
+describe("marcarAvisoEnviado", () => {
+  it("grava a hora na coluna do lembrete, na linha certa", async () => {
+    const m = usarBanco({ update: () => ({ data: null }) });
+
+    await marcarAvisoEnviado("11111111-1111-1111-1111-111111111111", "lembrete");
+
+    const c = m.chamadas[0];
+    expect(c.op).toBe("update");
+    expect(Object.keys(c.valores ?? {})).toEqual(["lembrete_enviado_em"]);
+    expect(c.filtros).toContainEqual({
+      metodo: "eq",
+      coluna: "id",
+      valor: "11111111-1111-1111-1111-111111111111",
+    });
+  });
+
+  it("o agradecimento vai na coluna dele", async () => {
+    const m = usarBanco({ update: () => ({ data: null }) });
+
+    await marcarAvisoEnviado("22222222-2222-2222-2222-222222222222", "agradecimento");
+
+    expect(Object.keys(m.chamadas[0].valores ?? {})).toEqual(["agradecimento_enviado_em"]);
+  });
+
+  /*
+    Guarda QUANDO, não `true`. São os mesmos 8 bytes, e responde a pergunta
+    que a Karol faz quando a cliente não aparece: "será que ela recebeu?".
+  */
+  it("grava um instante, não um booleano", async () => {
+    const m = usarBanco({ update: () => ({ data: null }) });
+
+    await marcarAvisoEnviado("11111111-1111-1111-1111-111111111111", "lembrete");
+
+    const quando = (m.chamadas[0].valores ?? {}).lembrete_enviado_em;
+    expect(typeof quando).toBe("string");
+    expect(Number.isNaN(Date.parse(quando as string))).toBe(false);
+  });
+
+  /*
+    Sem banco configurado ela não pode explodir: quem chama está no meio
+    da varredura, e uma exceção aqui derrubaria os avisos dos outros.
+  */
+  it("sem banco, não explode", async () => {
+    bancoMock.mockReturnValue(null as never);
+
+    await expect(
+      marcarAvisoEnviado("11111111-1111-1111-1111-111111111111", "lembrete"),
+    ).resolves.toBeUndefined();
   });
 });

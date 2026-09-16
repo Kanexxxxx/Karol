@@ -80,9 +80,20 @@ export default async function Notificacoes() {
             amanhã e o agradecimento pra quem você atendeu ontem. Aqui você força
             na hora, se precisar.
           </p>
+          {/*
+            ⚠️ AQUI FICAVA UM TEXTO MORTO. Ele falava do "lembrete de meia hora
+            antes" e mandava a Karol procurar um botão no cartão de cada
+            cliente — os dois foram arrancados em 13/09/2026 e ninguém apagou
+            a frase. Ela ficou três dias mandando a Karol caçar coisa que não
+            existe.
+
+            O que está escrito agora é o que mudou em 16/09: ninguém recebe
+            duas vezes, então tocar o botão de novo é seguro.
+          */}
           <p className="mb-3 text-[13px] text-tinta-3">
-            O lembrete de meia hora antes não é este — ele sai sozinho perto do
-            horário, e o botão dele fica no cartão de cada cliente, na agenda.
+            Pode tocar sem medo, inclusive depois que ele já rodou: quem já
+            recebeu não recebe de novo. Se o WhatsApp falhar com alguém, é este
+            botão que tenta de novo só com ela.
           </p>
           <Disparar />
         </section>

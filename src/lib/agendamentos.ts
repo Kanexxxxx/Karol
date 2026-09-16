@@ -588,10 +588,22 @@ export async function agendamentosDeAmanha(): Promise<Agendamento[]> {
   const fim = new Date(inicio);
   fim.setDate(fim.getDate() + 1);
 
+  /*
+    ⚠️ `lembrete_enviado_em is null` É O QUE IMPEDE A REPETIÇÃO.
+
+    A varredura não é chamada só pelo cron, uma vez por dia — tem um BOTÃO
+    no painel da Karol que chama a mesma coisa. Sem este filtro, cada toque
+    manda o lembrete de amanhã pra todo mundo outra vez. Aconteceu:
+    07/09/2026, mesma cliente, mesmo lembrete, 7:03 e 7:46.
+
+    Com o filtro, o botão vira o que ele deveria ser: tentar de novo com
+    quem NÃO recebeu. Ver `migracao-06`.
+  */
   const { data } = await bd
     .from("agendamentos")
     .select("*")
     .eq("situacao", "confirmado")
+    .is("lembrete_enviado_em", null)
     .overlaps("periodo", montarPeriodo(inicio, fim))
     .order("periodo", { ascending: true });
 
@@ -609,14 +621,45 @@ export async function agendamentosConcluidosOntem(): Promise<Agendamento[]> {
   const fim = new Date(inicio);
   fim.setDate(fim.getDate() + 1);
 
+  // Mesmo motivo do lembrete: o botão do painel pode ser tocado de novo, e
+  // "foi muito bom te atender" duas vezes é pior que uma vez só.
   const { data } = await bd
     .from("agendamentos")
     .select("*")
     .eq("situacao", "concluido")
+    .is("agradecimento_enviado_em", null)
     .overlaps("periodo", montarPeriodo(inicio, fim))
     .order("periodo", { ascending: true });
 
   return (data ?? []).map(linhaParaAgendamento);
+}
+
+/**
+ * Anota que o aviso saiu, pra ele não sair de novo.
+ *
+ * ⚠️ SÓ É CHAMADA QUANDO O ENVIO DEU CERTO, e isso é a diferença entre um
+ * botão útil e um botão perigoso. Se a marca fosse gravada antes de saber,
+ * uma falha do WhatsApp viraria silêncio permanente: a cliente sai da
+ * varredura sem nunca ter recebido nada, e ninguém mais tenta.
+ *
+ * Falhar aqui é de propósito barulhento no log e silencioso pro resto: o
+ * pior caso é a cliente receber o lembrete duas vezes, que é chato. Parar
+ * a varredura por causa disso seria deixar as outras sem lembrete nenhum.
+ */
+export async function marcarAvisoEnviado(
+  id: string,
+  aviso: "lembrete" | "agradecimento",
+): Promise<void> {
+  const bd = banco();
+  if (!bd) return;
+
+  const coluna = aviso === "lembrete" ? "lembrete_enviado_em" : "agradecimento_enviado_em";
+  const { error } = await bd
+    .from("agendamentos")
+    .update({ [coluna]: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) console.error(`não consegui marcar ${aviso} de ${id}: ${error.message}`);
 }
 
 /** Um agendamento pelo id — tela de confirmação da cliente e painel da Karol. */

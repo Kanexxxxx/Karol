@@ -24,6 +24,14 @@
 -- Por que precisa de coluna
 -- ---------------------------------------------------------------------
 --
+-- ⚠️ O PARÁGRAFO ABAIXO ESTÁ ERRADO. Ficou como estava porque migração é
+-- história, mas não acredite nele: a correção é a `migracao-06`.
+--
+-- O erro está numa palavra: "o cron". O cron não é o único que dispara a
+-- varredura da véspera — existe um BOTÃO no painel da Karol que chama a
+-- mesma função, e cada toque remanda pra todo mundo. Em 07/09/2026 a mesma
+-- cliente recebeu o mesmo lembrete às 7:03 e às 7:46.
+--
 -- O lembrete da véspera não precisa de marca nenhuma: o cron da Vercel roda
 -- UMA vez por dia, então "quem começa amanhã" só é varrido uma vez e cada
 -- cliente recebe uma mensagem.

@@ -18,10 +18,17 @@ export function Disparar() {
         {ocupado ? "Enviando…" : "Disparar agora"}
       </button>
 
+      {/*
+        Zero não é erro, e a Karol precisa saber disso. Depois que o cron da
+        manhã rodou, tocar aqui devolve 0 — porque ninguém ficou faltando, não
+        porque quebrou. Sem esta frase ela lê "0 lembrete(s)" e acha que o
+        sistema parou de funcionar.
+      */}
       {estado.resultado && (
         <p className="text-[13px] text-tinta-2">
-          {estado.resultado.lembretes} lembrete(s) e {estado.resultado.agradecimentos}{" "}
-          agradecimento(s) enviados.
+          {estado.resultado.lembretes === 0 && estado.resultado.agradecimentos === 0
+            ? "Ninguém estava faltando — todo mundo de hoje já tinha recebido."
+            : `${estado.resultado.lembretes} lembrete(s) e ${estado.resultado.agradecimentos} agradecimento(s) enviados agora.`}
         </p>
       )}
       {estado.erro && (

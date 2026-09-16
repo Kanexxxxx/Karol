@@ -32,6 +32,7 @@ vi.mock("./agendamentos", () => ({
   agendamentosConcluidosOntem: vi.fn(async () => []),
   pendentesVencidos: vi.fn(async () => []),
   mudarSituacao: vi.fn(async () => ({ ok: true })),
+  marcarAvisoEnviado: vi.fn(async () => {}),
 }));
 
 // `paraDados` fica a de verdade: é ela que monta o que o evento carrega.
@@ -43,6 +44,7 @@ vi.mock("./notificacoes", async (original) => ({
 import {
   agendamentosConcluidosOntem,
   agendamentosDeAmanha,
+  marcarAvisoEnviado,
   mudarSituacao,
   pendentesVencidos,
 } from "./agendamentos";
@@ -54,6 +56,7 @@ const ontem = vi.mocked(agendamentosConcluidosOntem);
 const avisar = vi.mocked(enviarEvento);
 const vencidos = vi.mocked(pendentesVencidos);
 const mudar = vi.mocked(mudarSituacao);
+const marcar = vi.mocked(marcarAvisoEnviado);
 
 function agendamento(nome: string, id: string) {
   const inicio = new Date(2026, 8, 20, 9, 0);
@@ -83,6 +86,11 @@ beforeEach(() => {
   ontem.mockResolvedValue([]);
   vencidos.mockResolvedValue([]);
   mudar.mockResolvedValue({ ok: true });
+  // ⚠️ `clearAllMocks` zera as CHAMADAS, não as implementações. Sem esta
+  // linha, um teste que faz o envio falhar deixa ele falhando pros
+  // seguintes — e o estrago aparece como teste que só quebra na ordem
+  // errada, que é o pior tipo de teste quebrado.
+  avisar.mockResolvedValue({ ok: true });
 });
 
 describe("a varredura diária", () => {
@@ -138,17 +146,28 @@ describe("a varredura diária", () => {
   });
 
   /*
-    A contagem volta pro painel, onde a Karol lê "3 lembretes enviados".
-    Se ela contar a lista em vez do que saiu, um dia em que o WhatsApp
-    falhou continuaria dizendo 3 — e ela não teria motivo pra desconfiar.
-    Hoje a função conta a lista mesmo; isto fica escrito pra ninguém
-    "melhorar" a mensagem do painel achando que o número é de entregues.
-  */
-  it("o número que volta é quantos foram TENTADOS", async () => {
-    amanha.mockResolvedValue([agendamento("Uma", "11111111-1111-1111-1111-111111111111")]);
-    avisar.mockResolvedValue({ ok: true });
+    A contagem volta pro painel, onde a Karol lê "2 lembretes enviados".
 
-    expect((await rodarLembretes()).lembretes).toBe(1);
+    Ela conta o que SAIU, não o tamanho da lista — e agora isso é
+    acionável: lendo 2 de 3, tocar o botão de novo faz sentido, porque o
+    que faltou continua na fila. Se contasse a lista, o dia em que o
+    WhatsApp falhou diria 3 e ela não teria motivo pra desconfiar.
+
+    Continua NÃO sendo "entregue": a Meta aceita com 200 e só depois diz
+    se entregou. Ninguém "melhore" a mensagem do painel pra "entregues".
+  */
+  it("o número que volta é quantos SAÍRAM, não o tamanho da lista", async () => {
+    amanha.mockResolvedValue([
+      agendamento("Uma", "11111111-1111-1111-1111-111111111111"),
+      agendamento("Duas", "22222222-2222-2222-2222-222222222222"),
+      agendamento("Três", "33333333-3333-3333-3333-333333333333"),
+    ]);
+    avisar
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({ ok: false, motivo: "janela fechada" })
+      .mockResolvedValueOnce({ ok: true });
+
+    expect((await rodarLembretes()).lembretes).toBe(2);
   });
 
   it("o lembrete leva o nome e o serviço de quem vai receber", async () => {
@@ -160,6 +179,93 @@ describe("a varredura diária", () => {
     expect(dados.cliente).toBe("Larissa Souza");
     expect(dados.servico).toBe("Design com henna");
     expect(dados.whatsappCliente).toBe("5518999998888");
+  });
+});
+
+/**
+ * A marca de "já mandei".
+ *
+ * ---------------------------------------------------------------------
+ * O defeito que criou este bloco
+ * ---------------------------------------------------------------------
+ *
+ * Em 16/09/2026 o Kainã reclamou do lembrete da véspera: "uma coisa chata
+ * que fica acontecendo". O incômodo não era o lembrete existir — a Karol
+ * PEDIU esse (`NOTIFICACOES.lembreteUmDiaAntes`, e ela recusou o de horas
+ * antes na mesma pergunta). O incômodo era ele REPETIR.
+ *
+ * A migração 04 tinha escrito, com todas as letras, que a véspera não
+ * precisava de marca "porque o cron roda 1x por dia". Errado: existe um
+ * BOTÃO no painel (`/painel/notificacoes`) que chama a mesma varredura,
+ * e a Karol pode tocar nele à vontade. Prova no WhatsApp dela —
+ * 07/09/2026, mesma cliente, mesmo lembrete, 7:03 e de novo 7:46.
+ *
+ * ---------------------------------------------------------------------
+ * Por que a ORDEM é o que se testa aqui
+ * ---------------------------------------------------------------------
+ *
+ * Marcar antes de enviar também faria o lembrete parar de repetir — e
+ * seria pior que o defeito. Uma falha do WhatsApp viraria silêncio
+ * permanente: a cliente sai da varredura sem ter recebido nada, e nem o
+ * cron de amanhã nem o botão da Karol tentariam de novo.
+ *
+ * Nenhum teste de "não repete" pega isso. Por isso os dois de baixo.
+ */
+describe("não mandar duas vezes pra mesma pessoa", () => {
+  const umaPessoa = () => {
+    amanha.mockResolvedValue([agendamento("Larissa", "11111111-1111-1111-1111-111111111111")]);
+  };
+
+  it("marca quem recebeu, com o id e o tipo de aviso certos", async () => {
+    umaPessoa();
+
+    await rodarLembretes();
+
+    expect(marcar).toHaveBeenCalledWith("11111111-1111-1111-1111-111111111111", "lembrete");
+  });
+
+  it("o agradecimento tem a marca dele, não a do lembrete", async () => {
+    ontem.mockResolvedValue([agendamento("Ana", "22222222-2222-2222-2222-222222222222")]);
+
+    await rodarLembretes();
+
+    expect(marcar).toHaveBeenCalledWith("22222222-2222-2222-2222-222222222222", "agradecimento");
+  });
+
+  /*
+    ⚠️ ESTE É O TESTE QUE IMPEDE A "CORREÇÃO" PIOR QUE O DEFEITO.
+
+    Quem não recebeu NÃO pode ser marcado: é a marca que tira a pessoa da
+    varredura. Marcando uma falha, o botão do painel deixa de conseguir
+    alcançá-la e ela nunca mais é avisada por ninguém.
+  */
+  it("NÃO marca quem não recebeu", async () => {
+    umaPessoa();
+    avisar.mockResolvedValue({ ok: false, motivo: "janela fechada" });
+
+    await rodarLembretes();
+
+    expect(marcar).not.toHaveBeenCalled();
+  });
+
+  /*
+    A outra metade da mesma regra: quem falhou não sai da fila, mas quem
+    recebeu também não pode segurar a fila dos outros.
+  */
+  it("uma falha no meio não impede as seguintes de saírem e serem marcadas", async () => {
+    amanha.mockResolvedValue([
+      agendamento("Uma", "11111111-1111-1111-1111-111111111111"),
+      agendamento("Duas", "22222222-2222-2222-2222-222222222222"),
+    ]);
+    avisar
+      .mockResolvedValueOnce({ ok: false, motivo: "caiu" })
+      .mockResolvedValueOnce({ ok: true });
+
+    await rodarLembretes();
+
+    expect(avisar).toHaveBeenCalledTimes(2);
+    expect(marcar).toHaveBeenCalledTimes(1);
+    expect(marcar).toHaveBeenCalledWith("22222222-2222-2222-2222-222222222222", "lembrete");
   });
 });
 

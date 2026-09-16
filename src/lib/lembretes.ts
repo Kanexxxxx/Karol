@@ -3,6 +3,7 @@ import "server-only";
 import {
   agendamentosConcluidosOntem,
   agendamentosDeAmanha,
+  marcarAvisoEnviado,
   mudarSituacao,
   pendentesVencidos,
 } from "./agendamentos";
@@ -12,8 +13,19 @@ import { enviarEvento, paraDados } from "./notificacoes";
  * Os lembretes.
  *
  * `rodarLembretes()` manda o da véspera e o agradecimento do dia
- * seguinte. Varre o dia inteiro de uma vez, então roda 1x/dia: quem chama
- * é o cron da Vercel (ver `vercel.json`) e o botão do painel.
+ * seguinte. Quem chama é o cron da Vercel (ver `vercel.json`) **e o botão
+ * do painel** — e esse "e" é a coisa mais importante deste comentário.
+ *
+ * ⚠️ NÃO É UMA VEZ POR DIA. A migração 04 assumiu que era ("o cron roda
+ * 1x/dia, então cada cliente recebe uma mensagem") e por isso não criou
+ * marca nenhuma pra véspera. Mas a Karol pode tocar o botão do painel à
+ * vontade, e cada toque remandava tudo: em 07/09/2026 a mesma cliente
+ * recebeu o mesmo lembrete às 7:03 e às 7:46.
+ *
+ * Hoje quem já recebeu sai da varredura (`lembrete_enviado_em`), e a marca
+ * só é gravada depois do envio dar certo. Com isso o botão deixa de ser um
+ * segundo disparo pra todo mundo e vira "tentar de novo com quem não
+ * recebeu". Ver `migracao-06`.
  *
  * ⚠️ AQUI JÁ MOROU UM SEGUNDO RELÓGIO. `rodarLembretesCurtos()` mandava um
  * aviso ~30 min antes do horário, e precisava de um cron externo batendo
@@ -40,10 +52,44 @@ export async function rodarLembretes(): Promise<{
     agendamentosConcluidosOntem(),
   ]);
 
-  for (const a of amanha) await enviarEvento("lembrete", paraDados(a));
-  for (const a of ontem) await enviarEvento("agradecimento", paraDados(a));
+  /*
+    ⚠️ MARCA DEPOIS DE SAIR, E SÓ SE SAIU.
 
-  return { lembretes: amanha.length, agradecimentos: ontem.length };
+    As duas listas já chegam filtradas por quem ainda não foi avisado (ver
+    `agendamentosDeAmanha`). O que fecha o ciclo é gravar a marca — e a
+    ordem importa: envia, confere, só então marca.
+
+    Marcar antes de saber transformaria uma falha do WhatsApp em silêncio
+    permanente. A cliente sairia da varredura sem ter recebido nada, e
+    nem o cron de amanhã nem o botão da Karol tentariam de novo.
+
+    Do jeito que está, quem falhou continua na fila: o botão do painel é
+    um "tenta de novo com quem não recebeu", não um segundo disparo pra
+    todo mundo.
+  */
+  let lembretes = 0;
+  for (const a of amanha) {
+    if (!(await enviarEvento("lembrete", paraDados(a))).ok) continue;
+    await marcarAvisoEnviado(a.id, "lembrete");
+    lembretes++;
+  }
+
+  let agradecimentos = 0;
+  for (const a of ontem) {
+    if (!(await enviarEvento("agradecimento", paraDados(a))).ok) continue;
+    await marcarAvisoEnviado(a.id, "agradecimento");
+    agradecimentos++;
+  }
+
+  /*
+    O número que volta é quantos SAÍRAM, não quantos foram tentados — e
+    agora essa diferença é acionável. Se a Karol lê "2 de 3", tocar o
+    botão de novo faz sentido: o que faltou continua na fila.
+
+    Ainda NÃO é "entregue". A Meta aceita com 200 e só depois diz se
+    entregou; a falha chega pelo webhook, em `statuses`. Ver WHATSAPP.md.
+  */
+  return { lembretes, agradecimentos };
 }
 
 /**
