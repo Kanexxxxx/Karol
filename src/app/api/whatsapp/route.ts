@@ -6,7 +6,12 @@ import {
   lerMensagem,
   respostaDaVerificacao,
 } from "@/lib/webhook-meta";
-import { enviarTexto, whatsappDaKarol } from "@/lib/notificacoes";
+import {
+  enviarTexto,
+  temTecnicoSeparado,
+  whatsappDaKarol,
+  whatsappDoTecnico,
+} from "@/lib/notificacoes";
 import { formatarWhatsapp } from "@/lib/telefone";
 
 /**
@@ -79,17 +84,53 @@ export async function POST(req: NextRequest) {
   const falha = lerFalhaDeEntrega(payload);
   if (falha) {
     console.error(`entrega falhou pro ${falha.para}: ${falha.codigo} ${falha.motivo}`);
+
+    /*
+      ⚠️ DUAS MENSAGENS, PRA DUAS PESSOAS, DE PROPÓSITO.
+
+      Pedido do Kainã em 15/09: o código de erro tem que chegar em quem
+      conserta, não na Karol. Antes ela recebia "131047 — Message failed
+      to send because more than 24 hours have passed", em inglês, sem
+      nada que pudesse fazer com aquilo.
+
+      Mas o aviso NÃO foi só movido de destinatário, e essa é a parte que
+      não pode se perder num refactor: quem fala com a cliente é a Karol.
+      Se o aviso inteiro fosse pro técnico, a cliente ficaria sem saber do
+      horário dela e a Karol sem saber que precisa ligar — o defeito de
+      13/09 de volta por outra porta.
+
+      Então: o diagnóstico vai pro técnico, e o recado humano vai pra ela.
+      Quando os dois números são o mesmo (sem `TECNICO_WHATSAPP`), manda
+      só o da Karol pra ela não receber a coisa duplicada.
+    */
+    if (temTecnicoSeparado()) {
+      await enviarTexto(
+        whatsappDoTecnico(),
+        [
+          "🛠️ Falha de entrega no WhatsApp da Karol",
+          "",
+          `Cliente: ${formatarWhatsapp(falha.para)}`,
+          `Código: ${falha.codigo ?? "?"}`,
+          `Motivo: ${falha.motivo}`.slice(0, 300),
+        ].join("\n"),
+      ).catch(() => {});
+    }
+
     await enviarTexto(
       whatsappDaKarol(),
       [
         "⚠️ O WhatsApp NÃO entregou a mensagem pra essa cliente.",
         "",
         formatarWhatsapp(falha.para),
-        `Motivo: ${falha.codigo ?? "?"} — ${falha.motivo}`.slice(0, 300),
         "",
-        `Chama ela por aqui: https://wa.me/${falha.para}`,
+        // Sem código e sem inglês: o que ela precisa é saber que a pessoa
+        // não foi avisada, e ter o caminho pra falar com ela.
+        "Ela não recebeu o aviso. Chama ela por aqui:",
+        `https://wa.me/${falha.para}`,
+        ...(temTecnicoSeparado() ? ["", "O motivo técnico já foi pro Kainã."] : []),
       ].join("\n"),
     ).catch(() => {});
+
     return Response.json({ ok: true, entregaFalhou: falha.codigo });
   }
 

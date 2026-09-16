@@ -94,6 +94,55 @@ export function whatsappDaKarol(): string {
   return (process.env.KAROL_WHATSAPP || NEGOCIO.whatsapp.numero).replace(/\D/g, "");
 }
 
+/**
+ * Pra quem vai defeito de SISTEMA — não de agenda.
+ *
+ * ---------------------------------------------------------------------
+ * Por que isto existe
+ * ---------------------------------------------------------------------
+ *
+ * Pedido do Kainã, 15/09/2026, nas palavras dele: *"quando a mensagem não
+ * foi entregue, isso vai aparecer o erro pra Carol. A Carol não vai saber
+ * identificar o erro e resolver. O erro tem que chegar pra mim."*
+ *
+ * Ele está certo, e o exemplo prova: a Karol recebeu no WhatsApp
+ *
+ *     "Motivo: 131047 — Message failed to send because more than 24
+ *      hours have passed since the customer last replied"
+ *
+ * Isso é inglês, é código de API, e não tem nada que ela possa fazer. Pra
+ * ela o aviso só gera susto. Pra quem mantém o sistema, é o dado que
+ * resolve.
+ *
+ * ---------------------------------------------------------------------
+ * ⚠️ O QUE NÃO SE MOVE JUNTO
+ * ---------------------------------------------------------------------
+ *
+ * "O erro vai pro técnico" NÃO pode virar "a Karol não fica sabendo que a
+ * cliente não foi avisada". São duas informações diferentes no mesmo
+ * evento:
+ *
+ *   - "131047, janela de 24h fechada"  -> técnico. Ela não resolve.
+ *   - "a Fulana não recebeu, fala com ela" -> KAROL. Só ela resolve.
+ *
+ * Quem separa as duas é `app/api/whatsapp/route.ts`. Mandar as duas pro
+ * técnico faria a cliente ficar sem aviso e a Karol sem saber — que é o
+ * defeito de 13/09 de volta, só que por outro caminho.
+ *
+ * Sem `TECNICO_WHATSAPP` no ambiente, volta pro número da Karol: é melhor
+ * o aviso chegar em alguém do que sumir.
+ */
+export function whatsappDoTecnico(): string {
+  const tecnico = (process.env.TECNICO_WHATSAPP || "").replace(/\D/g, "");
+  return tecnico || whatsappDaKarol();
+}
+
+/** true quando existe um número de técnico separado do da Karol. */
+export function temTecnicoSeparado(): boolean {
+  const tecnico = (process.env.TECNICO_WHATSAPP || "").replace(/\D/g, "");
+  return Boolean(tecnico) && tecnico !== whatsappDaKarol();
+}
+
 /** true se existe um webhook pra onde mandar os eventos. */
 export function notificadorConfigurado(): boolean {
   return Boolean(process.env.NOTIFICADOR_WEBHOOK_URL);

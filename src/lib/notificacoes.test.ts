@@ -934,3 +934,71 @@ describe("pedido do sinal respeita a janela", () => {
     expect(corpos[0].type).toBe("interactive");
   });
 });
+
+/**
+ * Pra quem vai o defeito técnico.
+ *
+ * ---------------------------------------------------------------------
+ * O pedido
+ * ---------------------------------------------------------------------
+ *
+ * Kainã, 15/09/2026: *"quando a mensagem não foi entregue, o erro vai
+ * aparecer pra Carol. A Carol não vai saber identificar o erro e resolver.
+ * O erro tem que chegar pra mim."*
+ *
+ * O exemplo que motivou: ela recebeu no WhatsApp "131047 — Message failed
+ * to send because more than 24 hours have passed since the customer last
+ * replied to this number". Inglês, código de API, nada que ela resolva.
+ */
+describe("o número do técnico", () => {
+  const antes = { ...process.env };
+  afterEach(() => {
+    process.env = { ...antes };
+  });
+
+  it("sem TECNICO_WHATSAPP, cai no número da Karol", async () => {
+    delete process.env.TECNICO_WHATSAPP;
+    const { whatsappDoTecnico, whatsappDaKarol } = await import("./notificacoes");
+
+    // Melhor o aviso chegar em alguém do que sumir.
+    expect(whatsappDoTecnico()).toBe(whatsappDaKarol());
+  });
+
+  it("com TECNICO_WHATSAPP, vai pro técnico e só com dígitos", async () => {
+    process.env.TECNICO_WHATSAPP = "(16) 99155-7552";
+    const { whatsappDoTecnico } = await import("./notificacoes");
+
+    expect(whatsappDoTecnico()).toBe("16991557552");
+  });
+
+  /*
+    ⚠️ ESTE É O QUE IMPEDE A KAROL DE RECEBER TUDO DUPLICADO.
+
+    Quando o técnico é o mesmo número dela — que é o padrão enquanto
+    ninguém configurar nada — a rota manda UMA mensagem só. Sem esta
+    distinção ela receberia o recado humano e o diagnóstico em inglês,
+    que é pior do que antes de a gente ter mexido.
+  */
+  it("não conta como separado quando é o mesmo número da Karol", async () => {
+    const { whatsappDaKarol } = await import("./notificacoes");
+    process.env.TECNICO_WHATSAPP = whatsappDaKarol();
+    const { temTecnicoSeparado } = await import("./notificacoes");
+
+    expect(temTecnicoSeparado()).toBe(false);
+  });
+
+  it("conta como separado quando é outro número", async () => {
+    process.env.TECNICO_WHATSAPP = "16991557552";
+    const { temTecnicoSeparado } = await import("./notificacoes");
+
+    expect(temTecnicoSeparado()).toBe(true);
+  });
+
+  it("vazio ou só pontuação não vira técnico", async () => {
+    for (const lixo of ["", "   ", "()- "]) {
+      process.env.TECNICO_WHATSAPP = lixo;
+      const { temTecnicoSeparado } = await import("./notificacoes");
+      expect(temTecnicoSeparado()).toBe(false);
+    }
+  });
+});
