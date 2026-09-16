@@ -51,5 +51,23 @@ capas/
 .claude/worktrees/
 
 # Cópias do banco antes de limpezas. Nunca vão pro git: têm telefone de
-# cliente, e o repositório é público.
+# cliente.
 backups/
+
+# ⚠️ AS FOTOS ORIGINAIS DAS CLIENTES.
+#
+# São rostos de pessoas reais, ~30 MB, e ficaram versionadas até 16/09/2026
+# por descuido. Saíram do git nessa data; continuam no disco, que é onde
+# precisam estar pra `ferramentas/fotos.py` reprocessar.
+#
+# O que VAI pro git é o resultado tratado, em `public/fotos/` — e mesmo
+# esse depende da autorização foto a foto, que ainda está em aberto com a
+# Karol.
+#
+# Elas continuam no HISTÓRICO do git (reescrever histórico é pior remédio
+# que a doença). Por isso o repositório é privado.
+ferramentas/originais/
+
+# Os scripts que geraram os formulários do briefing. Uso único, em
+# agosto/2026: cumpriram o papel e não rodam de novo.
+briefing/
