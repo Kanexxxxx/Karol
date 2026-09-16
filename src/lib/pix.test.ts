@@ -84,7 +84,7 @@ describe("a chave", () => {
 });
 
 describe("o BR Code", () => {
-  const codigo = brCodeDoSinal(4000, "AG7K2M");
+  const codigo = brCodeDoSinal(4000);
   const campos = desmontar(codigo);
 
   it("fecha com o CRC do próprio conteúdo", () => {
@@ -135,12 +135,51 @@ describe("o BR Code", () => {
     expect(campos["60"]).toBe("PEREIRA BARRETO");
   });
 
-  it("carrega o identificador da cobrança", () => {
-    expect(desmontar(campos["62"])["05"]).toBe("AG7K2M");
+  /**
+   * ⚠️ ESTE TESTE AFIRMAVA O CONTRÁRIO, E O CONTRÁRIO ERA O DEFEITO.
+   *
+   * Ele cobrava que o BR Code do sinal carregasse o identificador do
+   * agendamento no campo 62/05 (`txid`). Parecia certo — é rastreio.
+   *
+   * Era o motivo de o pagamento falhar. Durante dias o PIX abria bonito
+   * no aplicativo (nome certo, valor certo) e morria na confirmação. A
+   * tela do Bradesco deu o nome:
+   *
+   *     "Pagamento rejeitado pelo PSP do recebedor"
+   *
+   * Num QR **dinâmico** o txid aponta pra uma cobrança que o banco do
+   * recebedor registrou antes. O nosso é **estático** — chave e valor,
+   * sem cobrança registrada em lugar nenhum. Chegando um txid, o banco do
+   * recebedor procura a cobrança, não acha, e recusa.
+   *
+   * `***` é o que a norma reserva pra "não tem identificador".
+   *
+   * Nenhum teste pegava isso porque todos mediam a FORMA do código — CRC,
+   * campos, ASCII — e o código estava formado corretamente. O que estava
+   * errado era o conteúdo de um campo, e só um banco de verdade diria.
+   */
+  it("NÃO carrega identificador: o QR é estático e txid quebraria o pagamento", () => {
+    // Mesmo passando um id, ele é ignorado de propósito.
+    expect(desmontar(campos["62"])["05"]).toBe("***");
+    expect(desmontar(desmontar(brCodeDoSinal(4000))["62"])["05"]).toBe("***");
   });
 
-  it("usa *** quando não há identificador", () => {
-    expect(desmontar(desmontar(brCodeDoSinal(4000))["62"])["05"]).toBe("***");
+  /*
+    O construtor de baixo nível CONTINUA sabendo pôr identificador — ele
+    implementa a norma, e a norma prevê o campo. Quem não usa é o código
+    do sinal. Se um dia entrar cobrança dinâmica de verdade (registrada no
+    PSP), é por aqui.
+  */
+  it("o construtor ainda aceita identificador, pra quando houver cobrança registrada", () => {
+    const comId = montarBrCode({
+      chave: "18997525291",
+      tipoChave: "Telefone",
+      favorecido: "Karolaine Carvalho",
+      cidade: "PEREIRA BARRETO",
+      valorCentavos: 4000,
+      identificador: "AG7K2M",
+    });
+    expect(desmontar(desmontar(comId)["62"])["05"]).toBe("AG7K2M");
   });
 });
 
@@ -206,7 +245,7 @@ describe("o que estraga um BR Code", () => {
     // O desmonte só chega ao fim se cada tamanho estiver correto; se um
     // estiver errado, a leitura sai de sincronia e sobra lixo no fim.
     for (const centavos of [0, 1, 4000, 12750, 999999]) {
-      const codigo = brCodeDoSinal(centavos, "TESTE");
+      const codigo = brCodeDoSinal(centavos);
       const remontado = pares(codigo)
         .map(([id, v]) => id + String(v.length).padStart(2, "0") + v)
         .join("");

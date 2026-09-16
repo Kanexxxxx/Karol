@@ -192,7 +192,7 @@ export function montarBrCode(dados: DadosPix): string {
  * PIX: se cada tela montar o seu, um dia uma delas esquece o valor ou usa
  * a chave errada.
  */
-export function brCodeDoSinal(valorCentavos: number, identificador?: string): string {
+export function brCodeDoSinal(valorCentavos: number): string {
   return montarBrCode({
     chave: REGRAS.sinal.chavePix,
     tipoChave: REGRAS.sinal.tipoChave,
@@ -200,6 +200,43 @@ export function brCodeDoSinal(valorCentavos: number, identificador?: string): st
     // A cidade do recebedor. Vai no código, e é onde ela atende.
     cidade: "PEREIRA BARRETO",
     valorCentavos,
-    identificador,
+    /*
+      ⚠️ SEM IDENTIFICADOR — E ISSO É O CONSERTO DE "O BANCO RECUSOU".
+
+      Durante dias o PIX do site abriu certinho no aplicativo de vários
+      bancos — nome do recebedor certo, valor certo — e a confirmação
+      terminava em erro. A tela do Bradesco deu o nome exato do problema:
+
+          "Pagamento rejeitado pelo PSP do recebedor"
+
+      PSP do recebedor = o banco de QUEM IA RECEBER. Não é o código, não
+      é o CRC (conferido por fora, bate), não é a chave (formato E.164
+      correto). É o banco do outro lado dizendo não.
+
+      O motivo é o campo 62/05, o `txid`. A gente mandava o UUID do
+      agendamento nele:
+
+          62 29 05 25 8c6377a19f2b4c3d8e1a5d6e7
+
+      Num QR **dinâmico** o txid identifica uma cobrança que o PSP do
+      recebedor registrou antes. O nosso é **estático** — chave e valor,
+      sem cobrança registrada em lugar nenhum. Chegando um txid, o banco
+      do recebedor vai procurar a cobrança correspondente, não acha, e
+      recusa. Bancos mais frouxos ignoram; Inter, Bradesco e Nubank não.
+
+      `***` é o valor que a norma do BACEN reserva pra "não tem
+      identificador", e é o único correto num código estático.
+
+      ⚠️ O Kainã desconfiou na hora certa. Eu tinha concluído que era a
+      conta dele e que bastava trocar pela chave da Karol; ele respondeu
+      que se o banco dele recusou, o dela recusaria também. Estava certo:
+      a chave não tinha nada a ver, e a troca não teria consertado nada —
+      só movido o mesmo erro pra conta dela.
+
+      O parâmetro continua na assinatura pra não quebrar as três telas
+      que chamam isto, mas é ignorado de propósito. Ninguém precisa dele:
+      o pagamento é reconhecido pelo comprovante que a cliente manda, não
+      por txid.
+    */
   });
 }

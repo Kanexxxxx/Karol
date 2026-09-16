@@ -153,7 +153,12 @@ function Sucesso({
         )}
       </dl>
 
-      {esperandoPagamento && <BlocoPix valorCentavos={sinalCentavos} id={agendamento.id} />}
+      {/*
+        O `id` saiu daqui em 16/09: ele virava o `txid` do BR Code, e era
+        isso que fazia o banco do recebedor recusar o pagamento. Ver
+        `brCodeDoSinal` em lib/pix.ts.
+      */}
+      {esperandoPagamento && <BlocoPix valorCentavos={sinalCentavos} />}
 
       <div className="mt-7 border-t border-linha pt-6">
         <h2 className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.22em] text-ouro">
@@ -209,7 +214,7 @@ function Sucesso({
  * responde é a Karol. O aviso abaixo é o que ela decidiu, escrito de um
  * jeito que não soa hostil.
  */
-function BlocoPix({ valorCentavos, id }: { valorCentavos: number; id: string }) {
+function BlocoPix({ valorCentavos }: { valorCentavos: number }) {
   /*
     ⚠️ ESTE BLOCO JÁ FOI O DOBRO DISTO.
 
@@ -222,7 +227,7 @@ function BlocoPix({ valorCentavos, id }: { valorCentavos: number; id: string }) 
     O BR Code carrega o valor (campo 54), então o app do banco abre com
     R$ 40 preenchido e a cliente não digita nada.
   */
-  const codigo = brCodeDoSinal(valorCentavos, id);
+  const codigo = brCodeDoSinal(valorCentavos);
   const svg = qrParaSvg(codigo, { nivel: "M", escuro: "#332b22", claro: "#ffffff" });
   const valor = formatarPreco(valorCentavos / 100);
 

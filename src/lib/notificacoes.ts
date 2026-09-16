@@ -1292,7 +1292,7 @@ export async function enviarQrDoSinal(a: DadosAgendamento): Promise<boolean> {
 export async function enviarCodigoDoSinal(a: DadosAgendamento): Promise<boolean> {
   const sinal = sinalDoAgendamento(a);
   if (sinal <= 0) return false;
-  return enviarTexto(a.whatsappCliente, brCodeDoSinal(sinal, a.id));
+  return enviarTexto(a.whatsappCliente, brCodeDoSinal(sinal));
 }
 
 /**

@@ -55,7 +55,7 @@ export async function GET(
   const sinal = servico ? valorDoSinal(servico) : 0;
   if (sinal <= 0) return new Response("este serviço não pede sinal", { status: 404 });
 
-  const codigo = brCodeDoSinal(sinal, id);
+  const codigo = brCodeDoSinal(sinal);
   const png = qrParaPng(gerarMatriz(codigo, { nivel: "M" }), { escala: 10 });
 
   return new Response(new Uint8Array(png), {
