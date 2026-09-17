@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { agendar, type EstadoAgendar } from "./acoes";
 
 /**
@@ -10,6 +10,59 @@ import { agendar, type EstadoAgendar } from "./acoes";
  * módulo em produção e jogava o /agendar na tela de erro.
  */
 const ESTADO_INICIAL: EstadoAgendar = {};
+
+/**
+ * Onde o rascunho do formulário fica enquanto ela não envia.
+ *
+ * ---------------------------------------------------------------------
+ * ⚠️ POR QUE ISTO EXISTE
+ * ---------------------------------------------------------------------
+ *
+ * Medido em 17/09/2026, num iPhone de verdade contra a produção: a cliente
+ * escolhe serviço, cidade, dia e hora, digita nome e WhatsApp — e aperta F5
+ * sem querer. O que sobrevive:
+ *
+ *   serviço, cidade, dia, hora ....... sobrevivem (estão na URL)
+ *   nome e WhatsApp digitados ........ SUMIAM
+ *
+ * Ela não perdia os passos. Perdia o que tinha acabado de escrever, que é
+ * a parte chata de digitar no celular. O Kainã levantou isso: "sem querer
+ * recarrega a página e perde um monte de informação que já tinha colocado".
+ *
+ * ---------------------------------------------------------------------
+ * `sessionStorage`, e não `localStorage`, de propósito
+ * ---------------------------------------------------------------------
+ *
+ * É nome e telefone de uma pessoa. O `sessionStorage` morre quando ela
+ * fecha a aba, não é compartilhado com outra aba e nunca sai do aparelho
+ * dela — não passa pelo nosso servidor nem pelo banco. `localStorage`
+ * ficaria lá meses, num celular que pode ser emprestado.
+ *
+ * E some antes disso em dois casos: quando ela envia, e quando o navegador
+ * recusa gravar (aba anônima, armazenamento bloqueado). Por isso todo
+ * acesso está dentro de try/catch: se falhar, o formulário funciona do
+ * jeito de antes, só sem lembrar.
+ */
+const RASCUNHO = "karol:rascunho-agendamento";
+
+type Rascunho = { nome?: string; whatsapp?: string; observacao?: string };
+
+function lerRascunho(): Rascunho | null {
+  try {
+    const cru = sessionStorage.getItem(RASCUNHO);
+    return cru ? (JSON.parse(cru) as Rascunho) : null;
+  } catch {
+    return null;
+  }
+}
+
+function apagarRascunho(): void {
+  try {
+    sessionStorage.removeItem(RASCUNHO);
+  } catch {
+    /* aba anônima: não tinha o que apagar */
+  }
+}
 
 /**
  * Último passo: nome, WhatsApp e um recado opcional.
@@ -32,9 +85,55 @@ export function FormularioDados({
 }) {
   const [estado, acao, enviando] = useActionState(agendar, ESTADO_INICIAL);
   const v = estado.valores;
+  const form = useRef<HTMLFormElement>(null);
+
+  /*
+    Devolve o que ela tinha digitado, uma vez só, ao montar.
+
+    ⚠️ SÓ PREENCHE CAMPO VAZIO. Se a ação do servidor recusou o envio, ela
+    volta com `estado.valores` já na tela — e aquilo é mais novo que o
+    rascunho. Sobrescrever seria trocar o certo pelo velho.
+  */
+  useEffect(() => {
+    const guardado = lerRascunho();
+    if (!guardado || !form.current) return;
+
+    for (const campo of ["nome", "whatsapp", "observacao"] as const) {
+      const el = form.current.elements.namedItem(campo);
+      const valor = guardado[campo];
+      if (!valor) continue;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        if (el.value === "") el.value = valor;
+      }
+    }
+  }, []);
+
+  /* A cada tecla, guarda. Barato, e é o que salva o F5 sem aviso. */
+  function guardar() {
+    if (!form.current) return;
+    const d = new FormData(form.current);
+    try {
+      sessionStorage.setItem(
+        RASCUNHO,
+        JSON.stringify({
+          nome: String(d.get("nome") ?? ""),
+          whatsapp: String(d.get("whatsapp") ?? ""),
+          observacao: String(d.get("observacao") ?? ""),
+        }),
+      );
+    } catch {
+      /* armazenamento bloqueado: segue sem lembrar */
+    }
+  }
 
   return (
-    <form action={acao} className="flex flex-col gap-5">
+    <form
+      ref={form}
+      action={acao}
+      onInput={guardar}
+      onSubmit={apagarRascunho}
+      className="flex flex-col gap-5"
+    >
       <input type="hidden" name="servicoId" value={servicoId} />
       <input type="hidden" name="chaveDia" value={chaveDia} />
       <input type="hidden" name="inicioMin" value={inicioMin} />
