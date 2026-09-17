@@ -36,7 +36,25 @@ const CABECALHOS = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
+/**
+ * ⚠️ `standalone` SÓ LIGA QUANDO ALGUÉM PEDE, e isso é de propósito.
+ *
+ * A cópia da VPS precisa de `output: "standalone"`: o Next monta uma pasta
+ * `.next/standalone` que já vem com o servidor e só as dependências que o
+ * site usa de verdade. É o que faz caber numa VPS pequena sem levar os
+ * ~500 MB de `node_modules`.
+ *
+ * Mas a Vercel NÃO precisa disso — ela tem o próprio empacotador. Ligar
+ * standalone lá muda o jeito como o build sai, e o site da Karol está no
+ * ar. Então fica atrás de uma variável: `BUILD_STANDALONE=1 npm run build`
+ * é o build da VPS, e `npm run build` sozinho continua sendo, byte por
+ * byte, o mesmo build que a Vercel faz hoje.
+ *
+ * Ver `vps/README.md`.
+ */
 const nextConfig: NextConfig = {
+  ...(process.env.BUILD_STANDALONE ? { output: "standalone" as const } : {}),
+
   async headers() {
     return [{ source: "/:path*", headers: CABECALHOS }];
   },

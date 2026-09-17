@@ -1,0 +1,51 @@
+# Studio Karol Carvalho — a copia reserva, na VPS
+#
+#   cd vps
+#   cp ../.env.example .env     <- e preencha
+#   docker compose up -d --build
+#
+# Sobe duas coisas: o site e o Caddy, que cuida do HTTPS sozinho.
+
+services:
+  site:
+    build:
+      context: ..
+      dockerfile: vps/Dockerfile
+      args:
+        # Lidas no BUILD (viram parte do JavaScript do navegador).
+        # Mudar qualquer uma destas exige `--build` de novo.
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+    restart: unless-stopped
+
+    # ⚠️ AQUI ENTRAM AS CREDENCIAIS, em tempo de execucao.
+    #
+    # Enquanto o .env estiver vazio, o site sobe assim mesmo: home,
+    # servicos, sobre e privacidade no ar, e /agendar dizendo "a agenda
+    # online esta sendo ligada" com o WhatsApp do lado. Foi testado.
+    #
+    # No dia da virada voce preenche o .env e roda:
+    #   docker compose up -d --build
+    env_file: .env
+
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # os certificados. NAO apague este volume:
+      - caddy_config:/config  # perder ele = pedir certificado de novo
+    environment:
+      DOMINIO: ${DOMINIO}
+    depends_on:
+      - site
+
+volumes:
+  caddy_data:
+  caddy_config:
