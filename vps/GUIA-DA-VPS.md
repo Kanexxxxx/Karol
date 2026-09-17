@@ -119,3 +119,57 @@ ssh root@147.93.9.185 "cd /opt/karol/vps && docker compose up -d --build"
 
 ⚠️ O `rm -rf` apaga o `.env` junto. Refaça-o antes de subir credencial, ou
 guarde uma cópia fora de `/opt/karol`.
+
+---
+
+## Diário de mudanças
+
+### 17/09/2026 — auditoria e faxina
+
+**Apagado (a pedido do Kainã):**
+- `/var/www/cursverse` — plataforma de cursos, 817 MB. Confirmado antes:
+  nenhum container, nginx, cron ou systemd dependia dela. Disco caiu de
+  24% pra 22%.
+
+**Segurança, o que estava aberto:**
+
+| O quê | Estado | Agora |
+|---|---|---|
+| SSH por senha | **aberta** (ver acima) | fechada |
+| `.env.local`, `.env.local.backup`, `.env.backup` do volkerr | 644 — o usuário `confia` lia | 600 |
+| `.env.example` do eurora e do volkerr-backend | 644, e com **6 valores reais dentro** | 600 |
+| `volkerr.com.br` sem HSTS | rebaixável pra HTTP | `add_header` no nginx |
+| `X-Powered-By: Next.js` no volkerr | entregava a stack | `proxy_hide_header` |
+
+A mudança no nginx foi validada num container descartável (com upstreams e
+certificados reais montados) e aplicada com `docker kill -s HUP`, que
+recarrega sem derrubar. Backup do original em
+`/root/default.conf.antes-seguranca-17set`.
+
+**Conferido e já estava certo:**
+- `/var/www` não é servido por nenhum servidor web — os `.env` de lá nunca
+  estiveram acessíveis pela internet
+- nenhum container monta `/var/run/docker.sock` nem roda privilegiado
+- `.env`, `.git`, `package.json` e `docker-compose.yml` dão 404 nos dois
+  domínios
+- fail2ban e unattended-upgrades ativos, zero atualização pendente
+
+### ⚠️ O que ficou pendente, e por quê
+
+**1. Os 4 containers do volkerr rodam como root.** Se alguém achar um
+furo na aplicação, já entra como root do container. O da Karol roda como
+`nextjs` (usuário sem privilégio).
+
+Consertar é acrescentar `USER` nos Dockerfiles do volkerr e recompilar —
+mexe em permissão de arquivo e pode quebrar upload e cache. Não foi feito
+sem o Kainã decidir.
+
+**2. `*** System restart required ***`** — atualização de kernel esperando.
+Reiniciar derruba eurora e volkerr por ~2 minutos.
+
+**3. Os `.env.example` do volkerr têm segredo de verdade dentro**
+(`ADMIN_PASSWORD`, `GMAIL_APP_PASSWORD`, `ASAAS_WEBHOOK_TOKEN`,
+`CRON_SECRET`, `SESSION_SECRET`, `ADMIN_SECRET`). Estão em 600 agora, e
+nenhuma pasta dessas é repositório git — então não vazaram pro GitHub. Mas
+arquivo de exemplo não devia guardar valor real: se um dia virar
+repositório, vai junto.
