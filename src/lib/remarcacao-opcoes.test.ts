@@ -17,7 +17,16 @@ vi.mock("./agendamentos", () => ({
 import { horariosParaOferecer } from "./remarcacao";
 import type { Agendamento } from "./agendamentos";
 
-/** Um dia cheio de vagas: 7h–11h e 18h30–22h, de 15 em 15 minutos. */
+/*
+  Um dia cheio de vagas: 7h–11h e 18h30–22h, de 15 em 15 minutos.
+
+  ⚠️ DE PROPÓSITO MAIS DENSO QUE A GRADE REAL. Desde 16/09/2026 o site só
+  oferece hora cheia, então a enxurrada de 08:30, 08:45, 09:00 que este
+  teste descreve não vem mais da tela. Mas `horariosParaOferecer` recebe o
+  que a agenda der — inclusive encaixes que a Karol fez pelo painel — e a
+  regra de no máximo dois por dia tem que segurar o caso denso. Afrouxar a
+  grade daqui seria afrouxar o teste.
+*/
 function grade() {
   const vagas: { inicio: number; livre: boolean; cidade: string; rotulo: string }[] = [];
   const add = (de: number, ate: number) => {

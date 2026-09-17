@@ -140,7 +140,33 @@ describe("criarAgendamento", () => {
       whatsapp: "18999998888",
     });
     expect(r).toMatchObject({ ok: false });
-    expect(r.ok === false && r.erro).toMatch(/ocupado/i);
+    expect(r.ok === false && r.erro).toMatch(/não está mais disponível/i);
+  });
+
+  /*
+    ⚠️ O CASO QUE A MUDANÇA DE 16/09/2026 CRIOU.
+
+    A grade passou de 15 em 15 pra hora cheia. Quem estivesse com a página
+    de agendamento aberta na hora do deploy continuava vendo 07:15 na tela
+    — um horário que o servidor não oferece mais.
+
+    O POST tinha que ser recusado, e é: a conferência é contra a grade
+    viva, não contra o que a tela mostrava. Este teste existe pra ninguém
+    "consertar" isso passando a aceitar qualquer minuto — seria abrir uma
+    porta de encaixe sem a Karol saber.
+  */
+  it("recusa 07:15 de uma página velha: a grade só tem hora cheia", async () => {
+    usarBanco({ select: () => ({ data: [], error: null }) });
+    const r = await criarAgendamento({
+      servicoId: "design-simples",
+      chaveDia: diaUtilFuturo(),
+      inicioMin: 7 * 60 + 15, // 07:15 — dentro do expediente, fora da grade
+      nome: "Fulana",
+      whatsapp: "18999998888",
+    });
+    expect(r).toMatchObject({ ok: false });
+    // e a frase manda recarregar, que é o que resolve pra ela
+    expect(r.ok === false && r.erro).toMatch(/recarregue/i);
   });
 
   it("traduz o choque do banco (23P01) numa mensagem amigável", async () => {
@@ -251,10 +277,14 @@ describe("criarAgendamentoNoPainel", () => {
 
   /**
    * O ponto do formulário do painel: ela pode encaixar em QUALQUER horário,
-   * não só nos múltiplos de 15 que o site oferece. Quem impede choque é a
+   * não só nas horas cheias que o site oferece. Quem impede choque é a
    * trava do banco, então liberdade aqui não custa segurança.
+   *
+   * ⚠️ ESTE TESTE FICOU MAIS IMPORTANTE em 16/09/2026. Com a grade de hora
+   * cheia, os 18:30 e os 07:15 saíram da tela da cliente — e é AQUI que
+   * eles continuam existindo. Se este teste cair, ela perdeu o encaixe.
    */
-  it("aceita horário fora da grade de 15 em 15", async () => {
+  it("aceita horário fora da grade de hora cheia", async () => {
     usarBanco({ insert: () => ({ data: { id: "ag-encaixe" } }) });
     const r = await criarAgendamentoNoPainel({ ...base, hora: "07:07" });
     expect(r.ok).toBe(true);

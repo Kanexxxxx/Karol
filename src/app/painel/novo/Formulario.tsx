@@ -12,7 +12,7 @@ const INICIAL: EstadoNovo = {};
 /**
  * Formulário da Karol pra marcar alguém na mão.
  *
- * A hora é campo livre, não a grade de 15 em 15 do site: aqui é pra
+ * A hora é campo livre, não a grade de hora cheia do site: aqui é pra
  * encaixar a mãe, o pai, quem ligou. Quem impede choque é a trava do
  * banco, então liberdade aqui não custa segurança.
  *

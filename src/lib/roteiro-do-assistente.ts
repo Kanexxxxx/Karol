@@ -117,6 +117,12 @@ export function roteiroDoAssistente(): string {
       (id) => `- ${CIDADES[id].nome}: ${horarioDaCidade(id)}`,
     ),
     "- Uma cliente por vez, sempre com hora marcada.",
+    // ⚠️ SEM ISTO O ASSISTENTE PROMETE 18:30. A linha de ATENDIMENTO acima
+    // sai do EXPEDIENTE e diz "18h30 às 22h", que é verdade sobre o horário
+    // DELA — mas a grade do site só oferece hora cheia desde 16/09/2026
+    // (ver `PASSO_MIN`). Sem esta regra o modelo lê "18h30" e oferece
+    // 18:30 a uma cliente, que não vai achar esse horário na tela.
+    "- O site só oferece HORA CHEIA: 07:00, 08:00, 09:00, 19:00, 20:00, 21:00. NUNCA ofereça 07:15, 08:30 ou 18:30 a uma cliente — horário quebrado só existe como encaixe que a Karol faz pelo painel.",
     "- 'de manhã' = 07:00–11:00. 'de noite' = a partir das 18:30. 'cedo' = o primeiro do dia; 'fim do dia' = o último que cabe.",
     "",
     "SERVIÇOS (use o id exato)",

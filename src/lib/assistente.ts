@@ -859,7 +859,8 @@ async function problemaComOHorario(
     ⚠️ AO REMARCAR, O PRÓPRIO AGENDAMENTO NÃO CONTA COMO OCUPADO.
 
     É o erro clássico desse fluxo, e a minha validação de ontem tinha ele:
-    mover a Ana das 07:00 pras 07:15 seria recusado, porque o horário novo
+    mover a Ana das 07:00 pras 07:15 (encaixe pelo painel, que não passa
+    pela grade) seria recusado, porque o horário novo
     encosta no antigo — dela mesma. No banco isso não é conflito: a linha
     é atualizada, e a trava compara com as OUTRAS.
   */

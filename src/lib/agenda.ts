@@ -26,8 +26,43 @@ export type Horario = {
   cidade: CidadeId;
 };
 
-/** Passo da grade de horários oferecidos. */
-const PASSO_MIN = 15;
+/**
+ * Passo da grade de horários oferecidos — de hora em hora, em hora cheia.
+ *
+ * ---------------------------------------------------------------------
+ * Por que deixou de ser 15 minutos
+ * ---------------------------------------------------------------------
+ *
+ * Pedido da Karol, 16/09/2026, pelo Kainã: *"pra cliente agendar tá lá
+ * uma hora, ou 1h15, ou 1h30, ou 1h45. Será que teria como deixar só
+ * 1h, 2h, 3h — e não horário quebrado?"*
+ *
+ * ⚠️ E O PEDIDO DELA É MAIS CERTO DO QUE PARECE, porque a grade de 15
+ * minutos era uma ilusão de capacidade. Um design leva 50 minutos com o
+ * intervalo. Oferecer 07:00, 07:15, 07:30 e 07:45 não dava quatro vagas:
+ * quem pegasse 07:00 derrubava as outras três. A tela mostrava treze
+ * horários numa manhã em que cabiam quatro clientes.
+ *
+ * Então a mudança não custa vaga nenhuma — devolve a verdade. A manhã de
+ * Pereira (7h–11h) oferece 07:00, 08:00, 09:00 e 10:00, que é exatamente
+ * o que cabe.
+ *
+ * ---------------------------------------------------------------------
+ * ⚠️ HORA CHEIA NÃO É SÓ O PASSO
+ * ---------------------------------------------------------------------
+ *
+ * O turno da noite abre às **18:30**. Contando de hora em hora a partir
+ * da abertura, sairia 18:30, 19:30, 20:30 — quebrado do mesmo jeito, e o
+ * pedido dela continuaria sem resposta.
+ *
+ * Por isso o laço começa na primeira hora cheia DEPOIS da abertura. A
+ * noite oferece 19:00, 20:00 e 21:00.
+ *
+ * O preço são os trinta minutos entre 18:30 e 19:00, que deixam de ser
+ * ofertados pelo site. Ela continua podendo encaixar ali pelo painel, que
+ * é onde ela decide sabendo o que quer.
+ */
+const PASSO_MIN = 60;
 
 export function paraRotulo(minutos: number): string {
   const h = Math.floor(minutos / 60);
@@ -115,7 +150,11 @@ export function gradeDoDia({
   const grade: VagaNaGrade[] = [];
 
   for (const expediente of expedientes) {
-    for (let inicio = expediente.inicio; inicio + bloco <= expediente.fim; inicio += PASSO_MIN) {
+    // A primeira hora CHEIA do turno. Ver `PASSO_MIN`: sem isto, o turno
+    // da noite (18:30) ofereceria 18:30, 19:30, 20:30.
+    const primeiraHoraCheia = Math.ceil(expediente.inicio / PASSO_MIN) * PASSO_MIN;
+
+    for (let inicio = primeiraHoraCheia; inicio + bloco <= expediente.fim; inicio += PASSO_MIN) {
       const candidato = { inicio, fim: inicio + bloco };
       grade.push({
         inicio,

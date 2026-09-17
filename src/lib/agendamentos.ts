@@ -319,7 +319,23 @@ export async function criarAgendamento(dados: {
   const dia = deChave(dados.chaveDia);
   const livres = await horariosDoDia(servico, dados.chaveDia);
   if (!livres.some((h) => h.inicio === dados.inicioMin)) {
-    return { ok: false, erro: "Esse horário acabou de ser ocupado. Escolha outro." };
+    /*
+      ⚠️ SÃO DOIS MOTIVOS, E A FRASE PRECISA SERVIR PROS DOIS.
+
+      O normal é alguém ter pego o horário primeiro. Mas em 16/09/2026 a
+      grade passou de 15 em 15 pra hora cheia, e quem estivesse com a
+      página aberta continuava vendo 07:15 na tela: ao enviar, o horário
+      não foi ocupado — ele deixou de existir. Dizer "acabou de ser
+      ocupado" ali seria mentira, e ela ficaria procurando o 07:15 que
+      sumiu.
+
+      Por isso a frase fala de DISPONIBILIDADE e manda recarregar, que é o
+      que resolve os dois casos.
+    */
+    return {
+      ok: false,
+      erro: "Esse horário não está mais disponível. Recarregue a página e escolha outro.",
+    };
   }
 
   const bloco = blocoDoAgendamento(dados.inicioMin, servico);
@@ -916,7 +932,7 @@ export function horaEmMinutos(hora: string): number | null {
  *
  * Difere do fluxo da cliente de propósito: aqui ela escolhe QUALQUER
  * horário, não só os da grade. É pra encaixar a mãe, o pai, uma cliente
- * que ligou — casos que não cabem no passo de 15 minutos.
+ * que ligou — casos que não cabem no passo de uma hora.
  *
  * A segurança contra choque continua sendo a mesma do site: a restrição
  * `sem_choque` no banco. Ela é quem recusa sobreposição, aqui e lá.
@@ -933,8 +949,8 @@ export function horaEmMinutos(hora: string): number | null {
  * também: um toque errado marcava alguém às 3 da manhã, ou em cima de uma
  * viagem já bloqueada, sem nada reclamar.
  *
- * ⚠️ O QUE ISTO **NÃO** PROÍBE: encaixe fora da grade de 15 em 15. Ela
- * pode marcar 07:07 — só não pode marcar fora do turno. Tem um teste
+ * ⚠️ O QUE ISTO **NÃO** PROÍBE: encaixe fora da grade de hora cheia. Ela
+ * pode marcar 07:07 ou 18:30 — só não pode marcar fora do turno. Tem um teste
  * guardando isso, porque é o ponto do formulário do painel.
  */
 async function foraDoExpediente(

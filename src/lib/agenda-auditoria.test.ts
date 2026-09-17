@@ -57,20 +57,31 @@ describe("a dúvida das 07:00", () => {
   });
 
   it("no meio do dia some dos dois lados — e está certo", () => {
-    // alguém marcou 08:30. O de 07:45 termina 08:35, DENTRO do das 08:30.
+    /*
+      Alguém marcou 08:30 — encaixe da Karol pelo painel, já que o site só
+      oferece hora cheia desde 16/09 (ver `PASSO_MIN`).
+
+      O de 08:00 termina 08:50, DENTRO do atendimento das 08:30. E o de
+      09:00 também colide, porque o atendimento só acaba 09:20. Some dos
+      dois lados, e é isso que a aritmética abaixo prova.
+    */
     const ocupados = [{ inicio: 510, fim: 510 + BLOCO }]; // 08:30–09:20
     const grade = gradeDoDia({ data: SEGUNDA, servico: design, ocupados, agora: AGORA });
 
-    const antes = grade.find((v) => v.rotulo === "07:45")!;
+    const antes = grade.find((v) => v.rotulo === "08:00")!;
     expect(antes.livre).toBe(false);
-    // a prova aritmética: 07:45 + 50 min = 08:35 > 08:30
-    expect(465 + BLOCO).toBeGreaterThan(510);
+    // 08:00 + 50 min = 08:50 > 08:30
+    expect(480 + BLOCO).toBeGreaterThan(510);
 
-    // e 07:30 SOBREVIVE, porque termina 08:20 — dez minutos antes,
-    // que é exatamente o intervalo de arrumação que ela pediu
-    const limite = grade.find((v) => v.rotulo === "07:30")!;
+    const depois = grade.find((v) => v.rotulo === "09:00")!;
+    expect(depois.livre).toBe(false);
+    // o atendimento vai até 09:20, e 09:00 entraria por cima
+    expect(540).toBeLessThan(510 + BLOCO);
+
+    // e 07:00 SOBREVIVE: termina 07:50, quarenta minutos antes
+    const limite = grade.find((v) => v.rotulo === "07:00")!;
     expect(limite.livre).toBe(true);
-    expect(430 + BLOCO).toBeLessThanOrEqual(510);
+    expect(420 + BLOCO).toBeLessThanOrEqual(510);
   });
 });
 

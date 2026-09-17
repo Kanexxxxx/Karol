@@ -125,11 +125,20 @@ describe("horariosLivres", () => {
     expect(manha[0]).toMatchObject({ inicio: 7 * 60, rotulo: "07:00", cidade: "pereira-barreto" });
     expect(manha.at(-1)!.inicio + 50).toBeLessThanOrEqual(11 * 60);
 
-    expect(noite[0]).toMatchObject({ inicio: 18.5 * 60, rotulo: "18:30", cidade: "pereira-barreto" });
+    /*
+      ⚠️ A NOITE COMEÇA 19:00, E NÃO 18:30, desde 16/09/2026.
+
+      O turno abre às 18:30, mas a grade só oferece hora cheia — pedido da
+      Karol ("não horário quebrado"). Os trinta minutos entre 18:30 e
+      19:00 deixaram de ser ofertados pelo site; ela continua podendo
+      encaixar ali pelo painel. Ver `PASSO_MIN` em agenda.ts.
+    */
+    expect(noite[0]).toMatchObject({ inicio: 19 * 60, rotulo: "19:00", cidade: "pereira-barreto" });
     expect(noite.at(-1)!.inicio + 50).toBeLessThanOrEqual(22 * 60);
 
-    // passo de 15 min
-    expect(manha[1].inicio - manha[0].inicio).toBe(15);
+    // passo de uma hora, e sempre em hora cheia
+    expect(manha[1].inicio - manha[0].inicio).toBe(60);
+    for (const h of livres) expect(h.inicio % 60).toBe(0);
   });
 
   it("remove os horários que colidem com o que já está ocupado", () => {
@@ -313,37 +322,44 @@ describe("marcar às 08:30 bloqueia horários ANTES também", () => {
    * Isso parece bug e não é. O site mostra a hora de COMEÇAR, mas quem
    * decide a colisão é a hora de TERMINAR.
    *
-   * Um design às 07:45 vai até 08:35 — cinco minutos dentro do atendimento
+   * Um design às 08:00 vai até 08:50 — vinte minutos dentro do atendimento
    * das 08:30. Duas clientes na cadeira ao mesmo tempo. Por isso some.
    *
-   * O limite exato é 07:30: termina 08:20, dez minutos antes, que é o
-   * intervalo de arrumação que ela pediu.
+   * ⚠️ O 08:30 OCUPADO NÃO SAI DA GRADE PÚBLICA — sai de um encaixe que a
+   * Karol fez pelo painel. Desde 16/09 o site só oferece hora cheia (ver
+   * `PASSO_MIN`), mas ela continua marcando em qualquer minuto pelo
+   * painel, e a colisão precisa valer igual pros dois.
    */
   const segunda = segundaDistante();
   const ocupado = [blocoDoAgendamento(8 * 60 + 30, design)]; // 08:30 → 09:20
   const livres = horariosLivres({ data: segunda, servico: design, ocupados: ocupado })
     .map((h) => h.inicio);
 
-  it("07:30 continua livre: termina 08:20, antes do agendado", () => {
-    expect(livres).toContain(7 * 60 + 30);
+  it("07:00 continua livre: termina 07:50, antes do agendado", () => {
+    expect(livres).toContain(7 * 60);
   });
 
-  it("07:45, 08:00 e 08:15 somem: todos terminariam depois das 08:30", () => {
-    for (const inicio of [7 * 60 + 45, 8 * 60, 8 * 60 + 15]) {
-      expect(livres).not.toContain(inicio);
-      // e o motivo: o bloco invadiria o atendimento
-      expect(blocoDoAgendamento(inicio, design).fim).toBeGreaterThan(8 * 60 + 30);
-    }
+  it("08:00 some: terminaria 08:50, depois das 08:30", () => {
+    expect(livres).not.toContain(8 * 60);
+    expect(blocoDoAgendamento(8 * 60, design).fim).toBeGreaterThan(8 * 60 + 30);
   });
 
-  it("09:30 volta a ficar livre: o atendimento acabou 09:20", () => {
-    expect(livres).toContain(9 * 60 + 30);
-    expect(livres).not.toContain(9 * 60 + 15);
+  /*
+    ⚠️ E O DE DEPOIS TAMBÉM SOME. 09:00 parece livre — o atendimento
+    começou 08:30 — mas ele só termina 09:20. Começar 09:00 seria entrar
+    por cima dos últimos vinte minutos.
+  */
+  it("09:00 some: o atendimento só acaba 09:20", () => {
+    expect(livres).not.toContain(9 * 60);
   });
 
-  it("são exatamente 7 horários que somem, 3 antes e 3 depois", () => {
+  it("10:00 volta a ficar livre", () => {
+    expect(livres).toContain(10 * 60);
+  });
+
+  it("some exatamente o que colide, nem um a mais", () => {
     const todos = horariosLivres({ data: segunda, servico: design }).length;
-    expect(todos - livres.length).toBe(7);
+    expect(todos - livres.length).toBe(2);
   });
 });
 

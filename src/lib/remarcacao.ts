@@ -90,7 +90,7 @@ function linhaParaRemarcacao(r: Record<string, unknown>): Remarcacao {
  * No máximo DOIS horários por dia, e de partes diferentes do dia.
  *
  * ⚠️ Antes isto pegava os primeiros livres em ordem — e os primeiros
- * livres de um dia são 08:30, 08:45, 09:00, 09:15... A lista chegava na
+ * livres de um dia eram 08:30, 08:45, 09:00, 09:15... A lista chegava na
  * cliente com sete variações de quinze minutos da mesma manhã e um
  * horário do dia seguinte no fim. Isso não é oferecer escolha; é oferecer
  * o mesmo horário sete vezes, e ainda gastar as oito vagas da lista num
