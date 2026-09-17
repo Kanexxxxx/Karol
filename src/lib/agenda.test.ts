@@ -253,10 +253,14 @@ describe("bloqueio somado ao motor de horários", () => {
 
 describe("serviços de durações diferentes não colidem", () => {
   /**
-   * A preocupação: a grade anda de 15 em 15 minutos, mas os serviços duram
-   * de 40 a 120 min. Se o motor só olhasse o passo da grade, um curso de
-   * 2h marcado às 07:00 deixaria as 07:15 "livres" — e duas clientes
-   * cairiam em cima uma da outra.
+   * A preocupação: a grade anda de hora em hora, mas os serviços duram de
+   * 40 a 120 min. Se o motor só olhasse o passo da grade, um curso de 2h
+   * marcado às 07:00 deixaria as 08:00 "livres" — e duas clientes cairiam
+   * em cima uma da outra.
+   *
+   * ⚠️ O PASSO MAIOR NÃO RESOLVEU ISTO, e é bom deixar claro: com bloco de
+   * 60 min, qualquer serviço que passe de uma hora continua atropelando a
+   * vaga seguinte. A trava é o bloco, não o passo.
    *
    * O que segura isso é `blocoNaAgenda`: o bloco ocupado é a duração MÁXIMA
    * do serviço mais o intervalo entre clientes, não o passo da grade.
@@ -386,18 +390,60 @@ describe("horarioDaCidade sai do EXPEDIENTE, não de texto escrito à mão", () 
       que ninguém lê. E isto aparece no site, na seção "Onde fica".
     */
     const t = horarioDaCidade("pereira-barreto");
-    expect(t).toBe("Seg a sex e domingo, 7h às 11h e 18h30 às 22h");
+    expect(t).toBe("Seg a sex e domingo, 7h às 11h e 19h às 22h");
     expect(t).not.toMatch(/qua, qui/);
   });
 
-  it("cada janela do EXPEDIENTE aparece no texto", () => {
+  /*
+    ⚠️ O TEXTO ANUNCIA 19h, E O EXPEDIENTE DIZ 18h30. É de propósito.
+
+    Ela abre 18:30 — e continua abrindo, porque é assim que ela encaixa
+    alguém pelo painel. Mas a grade só oferece hora cheia desde 16/09, e a
+    primeira da noite é 19:00.
+
+    Anunciar "18h30 às 22h" mandava a cliente procurar um horário que não
+    está na tela. Pior: o assistente valida contra a GRADE, então a Karol
+    pedindo 18:30 ouvia "18:30 não cabe nesse dia — o horário é 18h30 às
+    22h", que se contradiz na mesma frase. Aconteceu em 17/09/2026.
+  */
+  it("anuncia 19h, que é o que dá pra clicar — e não o 18h30 do EXPEDIENTE", () => {
+    const t = horarioDaCidade("pereira-barreto");
+    expect(t).toContain("19h às 22h");
+    expect(t).not.toContain("18h30");
+  });
+
+  it("cada janela do EXPEDIENTE aparece no texto, começando na hora oferecida", () => {
     for (const cidade of ["pereira-barreto", "bandeirantes"] as const) {
       const texto = horarioDaCidade(cidade);
       const janelas = EXPEDIENTE.filter((e) => e.cidade === cidade);
       for (const j of janelas) {
         const h = (m: number) =>
           m % 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}` : `${Math.floor(m / 60)}h`;
-        expect(texto).toContain(`${h(j.inicio)} às ${h(j.fim)}`);
+
+        // a MESMA conta da grade: a primeira hora cheia do turno
+        const abre = Math.ceil(j.inicio / 60) * 60;
+        expect(texto).toContain(`${h(abre)} às ${h(j.fim)}`);
+      }
+    }
+  });
+
+  /*
+    A trava que fecha o círculo: o que o texto ANUNCIA tem que ser um
+    horário que a grade REALMENTE oferece. Se alguém mexer num dos dois
+    sem o outro, este teste cai.
+  */
+  it("a hora anunciada existe mesmo na grade daquele dia", () => {
+    for (const [cidade, dia] of [
+      ["pereira-barreto", segundaDistante()],
+      ["bandeirantes", sabadoDistante()],
+    ] as const) {
+      const texto = horarioDaCidade(cidade);
+      const grade = horariosLivres({ data: dia, servico: design });
+      const rotulos = grade.map((v) => `${Math.floor(v.inicio / 60)}h`);
+
+      // toda abertura anunciada ("7h às 11h") tem que ter vaga nela
+      for (const [, abre] of texto.matchAll(/(\d+h(?:\d{2})?) às/g)) {
+        expect(rotulos).toContain(abre);
       }
     }
   });

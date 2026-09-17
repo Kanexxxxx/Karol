@@ -64,6 +64,24 @@ export type Horario = {
  */
 const PASSO_MIN = 60;
 
+/**
+ * A primeira hora CHEIA de um turno — onde a grade começa a oferecer.
+ *
+ * ⚠️ EXISTE PRA SER USADA NOS DOIS LUGARES, e esse é o ponto dela.
+ *
+ * O turno da noite abre 18:30 no `EXPEDIENTE`, mas a grade só oferece
+ * 19:00. Quem MOSTRA o horário pra cliente (`horarioDaCidade`) e quem
+ * GERA as vagas (`gradeDoDia`) têm que concordar — senão o site anuncia
+ * "18h30 às 22h" e não tem 18:30 pra clicar, e o assistente chega a se
+ * contradizer na mesma frase: "18:30 não cabe — o horário é 18h30 às 22h".
+ *
+ * Isso aconteceu de verdade, em 17/09/2026, por eu ter mudado a grade e
+ * esquecido do texto.
+ */
+function primeiraHoraOferecida(inicioDoTurno: number): number {
+  return Math.ceil(inicioDoTurno / PASSO_MIN) * PASSO_MIN;
+}
+
 export function paraRotulo(minutos: number): string {
   const h = Math.floor(minutos / 60);
   const m = minutos % 60;
@@ -150,9 +168,9 @@ export function gradeDoDia({
   const grade: VagaNaGrade[] = [];
 
   for (const expediente of expedientes) {
-    // A primeira hora CHEIA do turno. Ver `PASSO_MIN`: sem isto, o turno
-    // da noite (18:30) ofereceria 18:30, 19:30, 20:30.
-    const primeiraHoraCheia = Math.ceil(expediente.inicio / PASSO_MIN) * PASSO_MIN;
+    // Ver `primeiraHoraOferecida`: sem isto, o turno da noite (18:30)
+    // ofereceria 18:30, 19:30, 20:30.
+    const primeiraHoraCheia = primeiraHoraOferecida(expediente.inicio);
 
     for (let inicio = primeiraHoraCheia; inicio + bloco <= expediente.fim; inicio += PASSO_MIN) {
       const candidato = { inicio, fim: inicio + bloco };
@@ -294,8 +312,7 @@ export function faixaDeDias(cidade: CidadeId): string {
   return `${maiuscula(NOMES_DIA[dias[0]])} a ${NOMES_DIA[dias[dias.length - 1]]}`;
 }
 
-/** "7h às 11h e 18h30 às 22h" — a janela de atendimento daquela cidade. */
-/** "18h30", "7h", "22h" — hora enxuta, do jeito que se fala. */
+/** "19h", "7h", "22h" — hora enxuta, do jeito que se fala. */
 function hh(minutos: number): string {
   const h = Math.floor(minutos / 60);
   const m = minutos % 60;
@@ -359,7 +376,11 @@ export function horarioDaCidade(cidade: CidadeId): string {
   // dia -> as janelas daquele dia, já em texto
   const porDia = new Map<DiaSemana, string[]>();
   for (const e of daCidade) {
-    porDia.set(e.dia, [...(porDia.get(e.dia) ?? []), `${hh(e.inicio)} às ${hh(e.fim)}`]);
+    // ⚠️ `primeiraHoraOferecida` e não `e.inicio`: o texto tem que dizer o
+    // que dá pra clicar. A noite abre 18:30 pra ELA, e começa 19:00 pra
+    // cliente. Ver a nota da função.
+    const abre = hh(primeiraHoraOferecida(e.inicio));
+    porDia.set(e.dia, [...(porDia.get(e.dia) ?? []), `${abre} às ${hh(e.fim)}`]);
   }
 
   // agrupa os dias que têm exatamente o mesmo conjunto de janelas

@@ -28,6 +28,21 @@ Aprendi na marra o que reprova um template:
   "promoção" jogam o template pra categoria *marketing*, que é mais cara e
   mais rígida. Os textos abaixo são puramente informativos de propósito.
 - **Emoji pode.** Negrito com `*asterisco*` e itálico com `_underline_` também.
+
+### ⚠️ Sobre os "Exemplos" de cada template
+
+A Meta pede um valor de exemplo por variável, e usa isso **só na hora de
+aprovar** — o texto que chega na cliente vem sempre do agendamento real, por
+`enviarTemplate` em `lib/notificacoes.ts`.
+
+Mesmo assim os exemplos daqui foram corrigidos de `07:15` pra `07:00` em
+17/09/2026, quando a grade passou a oferecer só hora cheia. Não é frescura:
+quem abrir este arquivo pra entender o sistema não pode sair achando que o
+site oferece 07:15.
+
+Se os templates já aprovados na Meta ainda tiverem `07:15` gravado lá, tudo
+bem — **exemplo não vai pra ninguém**. Só vale a pena acertar se você for
+reenviar o template por outro motivo.
 - **Cabeçalho não aceita emoji**, nem negrito, nem quebra de linha — só texto
   puro. (Descoberto na marra em 12/09: o campo simplesmente não deixa colar o
   emoji.) No CORPO o emoji funciona normalmente.
@@ -93,7 +108,7 @@ Tipo: **Resposta rápida** (os três)
 |---|---|
 | `{{1}}` | `Maria` |
 | `{{2}}` | `Design com henna` |
-| `{{3}}` | `quarta-feira, 9 de setembro às 07:15` |
+| `{{3}}` | `quarta-feira, 9 de setembro às 07:00` |
 | `{{4}}` | `Pereira Barreto` |
 | `{{5}}` | `R$ 30,00` |
 
@@ -152,7 +167,7 @@ Tipo: **Resposta rápida**
 |---|---|
 | `{{1}}` | `Maria` |
 | `{{2}}` | `Design com henna` |
-| `{{3}}` | `quarta-feira, 9 de setembro às 07:15` |
+| `{{3}}` | `quarta-feira, 9 de setembro às 07:00` |
 | `{{4}}` | `Pereira Barreto` |
 
 ---
@@ -216,7 +231,7 @@ Tipo: **Ir para o site** (URL dinâmica)
 |---|---|
 | `{{1}}` | `Design com henna` |
 | `{{2}}` | `R$ 30,00` |
-| `{{3}}` | `quarta-feira, 9 de setembro às 07:15` |
+| `{{3}}` | `quarta-feira, 9 de setembro às 07:00` |
 | `{{4}}` | `Pereira Barreto` |
 | `{{5}}` | `Maria Silva · (18) 99999-8888` |
 

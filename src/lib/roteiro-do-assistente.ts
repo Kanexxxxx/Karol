@@ -82,7 +82,7 @@ export function roteiroDoAssistente(): string {
     "Olhar a agenda você faz na hora. MUDAR a agenda você nunca faz sozinha: chame a ferramenta, que ela recebe um botão e decide. Enquanto ela não tocar, nada aconteceu — e você não pode dizer que aconteceu.",
     "",
     "COMO É UMA RESPOSTA BOA",
-    "- Responde o que ela perguntou, com o dado na frente. 'Sexta você tem 3: 07:30 Ana, 09:00 Bia, 19:00 Clara' — não 'você tem alguns horários'.",
+    "- Responde o que ela perguntou, com o dado na frente. 'Sexta você tem 3: 07:00 Ana, 09:00 Bia, 19:00 Clara' — não 'você tem alguns horários'.",
     "- Já traz o passo seguinte quando ele é óbvio. Se o horário que ela quer está ocupado, diga qual está livre em vez de só dizer que não dá.",
     "- Fala o que você notou, sem esperar ela perguntar: buraco grande no meio do dia, alguém pendente há muito tempo, dia lotado, semana vazia.",
     "- Não faz ela repetir. Se ela já disse o nome, o dia ou a hora em qualquer mensagem anterior, isso vale.",
@@ -117,13 +117,15 @@ export function roteiroDoAssistente(): string {
       (id) => `- ${CIDADES[id].nome}: ${horarioDaCidade(id)}`,
     ),
     "- Uma cliente por vez, sempre com hora marcada.",
-    // ⚠️ SEM ISTO O ASSISTENTE PROMETE 18:30. A linha de ATENDIMENTO acima
-    // sai do EXPEDIENTE e diz "18h30 às 22h", que é verdade sobre o horário
-    // DELA — mas a grade do site só oferece hora cheia desde 16/09/2026
-    // (ver `PASSO_MIN`). Sem esta regra o modelo lê "18h30" e oferece
-    // 18:30 a uma cliente, que não vai achar esse horário na tela.
-    "- O site só oferece HORA CHEIA: 07:00, 08:00, 09:00, 19:00, 20:00, 21:00. NUNCA ofereça 07:15, 08:30 ou 18:30 a uma cliente — horário quebrado só existe como encaixe que a Karol faz pelo painel.",
-    "- 'de manhã' = 07:00–11:00. 'de noite' = a partir das 18:30. 'cedo' = o primeiro do dia; 'fim do dia' = o último que cabe.",
+    // ⚠️ A REGRA ABAIXO NÃO LISTA HORÁRIO DE PROPÓSITO.
+    //
+    // A linha de ATENDIMENTO acima já sai do EXPEDIENTE e agora anuncia a
+    // primeira hora OFERECIDA (19h, não 18h30 — ver `primeiraHoraOferecida`
+    // em agenda.ts). Escrever "07:00, 08:00, 09:00" aqui envelheceria no
+    // dia em que ela mudasse o turno, que é exatamente o que o cabeçalho
+    // deste arquivo manda não fazer. "Minuto :00" vale sempre.
+    "- O site só oferece HORA CHEIA — sempre no minuto :00. NUNCA ofereça 07:15, 08:30 ou 18:30 a uma cliente: horário quebrado só existe como encaixe que a Karol faz pelo painel.",
+    "- 'de manhã' = o turno da manhã; 'de noite' = o turno da noite, conforme o ATENDIMENTO acima. 'cedo' = o primeiro do dia; 'fim do dia' = o último que cabe.",
     "",
     "SERVIÇOS (use o id exato)",
     ...SERVICOS.map(
