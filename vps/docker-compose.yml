@@ -1,10 +1,30 @@
-# Studio Karol Carvalho — a copia reserva, na VPS
+# Studio Karol Carvalho — a copia reserva, na VPS 147.93.9.185
 #
-#   cd vps
-#   cp ../.env.example .env     <- e preencha
+#   cd /opt/karol/vps
+#   cp ../.env.example .env     <- e preencha quando for a hora
 #   docker compose up -d --build
 #
-# Sobe duas coisas: o site e o Caddy, que cuida do HTTPS sozinho.
+# ⚠️ ESTA VPS NAO E SO NOSSA. Ver GUIA-DA-VPS.md na raiz de /opt.
+#
+# Em 17/09/2026 ela ja rodava 5 containers do eurora-volkerr, no ar ha
+# semanas, e o nginx DELES e dono das portas 80 e 443. Por isso aqui:
+#
+#   - NAO existe Caddy nem nada em 80/443. Subir um daria conflito de
+#     porta, e forcar derrubaria o site do volkerr.
+#   - a porta 3100 escuta SO em 127.0.0.1. De fora da maquina, ninguem
+#     alcanca. O ufw libera apenas 22, 80 e 443, e continua assim: nao
+#     abrimos porta nova, que e superficie de ataque a troco de nada
+#     enquanto nao existe dominio.
+#
+# PRA VER O SITE ENQUANTO NAO TEM DOMINIO, do seu micro:
+#
+#   ssh -N -L 8080:127.0.0.1:3100 root@147.93.9.185
+#
+# e abra http://localhost:8080 no navegador. O tunel morre quando voce
+# fecha o terminal.
+#
+# QUANDO O DOMINIO CHEGAR: um server block no nginx do volkerr apontando
+# pra 127.0.0.1:3100. Ver GUIA-DA-VPS.md.
 
 services:
   site:
@@ -14,38 +34,31 @@ services:
       args:
         # Lidas no BUILD (viram parte do JavaScript do navegador).
         # Mudar qualquer uma destas exige `--build` de novo.
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+    container_name: karol-site
     restart: unless-stopped
 
     # ⚠️ AQUI ENTRAM AS CREDENCIAIS, em tempo de execucao.
     #
-    # Enquanto o .env estiver vazio, o site sobe assim mesmo: home,
-    # servicos, sobre e privacidade no ar, e /agendar dizendo "a agenda
-    # online esta sendo ligada" com o WhatsApp do lado. Foi testado.
-    #
-    # No dia da virada voce preenche o .env e roda:
-    #   docker compose up -d --build
+    # Com o .env vazio o site sobe assim mesmo: home, servicos, sobre e
+    # privacidade no ar, e /agendar dizendo "a agenda online esta sendo
+    # ligada" com o WhatsApp do lado. Testado, nao suposto.
     env_file: .env
 
-    expose:
-      - "3000"
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
+    # 127.0.0.1 e o ponto: escuta so dentro da maquina.
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data      # os certificados. NAO apague este volume:
-      - caddy_config:/config  # perder ele = pedir certificado de novo
-    environment:
-      DOMINIO: ${DOMINIO}
-    depends_on:
-      - site
+      - "127.0.0.1:3100:3000"
 
-volumes:
-  caddy_data:
-  caddy_config:
+    # Uma VPS de 4 GB com outros 5 containers. Sem teto, um vazamento
+    # aqui derrubaria o volkerr junto.
+    deploy:
+      resources:
+        limits:
+          memory: 600M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
