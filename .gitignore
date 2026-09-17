@@ -71,3 +71,11 @@ ferramentas/originais/
 # Os scripts que geraram os formulários do briefing. Uso único, em
 # agosto/2026: cumpriram o papel e não rodam de novo.
 briefing/
+
+# Pacotes de skill que as ferramentas dos agentes instalam dentro do
+# projeto. Sao ~47 mil linhas de boilerplate que nao tem nada a ver com a
+# agenda da Karol, e em 16/09/2026 um `git add -A` levou todas pra dentro
+# de um commit. Ficam no disco, fora do git.
+.agents/
+.claude/skills/
+skills-lock.json
