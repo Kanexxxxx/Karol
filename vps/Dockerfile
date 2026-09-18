@@ -8,6 +8,13 @@
 # ⚠️ NENHUMA CREDENCIAL ENTRA NA IMAGEM. Elas chegam em tempo de execucao,
 # pelo arquivo .env que o docker-compose le. Imagem e publica por natureza;
 # credencial dentro dela vaza junto.
+#
+# ⚠️ E ISSO DEPENDE DO `.dockerignore` DA RAIZ. O `COPY . .` da etapa de
+# build levaria um `.env` junto — a imagem FINAL ficaria limpa, porque so
+# copia `.next/standalone`, mas a camada intermediaria guardaria o
+# segredo, e camada viaja num `docker save` ou num push de registry.
+# Achado pelo chat da v2 em 18/09/2026. Se alguem apagar o
+# `.dockerignore`, este comentario volta a ser mentira.
 
 # --- 1. dependencias -----------------------------------------------
 FROM node:24-alpine AS deps

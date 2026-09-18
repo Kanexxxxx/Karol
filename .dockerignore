@@ -1,0 +1,38 @@
+# O que NÃO entra na imagem Docker.
+#
+# ⚠️ EXISTE POR CAUSA DE UM FURO REAL, achado pelo chat da v2 em
+# 18/09/2026.
+#
+# `vps/Dockerfile` faz `COPY . .` na etapa de build. Sem este arquivo, um
+# `.env` na raiz do projeto entraria nessa camada — e o comentário lá
+# dentro dizia "NENHUMA CREDENCIAL ENTRA NA IMAGEM", o que só era verdade
+# pela IMAGEM FINAL, que copia apenas `.next/standalone`.
+#
+# A camada intermediária fica no cache do Docker e viaja junto num
+# `docker save` ou num push de registry. Segredo em camada é segredo
+# vazado, mesmo que a imagem final esteja limpa.
+#
+# De quebra, tirar node_modules e .git daqui deixa o build bem mais rápido
+# numa VPS de 1 vCPU.
+
+.git
+.github
+.next
+node_modules
+coverage
+*.log
+
+# as credenciais — e só o exemplo passa
+.env
+.env.*
+!.env.example
+vps/.env
+
+# cópias do banco e as fotos originais das clientes
+backups
+ferramentas
+
+# pacotes de skill que as ferramentas de agente instalam sozinhas
+.agents
+.claude
+.codex
