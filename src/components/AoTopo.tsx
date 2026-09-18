@@ -155,6 +155,68 @@ function Topo() {
         return;
       }
 
+      /*
+        ============================================================
+         ⚠️ ÂNCORA DA MESMA PÁGINA: NÓS ROLAMOS, NÃO O NAVEGADOR
+        ============================================================
+
+        O professor do Kainã achou usando, em 17/09: clicar duas vezes em
+        "Curso" no menu. Na primeira vai certo; na segunda a página sobe
+        sozinha. Medido contra a produção, e é pior do que ele viu —
+        acontece em TODAS as âncoras, e a cada clique sobe mais:
+
+          #servicos    alvo 1071 ->  1071 ✓  617 ✗  163 ✗
+          #trabalhos   alvo 2393 ->  2393 ✓ 1939 ✗ 1485 ✗
+          #curso       alvo 5442 ->  5442 ✓ 4988 ✗ 4534 ✗
+          #local       alvo 11367 -> 11367 ✓ 10913 ✗ 10459 ✗
+
+        Sempre 454px por clique, no PC. No celular ele pula de uma vez e
+        trava lá.
+
+        O QUE A INVESTIGAÇÃO DESCARTOU, uma a uma:
+
+          - não é este componente: com ele desligado, os números são
+            IDÊNTICOS;
+          - não é `scrollTo`, `scroll`, `scrollBy`, `scrollTop`,
+            `scrollIntoView` nem `focus()` — sondei as seis, e no segundo
+            clique NENHUMA é chamada;
+          - não é a página encolhendo: vigiada quadro a quadro, a altura
+            fica em 12786px e a rolagem pula em um único quadro, 25 ms
+            depois do clique;
+          - não é id repetido: existe um `#curso` só.
+
+        Sobra o comportamento nativo do navegador ao reencontrar um
+        fragmento que já está na URL — que não passa por JavaScript
+        nenhum, e por isso não dá pra consertar de dentro dele.
+
+        ENTÃO NÃO SE DISCUTE COM O NAVEGADOR: `preventDefault` e rolamos
+        nós. `scrollIntoView` respeita o `scroll-padding-top: 88px` do
+        `globals.css`, então cai nos mesmos 5442px sempre, do primeiro
+        clique ao décimo.
+
+        `replaceState` e não `pushState`: clicar na mesma âncora de novo
+        não deve empilhar histórico — senão o voltar da cliente teria que
+        desfazer um clique por vez.
+
+        ⚠️ Só entra aqui âncora da MESMA tela. Vir de `/sobre` pra
+        `/#curso` é navegação de verdade e continua caminho normal, senão
+        quebraríamos o menu do site inteiro.
+      */
+      if (mesmaTela && link.hash) {
+        let alvo: Element | null = null;
+        try {
+          alvo = document.querySelector(link.hash);
+        } catch {
+          // hash que não é seletor válido (#2, #a b): deixa o navegador
+        }
+        if (alvo) {
+          e.preventDefault();
+          alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+          history.replaceState(null, "", link.hash);
+        }
+        return;
+      }
+
       posicoes.current.set(rotaAtual.current, window.scrollY);
       congelado.current = true;
     };
