@@ -199,12 +199,40 @@ let quantosAvisos = 0;
  * como "é ela".
  */
 export function ehONumeroDaKarol(numero: string): boolean {
-  const dela = whatsappDaKarol().replace(/\D/g, "");
-  const alvo = (numero || "").replace(/\D/g, "");
-  if (!dela || !alvo) return false;
-  if (dela === alvo) return true;
-  // 5518997525291 vs 18997525291
-  return dela.endsWith(alvo) || alvo.endsWith(dela);
+  const alvo = so11(numero);
+  if (!alvo) return false;
+
+  /*
+    ⚠️ OS DOIS NÚMEROS, E NÃO `whatsappDaKarol()`.
+
+    `whatsappDaKarol()` é `KAROL_WHATSAPP || NEGOCIO.whatsapp.numero` — um
+    OU outro. Com a variável de ambiente apontando pra um número desviado
+    (teste, chip novo), ela devolve o desviado e o REAL deixa de ser
+    reconhecido.
+
+    E o real é exatamente o que está nas 11 linhas do banco de produção:
+    `5518997525291`. A guarda ficaria inútil no único caso pra que ela
+    existe. Quem apontou isso foi o chat da v2, em 18/09/2026.
+  */
+  return [process.env.KAROL_WHATSAPP, NEGOCIO.whatsapp.numero]
+    .map(so11)
+    .some((dela) => dela !== "" && dela === alvo);
+}
+
+/**
+ * Os últimos 11 dígitos — DDD + número, sem DDI.
+ *
+ * ⚠️ NASCEU DE UM BUG MEU. A primeira versão comparava com `endsWith`, e
+ * `"5518997525291".endsWith("1")` é `true`: um telefone de um dígito
+ * casaria com o dela. Cortar num tamanho fixo tira a ambiguidade.
+ *
+ * 11 porque celular brasileiro é DDD (2) + 9 dígitos. O banco guarda com
+ * o 55 na frente (13), o painel aceita de 10 a 13 — os dois caem no mesmo
+ * pedaço. Abaixo de 10 dígitos não é telefone, e devolve vazio.
+ */
+function so11(numero: string | undefined): string {
+  const d = (numero || "").replace(/\D/g, "");
+  return d.length < 10 ? "" : d.slice(-11);
 }
 
 export async function avisarTecnico(
@@ -1581,7 +1609,7 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
                         cliente aqui é ela mesma — não faz sentido, e é
                         por aí que o laço começou.
   */
-  const AVISOS_QUE_ELA_QUER = new Set<Evento>(["novo-agendamento", "lembrete"]);
+  const AVISOS_QUE_ELA_QUER = new Set<Evento>(["novo-agendamento"]);
 
   if (ehONumeroDaKarol(para) && !AVISOS_QUE_ELA_QUER.has(evento)) {
     return { ok: true, motivo: "cliente-e-a-propria-karol" };

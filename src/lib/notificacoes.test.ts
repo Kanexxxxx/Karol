@@ -211,6 +211,7 @@ describe("enviarEvento", () => {
     ["cancelado"],
     ["sinal-vencido"],
     ["agradecimento"],
+    ["lembrete"],
   ] as const)("NÃO manda %s quando a cliente é a própria Karol", async (evento) => {
     process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
     process.env.KAROL_WHATSAPP = "5518999998888"; // o MESMO de AG.whatsappCliente
@@ -242,19 +243,62 @@ describe("enviarEvento", () => {
     agenda do dia. Foi o Kainã quem separou: "só o lembrete e tem um novo
     agendamento para ela".
   */
-  it.each([["novo-agendamento"], ["lembrete"]] as const)(
-    "%s continua chegando nela, mesmo sendo o número dela",
-    async (evento) => {
-      process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
-      process.env.KAROL_WHATSAPP = "5518999998888";
-      const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
-      vi.stubGlobal("fetch", fetchMock);
+  it("novo-agendamento continua chegando nela — é o aviso que EXISTE pra ela", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "5518999998888";
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
 
-      await enviarEvento(evento, AG);
+    await enviarEvento("novo-agendamento", AG);
 
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    },
-  );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+    ============================================================
+     ⚠️ O NÚMERO DESVIADO — o furo que o chat da v2 achou
+    ============================================================
+
+    `whatsappDaKarol()` é `KAROL_WHATSAPP || NEGOCIO.whatsapp.numero`: um
+    OU outro. Com a variável apontando pra um número de teste, a guarda
+    passava a comparar contra o de teste, e o número REAL dela deixava de
+    ser reconhecido.
+
+    E é o real que está nas 11 linhas do banco de produção. A guarda
+    ficaria inútil no único caso pra que foi escrita — e passando verde
+    nos testes, porque os testes até agora sempre punham `KAROL_WHATSAPP`
+    igual ao da cliente.
+  */
+  it("barra o número REAL dela mesmo com KAROL_WHATSAPP apontando pra outro", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "5516920088473"; // chip de envio, não o dela
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    // o número de negocio.ts é o real: 5518997525291
+    const r = await enviarEvento("confirmacao", { ...AG, whatsappCliente: "5518997525291" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r.motivo).toBe("cliente-e-a-propria-karol");
+  });
+
+  /*
+    ⚠️ E O OUTRO LADO: `endsWith` casava demais.
+
+    A primeira versão comparava com `endsWith`, e `"5518997525291"`
+    termina em `"1"`. Um telefone de um dígito casaria com o dela, e
+    cliente de verdade pararia de receber. Agora corta em 11 dígitos.
+  */
+  it("não confunde com número curto que por acaso termina igual", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "5518997525291";
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await enviarEvento("confirmacao", { ...AG, whatsappCliente: "5511988887771" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 
   it("cliente de verdade continua recebendo", async () => {
     process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
