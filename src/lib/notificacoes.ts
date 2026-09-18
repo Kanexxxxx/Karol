@@ -1615,6 +1615,19 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
     return { ok: true, motivo: "cliente-e-a-propria-karol" };
   }
 
+  /*
+    ⚠️ SEM NÚMERO NÃO EXISTE PRA QUEM MANDAR, e isto não é erro.
+
+    Desde 18/09 a Karol pode marcar alguém sem telefone — a mãe, a irmã,
+    quem combinou pessoalmente. A coluna guarda `null`, que aqui chega
+    como `""`.
+
+    Sem esta linha, a tentativa iria pra Meta com o destinatário vazio e
+    voltaria como erro — que dispararia aviso de falha, que é como o laço
+    de 97 mensagens começou. Um caso previsto não pode virar erro.
+  */
+  if (!para) return { ok: true, motivo: "sem-whatsapp" };
+
   const texto = TEXTO[evento](a);
   const webhook = process.env.NOTIFICADOR_WEBHOOK_URL;
 

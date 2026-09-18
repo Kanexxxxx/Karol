@@ -209,6 +209,8 @@ mutação não está protegendo nada.
 | [`TEMPLATES-WHATSAPP.md`](./TEMPLATES-WHATSAPP.md) | Os 7 templates aprovados na Meta, com o texto exato |
 | [`ASSISTENTE.md`](./ASSISTENTE.md) | O assistente de WhatsApp: o que faz, o que não faz |
 | [`AGENTS.md`](./AGENTS.md) | Aviso sobre o Next.js 16 para quem for mexer no código |
+| [`INCIDENTES.md`](./INCIDENTES.md) | ⚠️ **Leia antes de mexer em notificação.** O que já quebrou no ar, a causa de verdade, e o que já está resolvido |
+| [`vps/README.md`](./vps/README.md) | A cópia reserva na VPS: o que muda sem a Vercel |
 
 ---
 

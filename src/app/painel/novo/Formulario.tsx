@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { SERVICOS, formatarDuracao, formatarPreco } from "@/data/servicos";
 import { CIDADES } from "@/data/negocio";
 import { agendarNoPainel, type EstadoNovo } from "./acoes";
@@ -94,16 +94,7 @@ export function Formulario() {
           <input name="nome" defaultValue={v?.nome} required autoComplete="off" className={CAMPO} />
         </Campo>
 
-        <Campo rotulo="WhatsApp" dica="pode deixar vazio se for da família">
-          <input
-            name="whatsapp"
-            type="tel"
-            inputMode="tel"
-            defaultValue={v?.whatsapp}
-            placeholder="(18) 99999-9999"
-            className={CAMPO}
-          />
-        </Campo>
+        <EscolhaDoWhatsapp valorInicial={v?.whatsapp} />
 
         <Campo rotulo="Recado" dica="opcional">
           <textarea
@@ -175,6 +166,89 @@ function Caixa({ titulo, children }: { titulo: string; children: React.ReactNode
       <h2 className={`mb-4 ${ROTULO_SECAO}`}>{titulo}</h2>
       <div className="flex flex-col gap-4">{children}</div>
     </section>
+  );
+}
+
+/**
+ * Tem WhatsApp ou não tem — a pergunta feita na cara.
+ *
+ * ---------------------------------------------------------------------
+ * ⚠️ POR QUE ISTO VIROU UMA ESCOLHA, E NÃO UM CAMPO OPCIONAL
+ * ---------------------------------------------------------------------
+ *
+ * Era um campo comum, com a dica "(pode deixar vazio se for da família)"
+ * em cinza, do lado do rótulo. Funcionava — e ninguém viu.
+ *
+ * Em 16/09 a Karol cadastrou pelo painel 11 clientes que já tinha marcado
+ * por fora. Não tinha o telefone delas em mãos e deixou o campo vazio. O
+ * que ela não tinha como saber é que o sistema, ao receber vazio,
+ * guardava o número DELA na linha da cliente.
+ *
+ * Em 18/09 às 09:49 isso virou 97 mensagens em 7 segundos no WhatsApp
+ * dela e no do Kainã: o sistema tentava avisar "a cliente", que era ela,
+ * falhava por janela de 24 h fechada, avisava sobre a falha, e a falha do
+ * aviso gerava outro aviso.
+ *
+ * A raiz foi consertada (agora grava `null`), mas uma dica em cinza pede
+ * pra ser ignorada de novo. Escolher entre dois botões não.
+ *
+ * ---------------------------------------------------------------------
+ * Como funciona
+ * ---------------------------------------------------------------------
+ *
+ * Em "não tem", o `<input name="whatsapp">` SAI da tela. Sem ele no
+ * formulário, `form.get("whatsapp")` volta nulo, a ação lê `""`, e o
+ * banco recebe `null` — nenhuma mensagem é montada pra ninguém.
+ *
+ * Começa em "tem" porque é o caso normal: quem marca pelo site sempre
+ * tem número, e o painel é a exceção.
+ */
+function EscolhaDoWhatsapp({ valorInicial }: { valorInicial?: string }) {
+  const [tem, setTem] = useState(true);
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <span className={ROTULO_CAMPO}>WhatsApp da cliente</span>
+
+      <div className="flex gap-2">
+        {([true, false] as const).map((opcao) => (
+          <button
+            key={String(opcao)}
+            type="button"
+            onClick={() => setTem(opcao)}
+            aria-pressed={tem === opcao}
+            className={`flex-1 border px-3 py-2.5 text-[13px] transition-colors ${
+              tem === opcao
+                ? "border-ouro bg-ouro-fundo font-semibold text-ouro"
+                : "border-linha bg-osso text-tinta-3 hover:border-ouro-claro"
+            }`}
+          >
+            {opcao ? "Tenho o número" : "Não tenho"}
+          </button>
+        ))}
+      </div>
+
+      {tem ? (
+        <input
+          name="whatsapp"
+          type="tel"
+          inputMode="tel"
+          defaultValue={valorInicial}
+          placeholder="(18) 99999-9999"
+          autoComplete="off"
+          className={`${CAMPO} mt-1`}
+        />
+      ) : (
+        <p className="mt-1 border border-linha bg-creme px-4 py-3 text-[13px] leading-relaxed text-tinta-2">
+          Sem problema — o horário fica guardado do mesmo jeito.
+          <br />
+          <span className="text-tinta-3">
+            Ela só não vai receber confirmação nem lembrete pelo WhatsApp, porque
+            não há número pra onde mandar.
+          </span>
+        </p>
+      )}
+    </div>
   );
 }
 

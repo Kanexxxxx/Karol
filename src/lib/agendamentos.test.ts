@@ -319,9 +319,40 @@ describe("criarAgendamentoNoPainel", () => {
     expect(m.chamadas.find((c) => c.op === "insert")).toBeUndefined();
   });
 
-  it("sem WhatsApp usa o número da própria Karol, que o banco exige", async () => {
+  /*
+    ============================================================
+     ⚠️ ESTE TESTE JÁ AFIRMOU O CONTRÁRIO — e por isso o bug durou
+    ============================================================
+
+    Ele se chamava "sem WhatsApp usa o número da própria Karol, que o
+    banco exige", e passava verde. O nome dizia a crença: que a coluna
+    exigia um número.
+
+    Não exigia. O CHECK é `cliente_whatsapp ~ '^[0-9]{10,13}$'`, e ele
+    recusa `''` mesmo — mas ACEITA `null`, porque no Postgres um CHECK
+    que resulta em NULL passa; só barra em FALSE. A coluna sempre foi
+    nullable. Conferido no banco de produção em 18/09/2026.
+
+    O QUE A CRENÇA ERRADA CUSTOU: a Karol marcou 11 clientes pelo painel
+    deixando o telefone vazio, e o sistema gravou o número DELA nas 11
+    linhas. Depois tentou avisar "a cliente" — que era ela, com a janela
+    de 24 h fechada. Deu 97 mensagens em 7 segundos no dia 18/09.
+
+    Um teste que descreve a crença, e não a realidade, não protege nada:
+    protege o erro.
+  */
+  it("sem WhatsApp grava null — o banco aceita, e nunca o número da Karol", async () => {
     const m = usarBanco({ insert: () => ({ data: { id: "x" } }) });
     await criarAgendamentoNoPainel({ ...base, whatsapp: "" });
+
+    const gravado = m.chamadas.find((c) => c.op === "insert")?.valores;
+    expect(gravado?.cliente_whatsapp).toBeNull();
+  });
+
+  it("com WhatsApp continua gravando o número da cliente", async () => {
+    const m = usarBanco({ insert: () => ({ data: { id: "x" } }) });
+    await criarAgendamentoNoPainel({ ...base, whatsapp: "18999997777" });
+
     const gravado = m.chamadas.find((c) => c.op === "insert")?.valores;
     expect(String(gravado?.cliente_whatsapp)).toMatch(/^\d{10,13}$/);
   });

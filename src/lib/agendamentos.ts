@@ -23,7 +23,7 @@ import {
   precisaDeSinal,
   type Servico,
 } from "@/data/servicos";
-import { CIDADES, NEGOCIO, REGRAS, type CidadeId } from "@/data/negocio";
+import { CIDADES, REGRAS, type CidadeId } from "@/data/negocio";
 
 export type Agendamento = {
   id: string;
@@ -63,7 +63,14 @@ function linhaParaAgendamento(r: Record<string, unknown>): Agendamento {
   return {
     id: r.id as string,
     clienteNome: r.cliente_nome as string,
-    clienteWhatsapp: r.cliente_whatsapp as string,
+    /*
+      `?? ""` porque a coluna aceita null desde sempre, e passou a ser
+      usada assim em 18/09. O tipo continua `string` de propósito: as 25
+      leituras espalhadas já testam com `if (ag.clienteWhatsapp)` e
+      `? :`, e vazio cai certo em todas. Trocar o tipo pra
+      `string | null` daria 25 mudanças sem ganho nenhum.
+    */
+    clienteWhatsapp: (r.cliente_whatsapp as string | null) ?? "",
     servicoId: r.servico_id as string,
     servicoNome: r.servico_nome as string,
     servicoPreco: r.servico_preco as number,
@@ -1033,9 +1040,29 @@ export async function criarAgendamentoNoPainel(dados: {
     .from("agendamentos")
     .insert({
       cliente_nome: nome,
-      // sem WhatsApp (encaixe da família, por exemplo) o CHECK do banco
-      // recusaria vazio, então guarda o número dela mesma
-      cliente_whatsapp: whatsapp || NEGOCIO.whatsapp.numero,
+      /*
+        ⚠️ `null`, E NUNCA O NÚMERO DELA. Esta linha causou um incidente.
+
+        Antes era `whatsapp || NEGOCIO.whatsapp.numero`, com o comentário
+        "o CHECK do banco recusaria vazio, então guarda o número dela
+        mesma". O CHECK é `cliente_whatsapp ~ '^[0-9]{10,13}$'`, e a
+        metade certa do raciocínio é que ele RECUSA `''` mesmo.
+
+        A metade errada: ele ACEITA `null`. No Postgres um CHECK que
+        resulta em NULL passa — só barra em FALSE. A coluna sempre foi
+        nullable. Conferido no banco de produção em 18/09/2026.
+
+        O QUE ISSO CUSTOU: a Karol cadastrou 11 clientes que já tinha
+        marcado por fora, deixou o telefone em branco, e o SISTEMA pôs o
+        número dela nas 11 linhas. Depois tentou avisar "a cliente" —
+        que era ela, com a janela de 24 h fechada. Erro 131047, aviso da
+        falha, o aviso também falhando, e a Meta devolvendo novos avisos
+        de falha: 97 mensagens em 7 segundos, no dia 18/09 às 09:49.
+
+        Sem número é `null`. Quem lê trata como vazio (ver `paraDados`), a
+        tela do painel já mostra "sem WhatsApp", e nada é enviado.
+      */
+      cliente_whatsapp: whatsapp || null,
       servico_id: servico.id,
       servico_nome: servico.nome,
       servico_preco: servico.preco * 100,
