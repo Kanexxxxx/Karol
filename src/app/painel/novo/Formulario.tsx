@@ -239,12 +239,26 @@ function EscolhaDoWhatsapp({ valorInicial }: { valorInicial?: string }) {
           className={`${CAMPO} mt-1`}
         />
       ) : (
+        /*
+          ⚠️ "A CLIENTE", E NUNCA "ELA".
+
+          A primeira versão dizia "Ela só não vai receber confirmação nem
+          lembrete". Quem lê esta tela é a Karol — e o Kainã leu como se
+          FOSSE ela quem deixaria de receber, e perguntou se ia parar de
+          chegar o aviso de agendamento novo.
+
+          Não para: o aviso dela sai pro número dela, que sempre existe.
+          Mas se o texto deu essa dúvida em quem conhece o sistema por
+          dentro, na Karol daria mais.
+        */
         <p className="mt-1 border border-linha bg-creme px-4 py-3 text-[13px] leading-relaxed text-tinta-2">
-          Sem problema — o horário fica guardado do mesmo jeito.
+          Sem problema — o horário fica guardado do mesmo jeito, e aparece na
+          sua agenda normalmente.
           <br />
           <span className="text-tinta-3">
-            Ela só não vai receber confirmação nem lembrete pelo WhatsApp, porque
-            não há número pra onde mandar.
+            Só <b>a cliente</b> é que não recebe confirmação nem lembrete pelo
+            WhatsApp, porque não há número pra onde mandar. Os seus avisos
+            continuam chegando igual.
           </span>
         </p>
       )}

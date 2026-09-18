@@ -243,6 +243,51 @@ describe("enviarEvento", () => {
     agenda do dia. Foi o Kainã quem separou: "só o lembrete e tem um novo
     agendamento para ela".
   */
+  /*
+    ⚠️ A DÚVIDA DO KAINÃ, EM 18/09, VIRADA TESTE.
+
+    Ele leu o texto novo do painel e perguntou: "mas a confirmação de
+    novo agendamento também não vai cair?". Não cai, e o motivo não é
+    óbvio olhando só a guarda:
+
+      `para` do novo-agendamento é `whatsappDaKarol()`, que NUNCA é
+      vazio — sem a env, cai no número de `negocio.ts`. Então a guarda
+      de número vazio não alcança esse evento nem quando a cliente não
+      tem telefone nenhum.
+
+    Se alguém um dia trocar o destinatário do novo-agendamento por
+    `a.whatsappCliente`, a Karol para de saber que entrou horário — em
+    silêncio. Este teste cai antes.
+  */
+  it("novo-agendamento sai mesmo quando a cliente não tem telefone", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "5518911112222";
+    // tipado como os outros deste arquivo: sem a assinatura, o
+    // `calls[0][1]` não existe pro TypeScript e o build recusa
+    const fetchMock = vi.fn<(u: string, i: RequestInit) => Promise<{ ok: boolean; status: number }>>(
+      () => Promise.resolve({ ok: true, status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await enviarEvento("novo-agendamento", { ...AG, whatsappCliente: "" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const corpo = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(corpo.mensagem.para).toBe("5518911112222");
+  });
+
+  it("aviso de cliente NÃO sai quando não há telefone", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "5518911112222";
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await enviarEvento("confirmacao", { ...AG, whatsappCliente: "" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r).toEqual({ ok: true, motivo: "sem-whatsapp" });
+  });
+
   it("novo-agendamento continua chegando nela — é o aviso que EXISTE pra ela", async () => {
     process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
     process.env.KAROL_WHATSAPP = "5518999998888";
