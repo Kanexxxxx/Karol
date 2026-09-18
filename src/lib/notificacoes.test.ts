@@ -205,13 +205,19 @@ describe("enviarEvento", () => {
     ⚠️ ESTES TESTES GUARDAM A ORIGEM, e não o laço. Enquanto a mensagem
     do primeiro passo não sair, não existe passo nenhum depois.
   */
-  it("NÃO manda pra cliente quando a cliente é a própria Karol", async () => {
+  it.each([
+    ["confirmacao"],
+    ["remarcado"],
+    ["cancelado"],
+    ["sinal-vencido"],
+    ["agradecimento"],
+  ] as const)("NÃO manda %s quando a cliente é a própria Karol", async (evento) => {
     process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
     process.env.KAROL_WHATSAPP = "5518999998888"; // o MESMO de AG.whatsappCliente
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const r = await enviarEvento("lembrete", AG);
+    const r = await enviarEvento(evento, AG);
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(r).toEqual({ ok: true, motivo: "cliente-e-a-propria-karol" });
@@ -229,20 +235,26 @@ describe("enviarEvento", () => {
   });
 
   /*
-    ⚠️ E O AVISO QUE É PRA ELA CONTINUA SAINDO. Se a guarda fosse cega,
-    ela pararia de saber que entrou agendamento novo — que é o único
-    aviso que o sistema manda pra ela de propósito.
+    ⚠️ OS DOIS QUE ELA QUER CONTINUAM CHEGANDO, e é metade da regra.
+
+    Guarda cega deixaria ela sem saber que entrou horário novo, e sem o
+    lembrete do dia seguinte — que pra ela não é conversa de cliente, é a
+    agenda do dia. Foi o Kainã quem separou: "só o lembrete e tem um novo
+    agendamento para ela".
   */
-  it("novo-agendamento continua chegando nela, mesmo sendo o número dela", async () => {
-    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
-    process.env.KAROL_WHATSAPP = "5518999998888";
-    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
+  it.each([["novo-agendamento"], ["lembrete"]] as const)(
+    "%s continua chegando nela, mesmo sendo o número dela",
+    async (evento) => {
+      process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+      process.env.KAROL_WHATSAPP = "5518999998888";
+      const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
 
-    await enviarEvento("novo-agendamento", AG);
+      await enviarEvento(evento, AG);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("cliente de verdade continua recebendo", async () => {
     process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";

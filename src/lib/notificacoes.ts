@@ -1558,10 +1558,32 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
     "ela colocou o número dela, é simples: não enviar notificação pra
     ela".
 
-    O que NÃO entra aqui: `novo-agendamento`, que é justamente o aviso
-    QUE É PRA ELA. Por isso a comparação é só no ramo da cliente.
+    ---------------------------------------------------------------
+     A REGRA, ditada pelo Kainã em 18/09
+    ---------------------------------------------------------------
+
+    *"Se ela colocar um agendamento com o número dela, não é para chegar
+    aviso. Só o lembrete e 'tem um novo agendamento' para ela."*
+
+    Então a lista abaixo é de EXCEÇÃO, não de bloqueio — o que fica de
+    fora dela não sai:
+
+      novo-agendamento  passa. É o único aviso que existe PRA ela, e
+                        bloquear deixaria ela sem saber que entrou
+                        horário novo.
+      lembrete          passa. É útil pra ela: "amanhã você tem a Maria
+                        às 19:00". E não corre o risco do laço, porque
+                        lembrete sai por TEMPLATE, que a Meta entrega com
+                        a janela de 24 h fechada.
+
+      confirmacao, remarcado, cancelado, sinal-vencido, agradecimento
+                        NÃO passam. São conversa com a cliente, e a
+                        cliente aqui é ela mesma — não faz sentido, e é
+                        por aí que o laço começou.
   */
-  if (evento !== "novo-agendamento" && ehONumeroDaKarol(para)) {
+  const AVISOS_QUE_ELA_QUER = new Set<Evento>(["novo-agendamento", "lembrete"]);
+
+  if (ehONumeroDaKarol(para) && !AVISOS_QUE_ELA_QUER.has(evento)) {
     return { ok: true, motivo: "cliente-e-a-propria-karol" };
   }
 
