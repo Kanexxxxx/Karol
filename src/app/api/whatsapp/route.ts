@@ -7,6 +7,7 @@ import {
   respostaDaVerificacao,
 } from "@/lib/webhook-meta";
 import {
+  ehONumeroDaKarol,
   avisarTecnico,
   enviarTexto,
   temTecnicoSeparado,
@@ -115,6 +116,31 @@ export async function POST(req: NextRequest) {
           `Motivo: ${falha.motivo}`.slice(0, 300),
         ].join("\n"),
       ).catch(() => {});
+    }
+
+    /*
+      ============================================================
+       ⚠️ A "CLIENTE" É A PRÓPRIA KAROL? ELA NÃO PRECISA SABER.
+      ============================================================
+
+      Achado em 18/09/2026, varrendo o que ainda podia disparar. A guarda
+      do laço mora em `enviarEvento` — e esta linha não passa por lá, usa
+      `enviarTexto` direto. Ficou de fora.
+
+      O que acontecia: dos 11 agendamentos que a Karol cadastrou com o
+      número dela, uma falha de entrega mandava PRA ELA o recado "a
+      cliente não recebeu, chama ela por aqui: wa.me/5518997525291" — o
+      próprio número dela. Mandar ela ligar pra si mesma.
+
+      E pior: essa mensagem também falha (mesma janela de 24 h fechada),
+      e a Meta devolve outra falha de entrega. Era a última porta do laço
+      das 97 mensagens que continuava aberta.
+
+      O diagnóstico técnico segue indo pro Kainã acima, porque ELE
+      precisa saber. Ela não.
+    */
+    if (ehONumeroDaKarol(falha.para)) {
+      return Response.json({ ok: true, entregaFalhou: falha.codigo, motivo: "cliente-e-a-propria-karol" });
     }
 
     await enviarTexto(
