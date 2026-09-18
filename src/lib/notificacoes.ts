@@ -186,6 +186,27 @@ const ESPERA_MS = 15 * 60 * 1000;
 const TETO_DE_AVISOS = 30;
 let quantosAvisos = 0;
 
+/**
+ * O número é o da própria Karol?
+ *
+ * Compara só dígitos, porque o mesmo telefone aparece escrito de jeitos
+ * diferentes: `5518997525291` do banco, `+55 (18) 99752-5291` de uma
+ * variável de ambiente, `18997525291` digitado no painel. Comparar texto
+ * cru deixaria passar.
+ *
+ * ⚠️ TAMBÉM CASA SEM O DDI. O banco guarda com 55 na frente; o painel
+ * aceita 10 a 13 dígitos, e ela pode ter digitado sem. Os dois contam
+ * como "é ela".
+ */
+export function ehONumeroDaKarol(numero: string): boolean {
+  const dela = whatsappDaKarol().replace(/\D/g, "");
+  const alvo = (numero || "").replace(/\D/g, "");
+  if (!dela || !alvo) return false;
+  if (dela === alvo) return true;
+  // 5518997525291 vs 18997525291
+  return dela.endsWith(alvo) || alvo.endsWith(dela);
+}
+
 export async function avisarTecnico(
   assunto: string,
   detalhe?: string,
@@ -1504,6 +1525,46 @@ export async function enviarEvento(evento: Evento, a: DadosAgendamento): Promise
   if (!ligado(evento)) return { ok: true };
 
   const para = evento === "novo-agendamento" ? whatsappDaKarol() : a.whatsappCliente;
+
+  /*
+    ============================================================
+     ⚠️ A CLIENTE É A PRÓPRIA KAROL? NÃO MANDA NADA.
+    ============================================================
+
+    Aconteceu de verdade em 18/09/2026, às 09:49: 97 mensagens em 7
+    segundos. Quem parou não foi o sistema — foi a Meta, com
+    `131056 pair rate limit hit`.
+
+    O CAMINHO DO ESTRAGO, e é curto:
+
+      1. a Karol cadastrou pelo painel 11 clientes que já tinha marcado
+         por fora. O formulário exige telefone (o banco tem
+         `CHECK (cliente_whatsapp ~ '^[0-9]{10,13}$')`), e ela não tinha
+         o número delas na mão — então pôs o DELA.
+      2. o sistema tenta avisar "a cliente", que é ela.
+      3. a janela de 24 h dela está fechada → erro 131047.
+      4. o sistema avisa o técnico E a Karol sobre a falha.
+      5. esses dois avisos também falham → a Meta manda dois novos
+         "entrega falhou" → volta pro passo 2.
+
+    ⚠️ E A TRAVA ANTI-SPAM NÃO SEGUROU, porque o `HISTORICO` lá em cima é
+    um `Map` na MEMÓRIA do processo. Cada webhook da Meta é uma execução
+    nova na Vercel: o Map nasce vazio, a janela de 15 min nunca vale, e o
+    teto por processo reinicia toda vez. Uma trava de memória não segura
+    um laço alimentado por requisições separadas.
+
+    ESTA GUARDA ATACA A ORIGEM, não o laço: se não sai a mensagem do
+    passo 2, não existe passo 3 em diante. É o que o Kainã pediu —
+    "ela colocou o número dela, é simples: não enviar notificação pra
+    ela".
+
+    O que NÃO entra aqui: `novo-agendamento`, que é justamente o aviso
+    QUE É PRA ELA. Por isso a comparação é só no ramo da cliente.
+  */
+  if (evento !== "novo-agendamento" && ehONumeroDaKarol(para)) {
+    return { ok: true, motivo: "cliente-e-a-propria-karol" };
+  }
+
   const texto = TEXTO[evento](a);
   const webhook = process.env.NOTIFICADOR_WEBHOOK_URL;
 

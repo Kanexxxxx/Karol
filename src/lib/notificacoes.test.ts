@@ -187,6 +187,74 @@ describe("enviarEvento", () => {
     expect(corpo.mensagem.para).toBe("5518911112222");
   });
 
+  /*
+    ============================================================
+     O LAÇO DE 18/09/2026 — 97 MENSAGENS EM 7 SEGUNDOS
+    ============================================================
+
+    A Karol cadastrou pelo painel 11 clientes que já tinha marcado por
+    fora. O formulário exige telefone e ela não tinha o das clientes na
+    mão, então pôs o DELA. O sistema então tentava avisar "a cliente",
+    que era ela, com a janela de 24 h fechada: erro 131047, aviso de
+    falha pro técnico e pra ela, os avisos também falhando, e a Meta
+    devolvendo dois novos "entrega falhou" a cada rodada.
+
+    Parou às 97 mensagens, e quem parou foi a Meta com
+    `131056 pair rate limit hit` — não o nosso código.
+
+    ⚠️ ESTES TESTES GUARDAM A ORIGEM, e não o laço. Enquanto a mensagem
+    do primeiro passo não sair, não existe passo nenhum depois.
+  */
+  it("NÃO manda pra cliente quando a cliente é a própria Karol", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "5518999998888"; // o MESMO de AG.whatsappCliente
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await enviarEvento("lembrete", AG);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r).toEqual({ ok: true, motivo: "cliente-e-a-propria-karol" });
+  });
+
+  it("casa mesmo sem o DDI — o painel aceita 10 a 13 dígitos", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "18999998888"; // sem o 55 da frente
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await enviarEvento("confirmacao", AG);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  /*
+    ⚠️ E O AVISO QUE É PRA ELA CONTINUA SAINDO. Se a guarda fosse cega,
+    ela pararia de saber que entrou agendamento novo — que é o único
+    aviso que o sistema manda pra ela de propósito.
+  */
+  it("novo-agendamento continua chegando nela, mesmo sendo o número dela", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "5518999998888";
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await enviarEvento("novo-agendamento", AG);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("cliente de verdade continua recebendo", async () => {
+    process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
+    process.env.KAROL_WHATSAPP = "5518911112222"; // diferente da cliente
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await enviarEvento("lembrete", AG);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("engole erro de rede sem lançar", async () => {
     process.env.NOTIFICADOR_WEBHOOK_URL = "https://hook.exemplo/karol";
     vi.stubGlobal("fetch", vi.fn(async () => {
