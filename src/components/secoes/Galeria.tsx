@@ -1,76 +1,94 @@
 import Image from "next/image";
-import type { Foto } from "@/data/fotos";
-import { ALUNAS, GALERIA } from "@/data/fotos";
+import { FAIXA_DE_TEXTURAS } from "@/data/fotos";
+import { NEGOCIO } from "@/data/negocio";
 import { Cabeca, Env, Revela } from "../ui";
 
-function Peca({ foto }: { foto: Foto }) {
-  return (
-    <figure className="group relative m-0 overflow-hidden bg-creme">
-      <Image
-        src={foto.arquivo}
-        alt={foto.alt}
-        width={foto.largura}
-        height={foto.altura}
-        sizes="(min-width: 768px) 25vw, 50vw"
-        loading="lazy"
-        className="aspect-3/4 w-full object-cover transition-transform duration-[620ms] ease-marca group-hover:scale-105"
-      />
-      {foto.etiqueta && (
-        <span className="absolute top-[9px] left-[9px] bg-osso px-2 py-1 text-[8.5px] font-bold uppercase tracking-[0.16em] text-tinta">
-          {foto.etiqueta}
-        </span>
-      )}
-      {foto.legenda && (
-        <figcaption className="absolute inset-x-0 bottom-0 bg-linear-to-t from-[#16110C]/85 to-transparent px-3 pt-8 pb-2.5 text-[10.5px] font-bold uppercase tracking-[0.13em] text-white">
-          {foto.legenda}
-        </figcaption>
-      )}
-    </figure>
-  );
-}
-
+/**
+ * O lugar onde ficava a galeria.
+ *
+ * ---------------------------------------------------------------------
+ * ⚠️ ISTO NÃO É GALERIA DE TRABALHOS, E O TEXTO NÃO PODE SUGERIR QUE SEJA
+ * ---------------------------------------------------------------------
+ *
+ * A v1 tinha duas seções aqui: 24 trabalhos ("clientes de verdade, sem
+ * filtro e sem retoque") e 6 alunas com o certificado na mão. Trinta
+ * rostos. As duas saíram inteiras na v2 — não dava pra encolher, porque o
+ * problema não era a quantidade.
+ *
+ * O que ficou é uma faixa de três texturas e uma frase que diz a verdade:
+ * o trabalho existe, e ele está no Instagram dela, onde quem aparece
+ * escolheu aparecer.
+ *
+ * ⚠️ Se alguém for mexer no texto: nada aqui pode dar a entender que as
+ * imagens são trabalho dela. São pigmento, henna e seda — material, não
+ * resultado. A legenda de cada uma diz exatamente o que é.
+ */
 export function Trabalhos() {
   return (
     <section id="galeria" className="py-15 lg:py-23">
       <Env>
         <Revela>
           <Cabeca
-            rotulo="Galeria"
-            titulo="Mais trabalhos"
-            texto={`${GALERIA.length} clientes de verdade, sem filtro e sem retoque.`}
+            rotulo="O que a gente usa"
+            titulo="Henna, pigmento e paciência"
+            texto="O trabalho pronto sai no Instagram, com o rosto de quem escolheu aparecer. Aqui ficam os materiais."
           />
         </Revela>
+
         <Revela>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3.5">
-            {GALERIA.map((foto) => (
-              <Peca key={foto.arquivo} foto={foto} />
+          <ul className="grid grid-cols-3 gap-2 md:gap-4">
+            {FAIXA_DE_TEXTURAS.map((foto) => (
+              <li key={foto.arquivo}>
+                <figure className="relative m-0 overflow-hidden bg-creme">
+                  <Image
+                    src={foto.arquivo}
+                    alt={foto.alt}
+                    width={foto.largura}
+                    height={foto.altura}
+                    sizes="(min-width: 768px) 33vw, 33vw"
+                    loading="lazy"
+                    className="aspect-square w-full object-cover md:aspect-4/3"
+                  />
+                  <figcaption className="absolute inset-x-0 bottom-0 bg-linear-to-t from-[#16110C]/75 to-transparent px-2.5 pt-8 pb-2 text-[9.5px] font-bold uppercase tracking-[0.13em] text-white md:px-3 md:text-[10.5px]">
+                    {foto.legenda}
+                  </figcaption>
+                </figure>
+              </li>
             ))}
-          </div>
+          </ul>
+        </Revela>
+
+        <Revela>
+          <p className="mx-auto mt-7 max-w-[560px] text-center text-[14.5px] text-tinta-2">
+            Trabalho novo toda semana em{" "}
+            <a
+              href={`https://instagram.com/${NEGOCIO.instagram.studio}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-ouro underline decoration-ouro-claro underline-offset-2 hover:decoration-ouro"
+            >
+              @{NEGOCIO.instagram.studio}
+            </a>
+            .
+          </p>
         </Revela>
       </Env>
     </section>
   );
 }
 
-export function Alunas() {
-  return (
-    <section className="pb-15 lg:pb-23">
-      <Env>
-        <Revela>
-          <Cabeca
-            rotulo="Alunas"
-            titulo="Quem já fez o curso"
-            texto="Cada aluna sai com o certificado na mão."
-          />
-        </Revela>
-        <Revela>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3.5">
-            {ALUNAS.map((foto) => (
-              <Peca key={foto.arquivo} foto={foto} />
-            ))}
-          </div>
-        </Revela>
-      </Env>
-    </section>
-  );
-}
+/*
+  ⚠️ `Alunas` NÃO EXISTE MAIS, e some daqui de propósito.
+
+  Eram seis fotos de alunas com o certificado — cada uma com o NOME
+  COMPLETO escrito à mão no papel, o que obrigou a v1 a ter um script
+  (`ferramentas/anonimizar.py`) só pra pixelizar a metade de baixo de cada
+  certificado antes de publicar.
+
+  Esse script é a melhor prova de que a seção não cabia num site que não
+  quer guardar dado de ninguém: ele existia pra apagar, de dentro de uma
+  foto, o dado que não devia estar lá. Na v2 a foto não entra, e o
+  problema não precisa de solução.
+
+  A prova do curso continua no texto da seção `Curso` e no Instagram dela.
+*/

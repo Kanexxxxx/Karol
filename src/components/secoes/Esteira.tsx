@@ -1,35 +1,84 @@
 import Image from "next/image";
-import { ESTEIRA } from "@/data/fotos";
+import { TEXTURAS } from "@/data/fotos";
+import { Env } from "../ui";
 
 /**
- * Esteira de fotos deslizando da direita pra esquerda, em loop.
+ * A assinatura de movimento da V2.
  *
- * A lista é duplicada e a animação anda exatamente -50%, então a emenda
- * cai num ponto idêntico e o laço fica invisível. Para quando o ponteiro
- * encosta, e não anda para quem pediu menos movimento.
+ * O filme mostra somente matéria: henna, ouro e papel. Não imita resultado
+ * de atendimento nem usa rosto de cliente. A imagem estática continua
+ * atrás dele como poster e como alternativa para quem reduz movimento ou
+ * quando o navegador decide economizar dados.
  */
 export function Esteira() {
-  const fotos = [...ESTEIRA, ...ESTEIRA];
-
   return (
-    <div
-      aria-hidden="true"
-      className="group overflow-hidden border-y border-linha bg-creme py-3.5 [mask-image:linear-gradient(90deg,transparent,#000_6%,#000_94%,transparent)]"
+    <section
+      aria-label="Precisão e movimento"
+      className="relative isolate min-h-[300px] overflow-hidden bg-[#24160f] text-white sm:min-h-[390px] lg:min-h-[470px]"
     >
-      <div className="flex w-max gap-3 motion-safe:animate-[desliza_42s_linear_infinite] group-hover:[animation-play-state:paused]">
-        {fotos.map((foto, i) => (
-          <div key={`${foto.arquivo}-${i}`} className="w-[130px] shrink-0 md:w-[180px]">
-            <Image
-              src={foto.arquivo}
-              alt=""
-              width={foto.largura}
-              height={foto.altura}
-              sizes="180px"
-              className="aspect-3/4 w-full object-cover"
-            />
-          </div>
-        ))}
-      </div>
-    </div>
+      <Image
+        src={TEXTURAS.tracoHenna.arquivo}
+        alt=""
+        aria-hidden="true"
+        fill
+        sizes="100vw"
+        className="absolute inset-0 -z-30 object-cover opacity-55"
+      />
+      <video
+        aria-hidden="true"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        poster={TEXTURAS.tracoHenna.arquivo}
+        className="absolute inset-0 -z-20 size-full object-cover motion-reduce:hidden"
+      >
+        {/*
+          ⚠️ 581 KB, e isso é uma decisão — não o que saiu do gerador.
+
+          O arquivo chegou com 3,4 MB: 1280x720 a 4 Mbps, bitrate de filme
+          pra um fundo que quase não se move. Recomprimido em H.264 CRF 30
+          (`-preset slow`, `-movflags +faststart`, sem trilha de áudio), caiu
+          seis vezes sem diferença visível — comparado quadro a quadro, no
+          mesmo instante do laço.
+
+          O peso importa aqui mais que na maioria dos sites: a cliente da
+          Karol abre isto no 4G de Pereira Barreto, e este vídeo fica logo
+          abaixo da dobra, competindo com o resto da página.
+
+          ⚠️ Se alguém trocar o arquivo, recomprima antes. Um MP4 direto do
+          gerador é sempre grande demais pra fundo de seção.
+        */}
+        <source src="/motion/henna-ouro-loop.mp4" type="video/mp4" />
+      </video>
+
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(25,14,9,.88)_0%,rgba(25,14,9,.56)_48%,rgba(25,14,9,.16)_100%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-3 border border-white/20 sm:inset-5"
+      />
+
+      <Env className="flex min-h-[300px] items-end py-10 sm:min-h-[390px] sm:py-14 lg:min-h-[470px] lg:items-center">
+        <div className="max-w-[650px]">
+          <p className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.28em] text-[#ead8b2] sm:text-[11px]">
+            <span className="h-px w-10 bg-ouro-claro" aria-hidden="true" />
+            Matéria, método e movimento
+          </p>
+          <h2 className="mt-4 font-titulo text-[clamp(38px,7vw,78px)] leading-[0.96] font-light text-balance">
+            Precisão começa
+            <br />
+            <em className="text-[#e7c77f] italic">antes do traço.</em>
+          </h2>
+          <p className="mt-5 max-w-[42ch] text-[14px] leading-relaxed text-white/76 sm:text-[16px]">
+            Cada atendimento combina leitura, técnica e cuidado para chegar
+            a um desenho que faça sentido no seu rosto.
+          </p>
+        </div>
+      </Env>
+    </section>
   );
 }

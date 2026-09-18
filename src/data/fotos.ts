@@ -1,17 +1,38 @@
 /**
- * Acervo de fotos do site.
+ * Acervo de imagens do site — v2.
  *
- * Origem: varredura completa dos posts públicos da Karol feita com a conta
- * logada (311 posts na grade, 50 imagens baixadas em resolução original,
- * de 1280 a 3505 px de largura). Todas foram apenas REDUZIDAS — nunca
- * ampliadas, porque ampliar é o que deixa cara de inteligência artificial.
+ * ---------------------------------------------------------------------
+ * ⚠️ AQUI NÃO ENTRA ROSTO DE CLIENTE. É A REGRA DA V2.
+ * ---------------------------------------------------------------------
  *
- * Originais em `ferramentas/originais/`, processamento em
- * `ferramentas/fotos2.py`.
+ * A v1 tinha 44 fotos de gente: 24 trabalhos, 6 alunas com certificado,
+ * antes e depois, fotos de serviço, bastidor. Era o melhor argumento de
+ * venda do site — e era rosto de terceiro num site público, com o
+ * consentimento existindo só como uma frase dela no briefing ("pode usar
+ * todas"), sem registro por pessoa.
  *
- * ATENÇÃO: são rostos de clientes reais. A Karol autorizou o uso em geral
- * no briefing ("pode usar todas"), mas antes de publicar vale conferir com
- * ela cliente por cliente.
+ * A v2 não tem nenhuma. Sobrou:
+ *
+ * - a KAROL, que é dona da própria imagem e do próprio negócio;
+ * - TEXTURA e MATERIAL — pigmento, traço de henna, pincel, seda —, que é
+ *   o que o trabalho dela é feito, sem ser o rosto de ninguém.
+ *
+ * As texturas foram geradas por IA (Higgsfield, modelo z_image, em
+ * 16/09/2026) e são decorativas de propósito. Elas NÃO mostram resultado
+ * de atendimento, e isso não é detalhe: uma foto gerada de sobrancelha
+ * pronta seria prova falsa de um trabalho que não aconteceu, e quem
+ * marcasse por causa dela estaria marcando por uma mentira.
+ *
+ * Pigmento e seda não prometem nada.
+ *
+ * ---------------------------------------------------------------------
+ * O que fazer quando a Karol mandar fotos novas
+ * ---------------------------------------------------------------------
+ *
+ * Se um dia entrar foto de cliente aqui, ela precisa de autorização
+ * ESCRITA daquela pessoa, guardada fora do código — e o teste
+ * `sem-rosto-de-cliente.test.ts` vai ficar vermelho até alguém assumir
+ * isso de propósito. O teste é a conversa, não o obstáculo.
  */
 
 export type Foto = {
@@ -24,7 +45,7 @@ export type Foto = {
 };
 
 const P = "/fotos";
-const RETRATO = { largura: 780, altura: 1040 };
+const T = "/texturas";
 
 /**
  * Qual foto abre o site.
@@ -63,10 +84,6 @@ export const FOTOS = {
    */
   capaReserva: CAPA === "branca" ? CAPAS.laranja : CAPAS.branca,
 
-  /**
-   * Do mesmo ensaio de estúdio. Estava no cartão do curso, e a Karol pediu
-   * pra tirar de lá: a foto é dela, não do serviço. Agora abre a história.
-   */
   /*
     ⚠️ `.png`, E NÃO `.jpg` POR DESCUIDO.
 
@@ -87,170 +104,7 @@ export const FOTOS = {
     largura: 2048,
     altura: 768,
   },
-  /**
-   * O antes e depois que abre a seção do trabalho. É montado por ela, com a
-   * letra do feed dela — por isso não leva legenda por cima repetindo.
-   */
-  transformacao: {
-    arquivo: `${P}/trab-21.jpg`,
-    alt: "Antes e depois do design de sobrancelha de uma cliente",
-    ...RETRATO,
-  },
-
-  /**
-   * ⚠️ Recortada em 06/09/2026: o app de colagem que ela usou carimbou
-   * "MADE WITH SPLIT PIC" no canto de baixo, e a marca estava QUEIMADA no
-   * original — não havia versão limpa pra baixar. A saída foi cortar 7,7%
-   * da altura, que leva a marca embora e mantém os dois rostos inteiros.
-   * Por isso a altura aqui é 1058 e não os 1146 de antes.
-   */
-  antesDepois: {
-    arquivo: `${P}/antes-depois.jpg`,
-    alt: "Sobrancelha de uma cliente antes e depois do design",
-    largura: 860,
-    altura: 1058,
-  },
-  atendimento: {
-    arquivo: `${P}/processo-3.jpg`,
-    alt: "Cliente com resultado do design de sobrancelha no studio",
-    largura: 1400,
-    altura: 1867,
-  },
-
 } as const;
-
-/** Uma cliente diferente por serviço — nada se repete na tabela. */
-export const FOTO_DO_SERVICO: Record<string, Foto> = {
-  "design-simples": {
-    arquivo: `${P}/serv-design.jpg`,
-    alt: "Sobrancelha depois do design",
-    ...RETRATO,
-  },
-  "design-henna": {
-    arquivo: `${P}/serv-henna.jpg`,
-    alt: "Sobrancelha depois do design com henna",
-    ...RETRATO,
-    etiqueta: "Mais pedido",
-  },
-  "design-masculino": {
-    arquivo: `${P}/serv-masculino.jpg`,
-    alt: "Design de sobrancelha masculino",
-    ...RETRATO,
-  },
-  "brow-lamination": {
-    arquivo: `${P}/serv-lamination.jpg`,
-    alt: "Sobrancelha alinhada com brow lamination",
-    ...RETRATO,
-  },
-  "maquiagem-social": {
-    arquivo: `${P}/serv-maquiagem.jpg`,
-    alt: "Maquiagem social feita pela Karol",
-    ...RETRATO,
-    etiqueta: "Festa e formatura",
-  },
-  /**
-   * A única foto em que a Karol aparece ENTREGANDO o certificado — é o que
-   * o cartão do curso promete, então é a foto certa ali.
-   *
-   * É o mesmo arquivo da primeira aluna da grade logo abaixo, de propósito.
-   * Antes eram dois arquivos com bytes idênticos (`serv-curso.jpg` era cópia
-   * de `aluna-01.jpg`), erro do script que gerou as duas a partir do mesmo
-   * original. Um arquivo só, citado duas vezes, é o que a página quer.
-   */
-  "curso-automaquiagem": {
-    arquivo: `${P}/aluna-01.jpg`,
-    alt: "Karol entregando o certificado do curso para uma aluna",
-    ...RETRATO,
-    etiqueta: "Com certificado",
-  },
-};
-
-const trabalho = (n: number, legenda: string, etiqueta?: string): Foto => ({
-  arquivo: `${P}/trab-${String(n).padStart(2, "0")}.jpg`,
-  alt: `${legenda} feito pela Karol`,
-  ...RETRATO,
-  legenda,
-  etiqueta,
-});
-
-/** Galeria de trabalhos: 20 clientes, nenhuma repetida. */
-export const GALERIA: Foto[] = [
-  {
-    ...FOTOS.antesDepois,
-    legenda: "Design com henna",
-    etiqueta: "Antes e depois",
-  },
-  trabalho(1, "Design com henna"),
-  trabalho(2, "Design de sobrancelha"),
-  trabalho(3, "Maquiagem social"),
-  trabalho(4, "Brow lamination"),
-  trabalho(5, "Maquiagem social"),
-  // trab-05 saiu: moça de trança com make escura de trend de challenge
-  trabalho(6, "Design de sobrancelha"),
-  trabalho(7, "Brow lamination"),
-  trabalho(8, "Design de sobrancelha"),
-  trabalho(9, "Maquiagem social"),
-  trabalho(10, "Design de sobrancelha"),
-  trabalho(11, "Brow lamination", "Durante"),
-  trabalho(12, "Maquiagem social"),
-  trabalho(13, "Design com henna"),
-  trabalho(15, "Design de sobrancelha"),
-  trabalho(16, "Design de sobrancelha"),
-  trabalho(17, "Maquiagem social"),
-  trabalho(18, "Maquiagem social"),
-  trabalho(19, "Maquiagem social"),
-  trabalho(20, "Maquiagem social"),
-  // trab-21 saiu daqui: virou a foto de abertura da seção do trabalho
-  // (`FOTOS.transformacao`). Cada foto aparece uma vez só no site.
-  trabalho(22, "Maquiagem social"),
-  trabalho(23, "Maquiagem social"),
-  trabalho(24, "Maquiagem social"),
-  {
-    arquivo: `${P}/processo.jpg`,
-    alt: "Karol modelando a sobrancelha de uma cliente",
-    ...RETRATO,
-    legenda: "No atendimento",
-    etiqueta: "Durante",
-  },
-  {
-    // ⚠️ era `processo-3.jpg`, o mesmo arquivo da seção de atendimento
-    // na home — a mesma foto aparecia duas vezes no site.
-    arquivo: `${P}/trab-15.jpg`,
-    alt: "Sobrancelha depois do brow lamination",
-    ...RETRATO,
-    legenda: "Brow lamination",
-    etiqueta: "Durante",
-  },
-];
-
-/** Seis alunas diferentes, todas com o certificado na mão. */
-export const ALUNAS: Foto[] = [
-  {
-    arquivo: `${P}/aluna-01.jpg`,
-    alt: "Karol e a aluna com o certificado do curso",
-    ...RETRATO,
-    legenda: "Com a Karol",
-  },
-  { arquivo: `${P}/aluna-02.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-  { arquivo: `${P}/aluna-03.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-  { arquivo: `${P}/aluna-04.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-  { arquivo: `${P}/aluna-05.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-  { arquivo: `${P}/aluna-06.jpg`, alt: "Aluna com o certificado do curso", ...RETRATO, legenda: "Certificada" },
-];
-
-/** Sequência da esteira do topo — mistura resultado, maquiagem e processo. */
-/**
- * Escolhe por nome de arquivo, não por índice.
- *
- * Antes era `GALERIA[1], GALERIA[3]…`: tirar uma foto do meio da galeria
- * deslocava todas as seguintes e a esteira passava a mostrar outras, sem
- * ninguém perceber. Aconteceu quando a Karol pediu pra tirar a trab-14.
- */
-const naGaleria = (arquivo: string): Foto => {
-  const foto = GALERIA.find((f) => f.arquivo.endsWith(`/${arquivo}`));
-  if (!foto) throw new Error(`Foto da esteira não está na galeria: ${arquivo}`);
-  return foto;
-};
 
 /** Foto do convite pro Instagram — o texto já vem escrito nela. */
 export const INSTAGRAM = {
@@ -260,9 +114,141 @@ export const INSTAGRAM = {
   altura: 1201,
 };
 
-export const ESTEIRA: Foto[] = [
-  "trab-01.jpg", "trab-03.jpg", "trab-06.jpg", "trab-11.jpg",
-  "trab-09.jpg", "trab-13.jpg", "trab-16.jpg", "trab-20.jpg",
-  "trab-02.jpg", "trab-05.jpg",
-  "trab-02.jpg", "trab-17.jpg",
-].map(naGaleria);
+/**
+ * As texturas que sustentam o site sem fotografar ninguém.
+ *
+ * ⚠️ O `alt` de cada uma descreve o que a imagem É, nunca o que ela
+ * sugere. "Pigmento dourado sobre papel" e não "resultado de maquiagem":
+ * quem usa leitor de tela tem que receber a mesma informação que quem vê
+ * — e quem vê está vendo pigmento sobre papel.
+ *
+ * Todas são decorativas. Onde uma delas não acrescenta informação nenhuma
+ * ao texto do lado, o componente passa `alt=""` e deixa o leitor de tela
+ * pular — que é o certo, e é melhor do que inventar descrição.
+ */
+export const TEXTURAS = {
+  /** Seda em faixa larga — divisor e fundo de citação. */
+  sedaLarga: {
+    arquivo: `${T}/seda-larga.jpg`,
+    alt: "Tecido de seda cor de creme em dobras suaves",
+    largura: 1800,
+    altura: 1012,
+  },
+  /** O traço de henna. É o material do serviço mais pedido dela. */
+  tracoHenna: {
+    arquivo: `${T}/traco-henna.jpg`,
+    alt: "Traço largo de henna sobre papel artesanal cor de creme",
+    largura: 1200,
+    altura: 900,
+  },
+  ferramentas: {
+    arquivo: `${T}/ferramentas.jpg`,
+    alt: "Pincel, pinça e paleta de maquiagem sobre linho cor de creme",
+    largura: 1200,
+    altura: 900,
+  },
+  pinceis: {
+    arquivo: `${T}/pinceis.jpg`,
+    alt: "Três pincéis de maquiagem num pote de cerâmica sobre linho",
+    largura: 1200,
+    altura: 900,
+  },
+
+  /* ------------------------------------------------------------------ */
+  /* Segunda leva (17/09/2026) — o material do trabalho, mais de perto   */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * ⚠️ A MAIS ESPECÍFICA DO ACERVO, e por isso a mais valiosa: é henna de
+   * verdade na tigela, com o pincel de aplicação. O serviço mais pedido
+   * dela tem, enfim, uma imagem que fala dele sem mostrar ninguém.
+   */
+  hennaTigela: {
+    arquivo: `${T}/henna-tigela.jpg`,
+    alt: "Tigela de cerâmica com pasta de henna e pincel de aplicação",
+    largura: 1200,
+    altura: 900,
+  },
+  pincelMacro: {
+    arquivo: `${T}/pincel-macro.jpg`,
+    alt: "Cerdas de um pincel de maquiagem em close, com virola dourada",
+    largura: 1200,
+    altura: 900,
+  },
+  pinca: {
+    arquivo: `${T}/pinca.jpg`,
+    alt: "Pinça de sobrancelha sobre linho, com luz de janela",
+    largura: 1200,
+    altura: 900,
+  },
+  compacto: {
+    arquivo: `${T}/compacto.jpg`,
+    alt: "Estojo dourado de pó compacto aberto, sobre linho",
+    largura: 1200,
+    altura: 900,
+  },
+  /** Duas passadas de pigmento no papel — nude e dourado. */
+  swatches: {
+    arquivo: `${T}/swatches.jpg`,
+    alt: "Duas passadas de pigmento, uma nude e uma dourada, sobre papel",
+    largura: 1200,
+    altura: 900,
+  },
+  toalhas: {
+    arquivo: `${T}/toalhas.jpg`,
+    alt: "Toalhas de linho dobradas ao lado de um potinho de cerâmica",
+    largura: 1200,
+    altura: 900,
+  },
+
+  /* ---- as três de FUNDO: quase vazias, pra texto cair por cima ---- */
+
+  /**
+   * ⚠️ ESTAS TRÊS NÃO SÃO PRA OLHAR, SÃO PRA FICAR ATRÁS.
+   *
+   * O critério delas é o contrário do resto do acervo: quanto menos
+   * acontece na imagem, melhor. Texto por cima de textura movimentada é
+   * texto ilegível, e num site de agendamento a legibilidade ganha da
+   * beleza toda vez.
+   *
+   * Quem usa sempre põe um véu (`bg-osso/72`, por exemplo) entre a
+   * imagem e o texto. Sem o véu, o contraste passa a depender da região
+   * da foto que calhou de ficar atrás da palavra.
+   */
+  papel: {
+    arquivo: `${T}/papel.jpg`,
+    alt: "",
+    largura: 1800,
+    altura: 1012,
+  },
+  linho: {
+    arquivo: `${T}/linho.jpg`,
+    alt: "",
+    largura: 1200,
+    altura: 675,
+  },
+  /** Um traço dourado no canto de baixo; o resto é parede lisa. */
+  tracoOuro: {
+    arquivo: `${T}/traco-ouro.jpg`,
+    alt: "",
+    largura: 1800,
+    altura: 1012,
+  },
+} as const;
+
+/**
+ * A faixa de texturas que ocupa o lugar da antiga galeria.
+ *
+ * ⚠️ NÃO É GALERIA DE TRABALHOS, e o texto da seção não pode sugerir que
+ * seja. A galeria da v1 mostrava 24 clientes; esta faixa mostra pigmento,
+ * henna e seda. Chamar isso de "meus trabalhos" seria vender textura como
+ * resultado.
+ */
+export const FAIXA_DE_TEXTURAS: Foto[] = [
+  { ...TEXTURAS.hennaTigela, legenda: "A henna" },
+  { ...TEXTURAS.tracoHenna, legenda: "O traço" },
+  { ...TEXTURAS.pincelMacro, legenda: "O pincel" },
+  { ...TEXTURAS.swatches, legenda: "O pigmento" },
+  { ...TEXTURAS.pinca, legenda: "A pinça" },
+  { ...TEXTURAS.compacto, legenda: "O acabamento" },
+];

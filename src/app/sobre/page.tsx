@@ -178,11 +178,11 @@ function Retrato() {
  *
  * Três decisões que mudam em relação ao original, e o porquê de cada uma:
  *
- * 1. **Está parado.** A home já tem uma esteira de fotos correndo; uma
- *    faixa de texto correndo aqui seria a terceira coisa deslizando no
- *    mesmo site — exatamente a repetição que derrubou as versões
- *    anteriores desta página. O que faz a ideia ser bonita é a curva, não
- *    o movimento. E parada ela custa zero de JavaScript.
+ * 1. **Está parado.** A home já tem uma esteira correndo (na v2 ela é de
+ *    palavras, não mais de fotos); uma faixa de texto correndo aqui seria
+ *    a segunda coisa deslizando no mesmo site, e as duas seriam texto em
+ *    movimento. O que faz a ideia ser bonita é a curva, não o movimento.
+ *    E parada ela custa zero de JavaScript.
  *
  * 2. **São DOIS arcos, não um.** A frase inteira tem 53 caracteres. Numa
  *    linha só, atravessando a tela de um celular de 390 px, cada letra
@@ -413,13 +413,15 @@ function Maos() {
   /*
     ⚠️ A FAIXA É DELA, não de uma cliente.
 
-    Aqui já passaram duas fotos erradas. Primeiro `FOTOS.atendimento`,
-    que é o mesmo arquivo da galeria de trabalhos — a mesma imagem duas
+    Aqui já passaram duas fotos erradas na v1. Primeiro a foto do
+    atendimento, que era o mesmo arquivo da galeria — a mesma imagem duas
     vezes no site. Depois um retrato de cliente esticado em 64vh, que
     virava um rosto gigante de uma pessoa que não é o assunto da página.
 
-    Esta é 3:2 — proporção larga de verdade, então a faixa não precisa
-    cortar quase nada pra caber, e quem aparece é a Karol.
+    Na v2 o erro nem é mais possível: as duas fotos candidatas não
+    existem no repositório. Esta é 3:2 — proporção larga de verdade,
+    então a faixa não precisa cortar quase nada pra caber, e quem aparece
+    é a Karol.
   */
   const foto = FOTOS.paleta;
 

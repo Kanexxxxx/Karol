@@ -39,10 +39,17 @@ export function Instagram() {
           <h2 className="mt-2.5 mb-[18px] font-titulo text-[clamp(30px,5.8vw,52px)] leading-[1.02] font-light text-balance">
             Tem trabalho novo toda semana
           </h2>
+          {/*
+            ⚠️ ESTE TEXTO DIZIA "aqui no site está um recorte", e na v2
+            viraria mentira: o site não mostra trabalho nenhum, porque não
+            publica rosto de cliente. O Instagram deixou de ser "o resto" e
+            passou a ser O lugar onde o trabalho aparece — e é justo que
+            seja, porque quem posta lá é ela, e quem aparece escolheu.
+          */}
           <p className="mb-7 text-tinta-2">
-            Aqui no site está um recorte. No Instagram sai o que saiu do
-            atendimento naquele dia — antes e depois, bastidor, as alunas que
-            acabaram de terminar o curso.
+            O trabalho pronto vive lá: antes e depois, bastidor, as alunas que
+            acabaram de terminar o curso. Aqui no site ficam o preço, a agenda e
+            o caminho até a cadeira.
           </p>
 
           <ul className="flex flex-col gap-3">

@@ -14,6 +14,15 @@ export type Servico = {
   descricao: string;
   categoria: "sobrancelha" | "maquiagem" | "curso";
   /**
+   * Selo curto na tabela de serviços.
+   *
+   * ⚠️ MUDOU DE CASA NA V2. Estes rótulos moravam em `data/fotos.ts`,
+   * pendurados na foto de cada serviço — e as fotos eram de clientes, que
+   * saíram do site inteiro. O rótulo nunca foi sobre a foto: "Mais pedido"
+   * é informação do SERVIÇO, e agora mora onde o serviço mora.
+   */
+  etiqueta?: string;
+  /**
    * Aparece na lista de agendar pelo site.
    *
    * O curso não aparece: são 130 min numa janela de 240 min de dia útil, ou
@@ -49,6 +58,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "A modelagem com aplicação de henna, que preenche as falhas e marca o desenho.",
     categoria: "sobrancelha",
+    etiqueta: "Mais pedido",
     agendavel: true,
   },
   {
@@ -82,6 +92,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "Maquiagem para festa, casamento, formatura e ensaio.",
     categoria: "maquiagem",
+    etiqueta: "Festa e formatura",
     agendavel: true,
   },
   {
@@ -93,6 +104,7 @@ export const SERVICOS: Servico[] = [
     descricao:
       "Aula individual e presencial pra você aprender a se maquiar sozinha. Você sai com certificado.",
     categoria: "curso",
+    etiqueta: "Com certificado",
     agendavel: false,
   },
 ];

@@ -1,13 +1,23 @@
 import Image from "next/image";
-import { FOTO_DO_SERVICO } from "@/data/fotos";
+import { TEXTURAS } from "@/data/fotos";
 import { NEGOCIO } from "@/data/negocio";
 import { buscarServico, formatarPreco } from "@/data/servicos";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { Env, Revela, Rotulo } from "../ui";
 
+/**
+ * O curso.
+ *
+ * ⚠️ A FOTO AQUI ERA A KAROL ENTREGANDO O CERTIFICADO A UMA ALUNA — a
+ * melhor foto do site pra vender curso, porque mostrava o fim da
+ * história. Ela saiu na v2: é o rosto de uma aluna.
+ *
+ * O selo "Com certificado" ficou, porque é verdade sobre o curso e não
+ * depende de mostrar ninguém recebendo o dele.
+ */
 export function Curso() {
   const curso = buscarServico("curso-automaquiagem");
-  const foto = FOTO_DO_SERVICO["curso-automaquiagem"];
+  const foto = TEXTURAS.pinceis;
   if (!curso) return null;
 
   return (

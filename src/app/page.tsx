@@ -6,7 +6,7 @@ import { Servicos } from "@/components/secoes/Servicos";
 import { Frase, Prova } from "@/components/secoes/Prova";
 import { Atendimento, ComoFunciona } from "@/components/secoes/Atendimento";
 import { Curso } from "@/components/secoes/Curso";
-import { Alunas, Trabalhos } from "@/components/secoes/Galeria";
+import { Trabalhos } from "@/components/secoes/Galeria";
 import { ChamadaFinal, Local } from "@/components/secoes/Local";
 import { Instagram } from "@/components/secoes/Instagram";
 import { Sobre } from "@/components/secoes/Sobre";
@@ -27,7 +27,6 @@ export default function Home() {
         <ComoFunciona />
         <Curso />
         <Trabalhos />
-        <Alunas />
         {/*
           O convite pro Instagram vem logo depois das fotos, que é onde a
           pessoa acabou de querer ver mais. Estava no fim, depois do endereço,

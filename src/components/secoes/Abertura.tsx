@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { CIDADES, NEGOCIO, type CidadeId } from "@/data/negocio";
-import { FOTOS } from "@/data/fotos";
+import { FOTOS, TEXTURAS } from "@/data/fotos";
 import { faixaDeDias } from "@/lib/agenda";
 import { Botao, Env } from "../ui";
 
@@ -42,7 +42,33 @@ export function Abertura() {
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[74%] bg-linear-to-t from-black/88 via-black/45 to-transparent lg:hidden" />
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 z-20 pb-[34px] text-white lg:static lg:flex lg:flex-col lg:justify-center lg:py-15 lg:text-tinta">
+        {/*
+          ⚠️ O PAPEL DE FUNDO É SÓ NO COMPUTADOR (`hidden lg:block`), e o
+          motivo é onde o texto cai em cada tela.
+
+          No celular a chamada fica POR CIMA da foto da Karol, com véu
+          escuro — uma segunda textura ali seria textura sobre textura
+          embaixo de texto branco.
+
+          No computador ela ocupa a coluna da direita, que era creme
+          chapado. O papel dá a mesma superfície de impressão do resto do
+          site, e o véu garante o contraste do título.
+        */}
+        <div className="relative isolate z-20 pb-[34px] text-white max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 lg:flex lg:flex-col lg:justify-center lg:py-15 lg:text-tinta">
+          <Image
+            src={TEXTURAS.papel.arquivo}
+            alt=""
+            aria-hidden="true"
+            width={TEXTURAS.papel.largura}
+            height={TEXTURAS.papel.altura}
+            sizes="60vw"
+            priority
+            className="absolute inset-0 -z-10 hidden size-full object-cover lg:block"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 -z-10 hidden bg-creme/70 lg:block"
+          />
           <Env>
             <h1 className="font-titulo text-[clamp(29px,8.6vw,60px)] leading-[1.02] font-light text-balance lg:text-[clamp(52px,4.6vw,74px)]">
               Sobrancelha, maquiagem

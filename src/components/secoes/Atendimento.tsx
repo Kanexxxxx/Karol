@@ -1,18 +1,29 @@
 import Image from "next/image";
-import { FOTOS } from "@/data/fotos";
+import { TEXTURAS } from "@/data/fotos";
 import { ANTES_DE_VIR } from "@/data/negocio";
 import { Cabeca, Env, Revela, Rotulo } from "../ui";
 
+/**
+ * O atendimento.
+ *
+ * ⚠️ A IMAGEM AQUI ERA UMA CLIENTE NA CADEIRA, com o resultado pronto.
+ * Saiu na v2 junto com todo rosto de cliente do site.
+ *
+ * O que entrou é o que está sobre a bancada: pincel, pinça e paleta. Não
+ * é substituto à altura em poder de venda — nenhuma textura é —, mas diz
+ * a mesma coisa que o texto ao lado diz, que é como o atendimento
+ * acontece, e não em quem.
+ */
 export function Atendimento() {
   return (
     <section className="py-15 lg:py-23">
       <Env className="grid items-center gap-9 lg:grid-cols-[1fr_0.95fr] lg:gap-16">
         <Revela>
           <Image
-            src={FOTOS.atendimento.arquivo}
-            alt={FOTOS.atendimento.alt}
-            width={FOTOS.atendimento.largura}
-            height={FOTOS.atendimento.altura}
+            src={TEXTURAS.ferramentas.arquivo}
+            alt={TEXTURAS.ferramentas.alt}
+            width={TEXTURAS.ferramentas.largura}
+            height={TEXTURAS.ferramentas.altura}
             sizes="(min-width: 1024px) 50vw, 100vw"
             className="w-full outline outline-linha"
           />
@@ -77,7 +88,27 @@ export function ComoFunciona() {
   ];
 
   return (
-    <section className="bg-ouro-fundo py-15 lg:py-23">
+    /*
+      ⚠️ A TEXTURA AQUI É FUNDO, E FUNDO TEM UMA REGRA SÓ: não disputar
+      com o texto. Por isso a `traco-ouro` e não uma das bonitas — ela é
+      quase toda parede lisa, com um traço no canto de baixo.
+
+      O véu de creme por cima garante o contraste em qualquer região da
+      imagem. Sem ele, a legibilidade passaria a depender de que parte da
+      foto calhou de ficar atrás de cada palavra.
+    */
+    <section className="relative isolate overflow-hidden bg-ouro-fundo py-15 lg:py-23">
+      <Image
+        src={TEXTURAS.tracoOuro.arquivo}
+        alt=""
+        aria-hidden="true"
+        width={TEXTURAS.tracoOuro.largura}
+        height={TEXTURAS.tracoOuro.altura}
+        sizes="100vw"
+        loading="lazy"
+        className="absolute inset-0 -z-10 size-full object-cover"
+      />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-ouro-fundo/82" />
       <Env>
         <Revela>
           <Cabeca

@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import { Cabecalho } from "@/components/Cabecalho";
 import { Rodape } from "@/components/Rodape";
 import { Env, Rotulo } from "@/components/ui";
-import { FOTO_DO_SERVICO } from "@/data/fotos";
 import { ANTES_DE_VIR, CIDADES, REGRAS, type CidadeId } from "@/data/negocio";
+import { TEXTURAS } from "@/data/fotos";
 import { SERVICOS_AGENDAVEIS, buscarServico, formatarDuracao, formatarPreco, precisaDeSinal, type Servico, valorDoSinal } from "@/data/servicos";
 import { bancoConfigurado } from "@/lib/banco";
 import { gradeDoDiaNaAgenda, horariosDoDia, mesDeVagas } from "@/lib/agendamentos";
@@ -96,42 +96,65 @@ function AvisoSemBanco() {
 
 function EscolherServico() {
   return (
-    <Env className="py-10 lg:py-14">
+    /*
+      O linho de fundo entrou na v2 pelo mesmo motivo do resto: sem as
+      fotos, a tela de agendar virou texto em cima de creme chapado.
+
+      ⚠️ SÓ NO PASSO 1, de propósito. Do passo 2 em diante a pessoa está
+      escolhendo dia e hora numa grade de botões — ali textura de fundo é
+      ruído atrás de coisa que precisa ser lida rápido e tocada certo.
+    */
+    <Env className="relative isolate overflow-hidden py-10 lg:py-14">
+      <Image
+        src={TEXTURAS.linho.arquivo}
+        alt=""
+        aria-hidden="true"
+        width={TEXTURAS.linho.largura}
+        height={TEXTURAS.linho.altura}
+        sizes="100vw"
+        className="absolute inset-0 -z-10 size-full object-cover"
+      />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-osso/78" />
+
       <Rotulo>Passo 1</Rotulo>
       <h1 className="mt-2.5 mb-8 font-titulo text-[clamp(30px,6vw,48px)] leading-[1.05] font-light">
         O que você quer fazer?
       </h1>
 
+      {/*
+        ⚠️ CADA CARTÃO AQUI TINHA UMA FOTO DE CLIENTE de 96 px ao lado do
+        nome. Saiu na v2 com o resto dos rostos.
+
+        O cartão sem foto ficou MELHOR pro que esta tela faz: ela não
+        precisa convencer ninguém — quem chegou no passo 1 já decidiu
+        marcar. Precisa ser tocável com o polegar e legível de relance,
+        e agora o nome e o preço ocupam a largura toda.
+      */}
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {SERVICOS_AGENDAVEIS.map((s) => {
-          const foto = FOTO_DO_SERVICO[s.id];
-          return (
-            <li key={s.id}>
-              <Link
-                href={`/agendar?servico=${s.id}`}
-                className="group flex gap-4 border border-linha bg-papel p-3 transition-colors hover:border-ouro-claro focus-visible:outline-2 focus-visible:outline-ouro"
-              >
-                <Image
-                  src={foto.arquivo}
-                  alt={foto.alt}
-                  width={foto.largura}
-                  height={foto.altura}
-                  sizes="96px"
-                  className="size-24 shrink-0 object-cover"
-                />
-                <span className="flex min-w-0 flex-col">
-                  <span className="font-titulo text-[21px] leading-tight">{s.nome}</span>
-                  <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-tinta-3">
-                    {formatarDuracao(s)}
-                  </span>
-                  <span className="mt-auto pt-2 font-titulo text-[22px] text-ouro tabular-nums">
-                    {formatarPreco(s.preco)}
-                  </span>
+        {SERVICOS_AGENDAVEIS.map((s) => (
+          <li key={s.id}>
+            <Link
+              href={`/agendar?servico=${s.id}`}
+              className="group flex min-h-[104px] flex-col border border-linha bg-papel p-4 transition-colors hover:border-ouro-claro focus-visible:outline-2 focus-visible:outline-ouro"
+            >
+              <span className="font-titulo text-[22px] leading-tight">{s.nome}</span>
+              <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-tinta-3">
+                {formatarDuracao(s)}
+              </span>
+              <span className="mt-auto flex items-baseline justify-between gap-3 pt-3">
+                <span className="font-titulo text-[24px] text-ouro lining-nums">
+                  {formatarPreco(s.preco)}
                 </span>
-              </Link>
-            </li>
-          );
-        })}
+                <span
+                  aria-hidden="true"
+                  className="text-[14px] text-ouro-claro transition-transform duration-300 group-hover:translate-x-1"
+                >
+                  →
+                </span>
+              </span>
+            </Link>
+          </li>
+        ))}
       </ul>
     </Env>
   );
