@@ -228,7 +228,9 @@ export default function Privacidade() {
             <p className="mt-12 border-t border-linha pt-6 text-[13px] text-tinta-3">
               <Link
                 href="/agendar"
-                className="text-ouro underline decoration-ouro-claro underline-offset-2"
+                // min-h-[44px]: medido em 18px num iPhone, abaixo do mínimo
+                // de toque. Ver a nota em components/Rodape.tsx.
+                className="inline-flex min-h-[44px] items-center text-ouro underline decoration-ouro-claro underline-offset-2"
               >
                 Voltar para o agendamento
               </Link>

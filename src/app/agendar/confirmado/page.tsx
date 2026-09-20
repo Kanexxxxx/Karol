@@ -273,7 +273,8 @@ function NaoEncontrado() {
       </p>
       <Link
         href="/agendar"
-        className="text-sm font-semibold text-ouro underline decoration-ouro-claro underline-offset-4"
+        // min-h-[44px]: medido em 19px num iPhone. Ver Rodape.tsx.
+        className="inline-flex min-h-[44px] items-center text-sm font-semibold text-ouro underline decoration-ouro-claro underline-offset-4"
       >
         Fazer um novo agendamento
       </Link>

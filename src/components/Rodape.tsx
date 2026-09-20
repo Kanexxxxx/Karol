@@ -16,6 +16,23 @@ import { Env } from "./ui";
  * Os halos são `aria-hidden` e `pointer-events-none`: são luz, não
  * conteúdo.
  */
+/*
+  ⚠️ OS LINKS DAS LISTAS TÊM `min-h-[44px]`, E NÃO É ENFEITE.
+
+  Medido em 18/09/2026, num iPhone contra a produção: os links de serviço
+  e de contato tinham 19px de altura. O mínimo que a Apple e o Google
+  recomendam pra alvo de toque é 44px — abaixo disso o dedo erra, e quem
+  usa o rodapé no celular é justamente quem já rolou o site inteiro
+  procurando uma coisa.
+
+  Metade dos links deste arquivo JÁ tinha a regra ("Agendar horário",
+  "Conhecer a Karol", "Privacidade"). As duas listas ficaram de fora e
+  ninguém viu até alguém medir.
+
+  O `gap` foi a ZERO de propósito: com 44px de altura, o respiro entre
+  uma linha e outra já vem do próprio alvo. Mantendo os 10px antigos, o
+  rodapé cresceria uns 100px no celular sem ganhar nada.
+*/
 export function Rodape() {
   const ano = new Date().getFullYear();
 
@@ -60,12 +77,12 @@ export function Rodape() {
               <h2 className="mb-[14px] text-[10px] font-bold uppercase tracking-[0.22em] text-ouro">
                 Serviços
               </h2>
-              <ul className="flex flex-col gap-[10px]">
+              <ul className="flex flex-col">
                 {SERVICOS.map((s) => (
                   <li key={s.id}>
                     <Link
                       href={s.categoria === "curso" ? "/#curso" : "/#servicos"}
-                      className="text-sm text-tinta-2 transition-colors hover:text-ouro"
+                      className="inline-flex min-h-[44px] items-center text-sm text-tinta-2 transition-colors hover:text-ouro"
                     >
                       {s.nome}
                     </Link>
@@ -78,13 +95,13 @@ export function Rodape() {
               <h2 className="mb-[14px] text-[10px] font-bold uppercase tracking-[0.22em] text-ouro">
                 Contato
               </h2>
-              <ul className="flex flex-col gap-[10px]">
+              <ul className="flex flex-col">
                 <li>
                   <a
                     href={linkWhatsapp()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-tinta-2 transition-colors hover:text-ouro"
+                    className="inline-flex min-h-[44px] items-center text-sm text-tinta-2 transition-colors hover:text-ouro"
                   >
                     WhatsApp {NEGOCIO.whatsapp.exibicao}
                   </a>
@@ -94,7 +111,7 @@ export function Rodape() {
                     href={`https://instagram.com/${NEGOCIO.instagram.studio}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-tinta-2 transition-colors hover:text-ouro"
+                    className="inline-flex min-h-[44px] items-center text-sm text-tinta-2 transition-colors hover:text-ouro"
                   >
                     @{NEGOCIO.instagram.studio}
                   </a>
@@ -104,7 +121,7 @@ export function Rodape() {
                     href={`https://instagram.com/${NEGOCIO.instagram.pessoal}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-tinta-2 transition-colors hover:text-ouro"
+                    className="inline-flex min-h-[44px] items-center text-sm text-tinta-2 transition-colors hover:text-ouro"
                   >
                     @{NEGOCIO.instagram.pessoal}
                   </a>
