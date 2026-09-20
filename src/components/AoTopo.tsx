@@ -149,6 +149,24 @@ function Topo() {
         link.hasAttribute("download") ||
         (link.target !== "" && link.target.toLowerCase() !== "_self")
       ) {
+        /*
+          ⚠️ E NÃO SEGURAMOS A ROLAGEM AQUI — foi tentado e removido.
+
+          Em 20/09/2026 eu medi Ctrl+clique numa âncora e vi a aba atual
+          escorregar 454px. Escrevi um restaurador de 400ms pra segurar.
+
+          Era medição errada: o Playwright rola a página pra desobstruir
+          o link quando ele está DEBAixo do cabeçalho fixo, e isso
+          acontece ANTES do clique. A sonda no próprio evento provou —
+          `rolagem=1546` já na hora do clique, não depois.
+
+          Refeito com o link longe do cabeçalho: rolagem 0 -> 0, e a aba
+          nova abre igual. Não há deriva nenhuma.
+
+          O restaurador saiu porque consertava um fantasma e cobrava caro:
+          400ms brigando com qualquer rolagem que a pessoa fizesse logo
+          depois de abrir a outra aba.
+        */
         return;
       }
 
