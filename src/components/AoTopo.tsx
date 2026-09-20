@@ -134,6 +134,25 @@ function Topo() {
       if (!link) return;
 
       /*
+        Ctrl/Cmd-clique, clique do meio, download e `_blank` pertencem ao
+        navegador: abrem outra aba ou baixam um arquivo sem tirar a pessoa
+        da tela atual. Interceptar qualquer um deles aqui faria a aba atual
+        rolar ou congelaria seu histórico mesmo sem ter navegado.
+      */
+      if (
+        e.defaultPrevented ||
+        e.button !== 0 ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey ||
+        link.hasAttribute("download") ||
+        (link.target !== "" && link.target.toLowerCase() !== "_self")
+      ) {
+        return;
+      }
+
+      /*
         ⚠️ LINK QUE APONTA PRA TELA ONDE ELA JÁ ESTÁ.
 
         O caso real: o nome "Karol Carvalho" no cabeçalho aponta pra `/`.
