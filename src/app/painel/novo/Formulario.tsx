@@ -208,7 +208,9 @@ function EscolhaDoWhatsapp({ valorInicial }: { valorInicial?: string }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className={ROTULO_CAMPO}>WhatsApp da cliente</span>
+      <span id="rotulo-whatsapp-cliente" className={ROTULO_CAMPO}>
+        WhatsApp da cliente
+      </span>
 
       <div className="flex gap-2">
         {([true, false] as const).map((opcao) => (
@@ -236,6 +238,7 @@ function EscolhaDoWhatsapp({ valorInicial }: { valorInicial?: string }) {
           defaultValue={valorInicial}
           placeholder="(18) 99999-9999"
           autoComplete="off"
+          aria-labelledby="rotulo-whatsapp-cliente"
           className={`${CAMPO} mt-1`}
         />
       ) : (

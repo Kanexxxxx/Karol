@@ -16,6 +16,7 @@ vi.mock("./conversas", () => ({ janelaAberta: vi.fn(async () => true) }));
 import { janelaAberta } from "./conversas";
 import { REGRAS } from "@/data/negocio";
 import {
+  ehDestinoDeAlerta,
   enviarEvento,
   enviarTemplatePelaMeta,
   notificadorConfigurado,
@@ -1201,6 +1202,24 @@ describe("o número do técnico", () => {
       const { temTecnicoSeparado } = await import("./notificacoes");
       expect(temTecnicoSeparado()).toBe(false);
     }
+  });
+
+  it("reconhece Karol e técnico como destinos internos mesmo sem DDI", () => {
+    process.env.TECNICO_WHATSAPP = "(16) 99155-7552";
+
+    expect(ehDestinoDeAlerta("5518997525291")).toBe(true);
+    expect(ehDestinoDeAlerta("18997525291")).toBe(true);
+    expect(ehDestinoDeAlerta("5516991557552")).toBe(true);
+    expect(ehDestinoDeAlerta("16991557552")).toBe(true);
+    expect(ehDestinoDeAlerta("5518999998888")).toBe(false);
+  });
+
+  it("não trata o mesmo técnico sem DDI como uma segunda pessoa", async () => {
+    process.env.KAROL_WHATSAPP = "5518997525291";
+    process.env.TECNICO_WHATSAPP = "18997525291";
+    const { temTecnicoSeparado } = await import("./notificacoes");
+
+    expect(temTecnicoSeparado()).toBe(false);
   });
 });
 

@@ -139,8 +139,27 @@ export function whatsappDoTecnico(): string {
 
 /** true quando existe um número de técnico separado do da Karol. */
 export function temTecnicoSeparado(): boolean {
-  const tecnico = (process.env.TECNICO_WHATSAPP || "").replace(/\D/g, "");
-  return Boolean(tecnico) && tecnico !== whatsappDaKarol();
+  const tecnico = so11(process.env.TECNICO_WHATSAPP);
+  return tecnico !== "" && tecnico !== so11(whatsappDaKarol());
+}
+
+/**
+ * O destino pertence a alguém que recebe alertas do próprio sistema?
+ *
+ * A resposta é usada no webhook de falha da Meta. Se o aviso enviado pra
+ * Karol ou pro técnico também falhar, a Meta devolve outro `failed`. Avisar
+ * de novo pelo mesmo canal criaria uma árvore infinita de novos avisos.
+ *
+ * Compara os últimos 11 dígitos porque as variáveis podem vir com ou sem o
+ * DDI 55. A Karol inclui tanto o número real quanto um eventual desvio de
+ * teste (`KAROL_WHATSAPP`); o técnico só entra quando foi configurado.
+ */
+export function ehDestinoDeAlerta(numero: string): boolean {
+  if (ehONumeroDaKarol(numero)) return true;
+
+  const alvo = so11(numero);
+  const tecnico = so11(process.env.TECNICO_WHATSAPP);
+  return alvo !== "" && tecnico !== "" && alvo === tecnico;
 }
 
 /**

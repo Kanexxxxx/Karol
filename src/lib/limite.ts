@@ -9,7 +9,7 @@ import "server-only";
  * formulário, resolve o caso comum sem depender de serviço externo.
  */
 
-type Registro = { contagem: number; inicio: number };
+type Registro = { contagem: number; expiraEm: number };
 
 const mapa = new Map<string, Registro>();
 const JANELA_MS = 60 * 60 * 1000; // 1 hora
@@ -20,9 +20,9 @@ export function dentroDoLimite(chave: string, max = MAX_PADRAO, janelaMs = JANEL
   const agora = Date.now();
   const r = mapa.get(chave);
 
-  if (!r || agora - r.inicio > janelaMs) {
-    mapa.set(chave, { contagem: 1, inicio: agora });
-    varrer(janelaMs);
+  if (!r || agora >= r.expiraEm) {
+    mapa.set(chave, { contagem: 1, expiraEm: agora + janelaMs });
+    varrer();
     return true;
   }
   if (r.contagem >= max) return false;
@@ -32,10 +32,12 @@ export function dentroDoLimite(chave: string, max = MAX_PADRAO, janelaMs = JANEL
 }
 
 /** Remove janelas velhas pra o Map não crescer sem limite. */
-function varrer(janelaMs: number) {
+function varrer() {
   const agora = Date.now();
   for (const [chave, r] of mapa) {
-    if (agora - r.inicio > janelaMs) mapa.delete(chave);
+    // Cada chave guarda a própria janela. Login usa 15 min; agendamento,
+    // 1 h. Usar a janela da chamada atual apagava o freio maior cedo.
+    if (agora >= r.expiraEm) mapa.delete(chave);
   }
 }
 

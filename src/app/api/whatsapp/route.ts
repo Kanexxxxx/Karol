@@ -9,6 +9,7 @@ import {
 import {
   ehONumeroDaKarol,
   avisarTecnico,
+  ehDestinoDeAlerta,
   enviarTexto,
   temTecnicoSeparado,
   whatsappDaKarol,
@@ -86,6 +87,20 @@ export async function POST(req: NextRequest) {
   const falha = lerFalhaDeEntrega(payload);
   if (falha) {
     console.error(`entrega falhou pro ${falha.para}: ${falha.codigo} ${falha.motivo}`);
+
+    /*
+      O `failed` também chega quando quem falhou foi um alerta que este
+      próprio bloco mandou pra Karol ou pro técnico. Reagir a esse recibo
+      com mais dois alertas repete o mesmo envio e cria um laço. O destino
+      interno continua registrado no log, mas nunca gera mensagem nova.
+    */
+    if (ehDestinoDeAlerta(falha.para)) {
+      return Response.json({
+        ok: true,
+        entregaFalhou: falha.codigo,
+        alertaIgnorado: "destino interno",
+      });
+    }
 
     /*
       ⚠️ DUAS MENSAGENS, PRA DUAS PESSOAS, DE PROPÓSITO.

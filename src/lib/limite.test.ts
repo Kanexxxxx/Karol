@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { dentroDoLimite, ipDoPedido } from "./limite";
+
+afterEach(() => vi.useRealTimers());
 
 describe("dentroDoLimite", () => {
   it("libera até o máximo e barra o excedente", () => {
@@ -18,12 +20,28 @@ describe("dentroDoLimite", () => {
   });
 
   it("reabre depois que a janela passa", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-20T12:00:00-03:00"));
     const chave = `j-${Math.random()}`;
     expect(dentroDoLimite(chave, 1, 10)).toBe(true);
     expect(dentroDoLimite(chave, 1, 10)).toBe(false);
-    return new Promise((r) => setTimeout(r, 20)).then(() => {
-      expect(dentroDoLimite(chave, 1, 10)).toBe(true);
-    });
+    vi.advanceTimersByTime(10);
+    expect(dentroDoLimite(chave, 1, 10)).toBe(true);
+  });
+
+  it("não encurta uma janela longa ao limpar outra chave", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-20T12:00:00-03:00"));
+
+    const agendamento = `agendar-${Math.random()}`;
+    const login = `login-${Math.random()}`;
+    expect(dentroDoLimite(agendamento, 1, 60 * 60 * 1000)).toBe(true);
+
+    // Criar uma chave de 15 min depois de 16 min aciona a limpeza. A chave
+    // de agendamento ainda deve continuar bloqueada por sua própria hora.
+    vi.advanceTimersByTime(16 * 60 * 1000);
+    expect(dentroDoLimite(login, 1, 15 * 60 * 1000)).toBe(true);
+    expect(dentroDoLimite(agendamento, 1, 60 * 60 * 1000)).toBe(false);
   });
 });
 
