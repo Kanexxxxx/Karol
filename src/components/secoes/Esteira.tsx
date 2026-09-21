@@ -1,16 +1,8 @@
-import Image from "next/image";
-import { TEXTURAS } from "@/data/fotos";
 import { Env } from "../ui";
-import { FilmeEsteira } from "./FilmeEsteira";
 
 /**
- * O vídeo original desta faixa continua aqui. Com movimento reduzido, a
- * textura fica parada até que a pessoa escolha assistir pelo botão.
- *
- * O filme mostra somente matéria: henna, ouro e papel. Não imita resultado
- * de atendimento nem usa rosto de cliente. A imagem estática continua
- * atrás dele como poster e como alternativa para quem reduz movimento ou
- * quando o navegador decide economizar dados.
+ * O filme de henna e ouro é o único fundo desta faixa. Ele é curto, sem áudio
+ * e otimizado para a web; o fundo escuro cobre o tempo de carregamento.
  */
 export function Esteira() {
   return (
@@ -18,16 +10,17 @@ export function Esteira() {
       aria-label="Precisão e movimento"
       className="relative isolate min-h-[300px] overflow-hidden bg-[#24160f] text-white sm:min-h-[390px] lg:min-h-[470px]"
     >
-      <Image
-        src={TEXTURAS.tracoHenna.arquivo}
-        alt=""
+      <video
         aria-hidden="true"
-        fill
-        sizes="100vw"
-        loading="eager"
-        className="absolute inset-0 -z-30 object-cover opacity-55"
-      />
-      <FilmeEsteira />
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 -z-20 size-full object-cover"
+      >
+        <source src="/motion/henna-ouro-loop.mp4" type="video/mp4" />
+      </video>
 
       <div
         aria-hidden="true"
@@ -38,7 +31,7 @@ export function Esteira() {
         className="absolute inset-3 border border-white/20 sm:inset-5"
       />
 
-      <Env className="flex min-h-[300px] items-end pt-20 pb-10 sm:min-h-[390px] sm:py-14 lg:min-h-[470px] lg:items-center">
+      <Env className="flex min-h-[300px] items-end py-10 sm:min-h-[390px] sm:py-14 lg:min-h-[470px] lg:items-center">
         <div className="max-w-[650px]">
           <p className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.28em] text-[#ead8b2] sm:text-[11px]">
             <span className="h-px w-10 bg-ouro-claro" aria-hidden="true" />
