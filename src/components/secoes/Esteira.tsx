@@ -1,9 +1,11 @@
 import Image from "next/image";
 import { TEXTURAS } from "@/data/fotos";
 import { Env } from "../ui";
+import { FilmeEsteira } from "./FilmeEsteira";
 
 /**
- * A assinatura de movimento da V2.
+ * O vídeo original desta faixa continua aqui. Com movimento reduzido, a
+ * textura fica parada até que a pessoa escolha assistir pelo botão.
  *
  * O filme mostra somente matéria: henna, ouro e papel. Não imita resultado
  * de atendimento nem usa rosto de cliente. A imagem estática continua
@@ -22,36 +24,10 @@ export function Esteira() {
         aria-hidden="true"
         fill
         sizes="100vw"
+        loading="eager"
         className="absolute inset-0 -z-30 object-cover opacity-55"
       />
-      <video
-        aria-hidden="true"
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="metadata"
-        poster={TEXTURAS.tracoHenna.arquivo}
-        className="absolute inset-0 -z-20 size-full object-cover motion-reduce:hidden"
-      >
-        {/*
-          ⚠️ 581 KB, e isso é uma decisão — não o que saiu do gerador.
-
-          O arquivo chegou com 3,4 MB: 1280x720 a 4 Mbps, bitrate de filme
-          pra um fundo que quase não se move. Recomprimido em H.264 CRF 30
-          (`-preset slow`, `-movflags +faststart`, sem trilha de áudio), caiu
-          seis vezes sem diferença visível — comparado quadro a quadro, no
-          mesmo instante do laço.
-
-          O peso importa aqui mais que na maioria dos sites: a cliente da
-          Karol abre isto no 4G de Pereira Barreto, e este vídeo fica logo
-          abaixo da dobra, competindo com o resto da página.
-
-          ⚠️ Se alguém trocar o arquivo, recomprima antes. Um MP4 direto do
-          gerador é sempre grande demais pra fundo de seção.
-        */}
-        <source src="/motion/henna-ouro-loop.mp4" type="video/mp4" />
-      </video>
+      <FilmeEsteira />
 
       <div
         aria-hidden="true"
@@ -62,7 +38,7 @@ export function Esteira() {
         className="absolute inset-3 border border-white/20 sm:inset-5"
       />
 
-      <Env className="flex min-h-[300px] items-end py-10 sm:min-h-[390px] sm:py-14 lg:min-h-[470px] lg:items-center">
+      <Env className="flex min-h-[300px] items-end pt-20 pb-10 sm:min-h-[390px] sm:py-14 lg:min-h-[470px] lg:items-center">
         <div className="max-w-[650px]">
           <p className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.28em] text-[#ead8b2] sm:text-[11px]">
             <span className="h-px w-10 bg-ouro-claro" aria-hidden="true" />
