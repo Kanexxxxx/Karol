@@ -71,7 +71,7 @@ create index bloqueios_periodo_idx on bloqueios using gist (periodo);
 -- A Meta só deixa mandar texto livre (e de graça) nas 24 h seguintes à
 -- última mensagem DA CLIENTE. Fora disso, recusa com 131047 e só passa
 -- template pago. Esta tabela guarda até quando a janela de cada número
--- está aberta. Ver `migracao-02-conversas.sql` e WHATSAPP.md.
+-- está aberta. Ver `migracao-02-conversas.sql` e docs/whatsapp.md.
 --
 -- A janela é da pessoa, não do agendamento: a mesma cliente pode ter vários
 -- agendamentos e uma conversa só.

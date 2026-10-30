@@ -68,7 +68,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# O Caddy so manda trafego pra ca quando isto passa.
+# O Docker so marca o container como saudavel quando isto passa.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3   CMD curl -fsS http://127.0.0.1:3000/robots.txt || exit 1
 
 CMD ["node", "server.js"]

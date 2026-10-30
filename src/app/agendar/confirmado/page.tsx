@@ -80,7 +80,7 @@ function Sucesso({
     2. abre a **janela de 24 h** da Meta. Mensagem que a empresa manda sem
        a cliente ter falado primeiro é template pago e precisa de
        aprovação. Depois deste toque, tudo o que sair nas 24 h seguintes é
-       texto livre e de graça. Ver WHATSAPP.md, seção 2.
+       texto livre e de graça. Ver docs/whatsapp.md, "A regra que decide o custo".
 
     Por isso a mensagem sai escrita da cliente PRA Karol, e não o contrário.
 

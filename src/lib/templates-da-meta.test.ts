@@ -26,7 +26,7 @@ import { templateDoEvento, type DadosAgendamento } from "./notificacoes";
  * morre no caminho. Um `components` com 4 parâmetros num template que
  * espera 5 é uma linha inocente que ninguém revisaria.
  *
- * A contagem abaixo saiu de `TEMPLATES-WHATSAPP.md`, que é a cópia do que
+ * A contagem abaixo saiu de `docs/templates-whatsapp.md`, que é a cópia do que
  * está aprovado no WhatsApp Manager. Se alguém editar um template lá e
  * mudar o número de `{{n}}`, este teste é o que avisa.
  */

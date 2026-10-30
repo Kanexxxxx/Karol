@@ -32,7 +32,7 @@ import { formatarWhatsapp } from "@/lib/telefone";
  * Duas coisas acontecem quando a cliente escreve:
  *
  * 1. **Abre a janela de 24 h**, que é o que torna todo o resto grátis.
- *    Ver `lib/conversas.ts` e WHATSAPP.md, seção 2.
+ *    Ver `lib/conversas.ts` e docs/whatsapp.md, "A regra que decide o custo".
  * 2. **A resposta automática sai**, quando dá pra responder com certeza.
  *
  * Configuração na Meta: Webhooks → Callback URL `<site>/api/whatsapp`,

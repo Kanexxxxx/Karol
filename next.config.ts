@@ -50,7 +50,7 @@ const CABECALHOS = [
  * é o build da VPS, e `npm run build` sozinho continua sendo, byte por
  * byte, o mesmo build que a Vercel faz hoje.
  *
- * Ver `vps/README.md`.
+ * Ver `docs/vps.md`.
  */
 const nextConfig: NextConfig = {
   ...(process.env.BUILD_STANDALONE ? { output: "standalone" as const } : {}),

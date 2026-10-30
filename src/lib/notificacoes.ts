@@ -703,7 +703,7 @@ export function metaConfigurada(): boolean {
  * janela a Meta recusa com `131047`, e é esperado: quem cai aí é o lembrete
  * da véspera, que precisaria de template aprovado e é pago.
  *
- * Ver WHATSAPP.md.
+ * Ver docs/whatsapp.md.
  */
 async function enviarPelaMeta(para: string, texto: string): Promise<Response> {
   return fetch(
@@ -746,7 +746,7 @@ export type ComponenteTemplate =
  * texto. Com payload volta o id exato ("confirmar"), igual aos botões
  * interativos. A ORDEM aqui tem que ser a ordem dos botões cadastrados na
  * Meta, e a QUANTIDADE também — a Meta recusa o envio se sobrar ou faltar
- * payload. Ver TEMPLATES-WHATSAPP.md.
+ * payload. Ver docs/templates-whatsapp.md.
  */
 function botoesRapidos(ids: readonly string[]): ComponenteTemplate[] {
   return ids.map((id, i) => ({
@@ -831,7 +831,7 @@ export function agendamentoDoBotao(payload: string): string | null {
  * Necessário quando a janela de 24 h da conversa está fechada (ex: cliente
  * marcou pelo site e nunca conversou antes, ou lembrete de véspera).
  *
- * Ver TEMPLATES-WHATSAPP.md.
+ * Ver docs/templates-whatsapp.md.
  */
 export async function enviarTemplatePelaMeta(
   para: string,
@@ -1083,7 +1083,7 @@ export const BOTOES_SINAL_VENCIDO = [
  * Manda texto com botões de resposta rápida.
  *
  * ⚠️ Só funciona **dentro da janela de 24 h**, igual ao texto livre. Fora
- * dela quem resolve é template com botões — ver TEMPLATES-WHATSAPP.md.
+ * dela quem resolve é template com botões — ver docs/templates-whatsapp.md.
  */
 async function enviarComBotoes(
   para: string,

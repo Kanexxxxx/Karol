@@ -87,7 +87,7 @@ export async function rodarLembretes(): Promise<{
     botão de novo faz sentido: o que faltou continua na fila.
 
     Ainda NÃO é "entregue". A Meta aceita com 200 e só depois diz se
-    entregou; a falha chega pelo webhook, em `statuses`. Ver WHATSAPP.md.
+    entregou; a falha chega pelo webhook, em `statuses`. Ver docs/whatsapp.md.
   */
   return { lembretes, agradecimentos };
 }
