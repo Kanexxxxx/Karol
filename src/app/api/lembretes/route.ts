@@ -9,9 +9,10 @@ import { expirarPendentes, rodarLembretes } from "@/lib/lembretes";
  * ⚠️ AQUI JÁ EXISTIU UM `?tipo=curto`, pro aviso de ~30 min antes. Foi
  * arrancado em 13/09/2026 junto com o resto daquele aviso — a Karol nunca
  * pediu. Se alguém achar um cron externo velho ainda batendo com esse
- * parâmetro, ele é ignorado: a varredura da véspera é a única que existe,
- * e bater nela mais de uma vez por dia manda o lembrete de amanhã várias
- * vezes pra mesma cliente. **Desligue o cron, não confie no parâmetro.**
+ * parâmetro, ele é ignorado: a varredura da véspera é a única que existe.
+ * Quem já recebeu sai da próxima varredura pela marca de envio (ver
+ * lib/lembretes.ts). Um cron antigo ainda cria chamadas desnecessárias:
+ * **desligue-o, não confie no parâmetro.**
  *
  * Autenticação: `Authorization: Bearer $CRON_SECRET`. O cron da Vercel
  * manda esse cabeçalho sozinho quando `CRON_SECRET` existe no ambiente; no
