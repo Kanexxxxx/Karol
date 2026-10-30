@@ -39,8 +39,8 @@ marcado como **conferir**: não dá pra ver pelo repositório.
   erro nenhum chega em ninguém; sem a segunda, não há lembrete.
 - [ ] **Nenhum cron externo antigo ligado.** Se alguém criou um no
   cron-job.org para o lembrete de 30 min (`?tipo=curto`), desligue: o
-  parâmetro não existe mais e ele mandaria o lembrete da véspera várias
-  vezes por dia.
+  parâmetro não existe mais. A marca de envio evita reenvio nas próximas
+  varreduras, mas esse cron continua provocando chamadas desnecessárias.
 
 ---
 
