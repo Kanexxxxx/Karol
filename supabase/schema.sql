@@ -22,7 +22,9 @@ create table agendamentos (
 
   -- quem
   cliente_nome text not null check (length(trim(cliente_nome)) between 2 and 120),
-  cliente_whatsapp text not null check (cliente_whatsapp ~ '^[0-9]{10,13}$'),
+  -- Sem `not null`, de propósito: agendamento feito no painel pode não ter
+  -- telefone ("Não tenho"), e aí grava null. Ver migracao-07.
+  cliente_whatsapp text check (cliente_whatsapp ~ '^[0-9]{10,13}$'),
 
   -- o que
   servico_id text not null,
@@ -71,7 +73,7 @@ create index bloqueios_periodo_idx on bloqueios using gist (periodo);
 -- A Meta só deixa mandar texto livre (e de graça) nas 24 h seguintes à
 -- última mensagem DA CLIENTE. Fora disso, recusa com 131047 e só passa
 -- template pago. Esta tabela guarda até quando a janela de cada número
--- está aberta. Ver `migracao-02-conversas.sql` e WHATSAPP.md.
+-- está aberta. Ver `migracao-02-conversas.sql` e docs/whatsapp.md.
 --
 -- A janela é da pessoa, não do agendamento: a mesma cliente pode ter vários
 -- agendamentos e uma conversa só.

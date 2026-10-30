@@ -47,9 +47,9 @@ import { lerIntencao, type Intencao, type MensagemRecebida } from "./webhook-met
  *
  * Fica FORA da rota de propósito. A rota cuida de assinatura, parse e
  * repetição; aqui mora a decisão. Foi um bug de costura entre duas partes
- * certas que derrubou os bloqueios de dia inteiro (ver PROGRESSO.md, etapa
- * 11) — a lição foi testar a junção, e só dá pra testar a junção se ela
- * estiver num módulo que o teste consegue importar.
+ * certas que derrubou os bloqueios de dia inteiro (ver docs/incidentes.md,
+ * "teste a costura") — a lição foi testar a junção, e só dá pra testar a
+ * junção se ela estiver num módulo que o teste consegue importar.
  *
  * ⚠️ A AGENDA SÓ MUDA NUM LUGAR: `decisaoDaKarol`, depois de ela tocar em
  * "Confirmar". Em nenhum outro caminho — nem a cliente escrevendo, nem a

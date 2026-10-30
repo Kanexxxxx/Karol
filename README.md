@@ -1,221 +1,165 @@
+<div align="center">
+
+<img src="src/app/apple-icon.png" alt="" width="72" />
+
 # Studio Karol Carvalho
 
-Sistema de agendamento para profissional autônoma — site público, agenda
-online, pagamento de entrada por PIX e atendimento automático no WhatsApp.
+**Site, agenda online, entrada por PIX e atendimento automático no WhatsApp**
+para uma profissional autônoma de beleza.
 
-Feito para a Karol, maquiadora e designer de sobrancelhas em **Pereira Barreto**
-e **Bandeirantes D'Oeste (SP)**, e escrito para servir de base a qualquer
-negócio de atendimento por hora marcada.
+Next.js 16 · React 19 · Tailwind 4 · Supabase · WhatsApp Cloud API · DeepSeek · Vercel
 
-- **Stack:** Next.js 16 (App Router) · React 19 · Tailwind 4 · Supabase (Postgres)
-- **Mensagens:** WhatsApp Cloud API (Meta)
-- **Assistente:** DeepSeek, com OpenAI de reserva
-- **Deploy:** Vercel
+[Site no ar](https://karol-zeta.vercel.app) · [Estado atual](docs/estado-atual.md) · [Arquitetura](docs/arquitetura.md)
+
+</div>
 
 ---
 
-## O que o sistema faz
+Feito para a **Karol**, maquiadora e designer de sobrancelhas que atende em
+**Pereira Barreto** e **Bandeirantes D'Oeste (SP)** — e escrito para servir
+de base a qualquer negócio de atendimento com hora marcada.
 
-**Para a cliente**
+**Para a cliente:** escolhe serviço, dia e hora no site (a grade já sabe em
+que cidade a Karol está em cada dia); recebe a confirmação no WhatsApp;
+paga a entrada por PIX com o valor dentro do QR; pede pra remarcar por
+botão.
 
-1. Escolhe serviço, dia e hora no site — a grade já respeita o expediente, a
-   cidade do dia, a duração de cada procedimento e o intervalo entre pessoas.
-2. Recebe a confirmação no WhatsApp na hora, com endereço e preparo.
-3. Em serviços acima de um valor mínimo, recebe o **PIX da entrada** com o valor
-   já embutido no QR Code e no copia e cola. O horário fica reservado por um
-   prazo; passou, volta pra agenda sozinho.
-4. Manda o comprovante pelo WhatsApp e é avisada quando ele é aceito.
-5. Pede pra remarcar por botão, escolhe um horário livre numa lista — e o
-   horário antigo continua valendo até a profissional aprovar.
+**Para a Karol:** painel no celular com agenda, busca, bloqueios e
+relatório do mês — e um **assistente no WhatsApp**: ela escreve *"como tá a
+agenda amanhã?"* ou *"cancela a da Ana"* e a IA responde com a agenda na mão.
 
-**Para a profissional**
-
-- **Painel** no celular: agenda por período, busca por nome ou telefone,
-  confirmar pagamento, marcar quem veio e quem faltou, bloquear dias.
-- **Relatório mensal**: faturamento, ticket médio, faltas, quem voltou,
-  comparação com o mês anterior.
-- **Assistente no WhatsApp**: ela escreve como escreveria pra uma secretária
-  (*"como tá a agenda amanhã?"*, *"cancela a da Ana"*) e a IA responde com a
-  agenda na mão.
+> [!IMPORTANT]
+> **A agenda só muda depois de um toque humano.** A IA nunca escreve na
+> agenda: ela propõe, manda um botão, e a mudança só acontece quando a
+> pessoa confirma. Isso é garantido por teste, não por instrução no prompt
+> — ver [`docs/arquitetura.md`](docs/arquitetura.md).
 
 ---
 
-## A regra que sustenta o resto
+## Comece por aqui
 
-> **A agenda só muda depois de um toque humano.**
+| Você vai… | Leia, nesta ordem |
+|---|---|
+| **entender o projeto** | este README → [`docs/estado-atual.md`](docs/estado-atual.md) → [`docs/contexto.md`](docs/contexto.md) |
+| **mexer no código** | [`docs/arquitetura.md`](docs/arquitetura.md) → [`docs/incidentes.md`](docs/incidentes.md) → [`AGENTS.md`](AGENTS.md) |
+| **mexer em mensagem de WhatsApp** | [`docs/whatsapp.md`](docs/whatsapp.md) → [`docs/templates-whatsapp.md`](docs/templates-whatsapp.md) → [`docs/incidentes.md`](docs/incidentes.md) |
+| **mexer no assistente da Karol** | [`docs/assistente.md`](docs/assistente.md) |
+| **subir ou operar a cópia reserva** | [`docs/vps.md`](docs/vps.md) |
+| **trabalhar como agente de IA** | [`AGENTS.md`](AGENTS.md) (o `CLAUDE.md` aponta pra ele) |
 
-A IA nunca escreve na agenda. Ela monta uma proposta, manda um botão, e a
-mudança só acontece quando a profissional confirma. Isso é garantido por
-código, não por instrução no prompt:
+### Toda a documentação
 
-- `atendente.ts` — o caminho das **clientes** — tem um teste que lê o próprio
-  código-fonte e reprova se ele importar qualquer função que escreva na agenda;
-- `executar()` só é alcançável a partir do toque no botão, e um teste conta as
-  chamadas pra impedir que apareça um segundo caminho;
-- toda proposta é guardada com prazo de validade e reservada contra toque duplo.
-
-O motivo é simples: um modelo de linguagem entende *"cancela a de amanhã"* e
-cancela a pessoa errada com convicção total, sem nenhum erro na tela. Quem
-descobre é a cliente, na porta.
+| Arquivo | O que tem |
+|---|---|
+| [`docs/estado-atual.md`](docs/estado-atual.md) | o que está no ar, o que falta e quem decide — **o único lugar com pendências** |
+| [`docs/contexto.md`](docs/contexto.md) | o acordo, quem é a cliente, serviços, decisões dela e do Kainã, protótipos de design |
+| [`docs/arquitetura.md`](docs/arquitetura.md) | regras que o código não pode quebrar, mapa do código, banco, fluxos, testes |
+| [`docs/whatsapp.md`](docs/whatsapp.md) | custo da Meta, o que o código envia e recebe, como ligar do zero, códigos de erro |
+| [`docs/templates-whatsapp.md`](docs/templates-whatsapp.md) | os 7 templates aprovados, com o texto exato |
+| [`docs/assistente.md`](docs/assistente.md) | a IA da Karol: o que faz, o que não faz, modelo e custo |
+| [`docs/vps.md`](docs/vps.md) | a cópia reserva: a máquina, operar, credenciais, virada |
+| [`docs/incidentes.md`](docs/incidentes.md) | o que já quebrou no ar e as lições que viraram regra |
+| [`docs/historico.md`](docs/historico.md) | a linha do tempo, com o commit de cada marco |
 
 ---
 
 ## Rodando localmente
 
+Precisa de **Node.js 20.9 ou mais novo** (a imagem Docker usa o 24).
+
 ```bash
 npm install
-cp .env.example .env.local   # e preencha (veja abaixo)
+cp .env.example .env.local   # e preencha o que for usar
 npm run dev                  # http://localhost:3000
 ```
 
-O **site institucional funciona sem nenhuma variável**. Agenda, painel, WhatsApp
-e assistente ligam por partes, conforme as variáveis existirem — nada quebra
-enquanto faltar alguma, a funcionalidade só não acontece.
+O **site institucional funciona sem nenhuma variável**. Agenda, painel,
+WhatsApp e assistente ligam por partes, conforme as variáveis existirem —
+enquanto faltar alguma, a funcionalidade só não acontece, e nada quebra.
+Cada variável está explicada em [`.env.example`](.env.example).
 
-### Variáveis de ambiente
+| Para ligar… | Variáveis |
+|---|---|
+| agenda e painel | `NEXT_PUBLIC_SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY` · `SENHA_PAINEL` · `SESSAO_SECRET` |
+| WhatsApp | `META_TOKEN` · `META_PHONE_NUMBER_ID` · `META_APP_SECRET` · `META_VERIFY_TOKEN` |
+| lembretes | `CRON_SECRET` |
+| alertas de erro | `TECNICO_WHATSAPP` |
+| assistente | `DEEPSEEK_API_KEY` (e, opcional, `OPENAI_API_KEY` de reserva) |
+| domínio público | `NEXT_PUBLIC_SITE_URL` (obrigatória fora da Vercel) |
 
-Todas em [`.env.example`](./.env.example).
-
-| Variável | Pra quê | Sem ela |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Projeto Supabase | agenda e painel não funcionam |
-| `SUPABASE_SERVICE_ROLE_KEY` | Chave de serviço (**secreta**, só servidor) | idem |
-| `SENHA_PAINEL` | Senha de acesso ao `/painel` | painel fechado |
-| `SESSAO_SECRET` | Assina o cookie de sessão (`openssl rand -base64 32`) | idem |
-| `META_TOKEN` | Token da WhatsApp Cloud API | nenhuma mensagem sai |
-| `META_PHONE_NUMBER_ID` | Número remetente na Meta | idem |
-| `META_APP_SECRET` | Confere a assinatura do webhook | o que a cliente responde não chega |
-| `META_VERIFY_TOKEN` | Handshake do webhook | a Meta não valida a URL |
-| `DEEPSEEK_API_KEY` | Assistente da profissional | ele responde com o link do painel |
-| `OPENAI_API_KEY` | Reserva, quando o DeepSeek cai | sem rede de segurança |
-| `CRON_SECRET` | Protege `/api/lembretes` | lembretes desligados |
-| `TECNICO_WHATSAPP` | Quem recebe os **erros técnicos** | eles vão pra profissional |
-| `KAROL_WHATSAPP` | Desvia os avisos dela (só pra testar) | usa o número do site |
-| `NEXT_PUBLIC_SITE_URL` | Domínio público (sitemap, prévia de link) | usa o da Vercel |
-| ~~`TZ`~~ | **Não use** — a Vercel reserva o nome. O fuso está em `negocio.ts` | — |
-
-> ⚠️ `KAROL_WHATSAPP` é a armadilha mais cara do projeto. Enquanto ela existir,
-> a profissional **não recebe agendamento nenhum** — e nada quebra pra
-> denunciar. Apague na entrega.
+> [!WARNING]
+> **`KAROL_WHATSAPP` é só para teste.** Enquanto ela existir, a Karol não
+> recebe agendamento nenhum — e nada quebra pra denunciar. Apague antes de
+> entregar. E não defina `TZ`: a Vercel reserva o nome; o fuso está no
+> código (`FUSO` em `src/data/negocio.ts`).
 
 ### Banco de dados
 
-No SQL Editor do Supabase, **nesta ordem**:
+No SQL Editor do Supabase, num banco **novo**:
 
-1. [`supabase/schema.sql`](./supabase/schema.sql) — tabelas, a trava
-   anti-conflito (`sem_choque`) e as policies de RLS;
-2. as migrações `migracao-01` … `migracao-06`, em ordem numérica.
-
-Cada migração explica no topo o defeito que a originou. A `04` está marcada
-como obsoleta e não deve rodar em banco novo.
-
-> ⚠️ **Migração antes do deploy.** Uma coluna que falta não quebra a tela: a
-> consulta volta vazia e a funcionalidade simplesmente não acontece, em
-> silêncio. Já aconteceu.
-
----
-
-## Scripts
-
-```bash
-npm run dev         # desenvolvimento
-npm run build       # build de produção
-npm start           # sobe o build
-npm run lint        # eslint (zero warnings)
-npm test            # vitest — 573 testes
-npm run test:watch  # vitest em modo contínuo
+```text
+supabase/schema.sql
+supabase/migracao-03-remarcacoes.sql
+supabase/migracao-05-assistente.sql
+supabase/migracao-06-lembretes-sem-repetir.sql
 ```
 
----
+As migrações 01, 02 e 07 já estão dentro do `schema.sql` (a 02 falha num
+banco novo), e a 04 é obsoleta. Detalhes em
+[`docs/arquitetura.md`](docs/arquitetura.md#banco-de-dados).
 
-## Como está organizado
+### Scripts
 
-```
-src/
-  app/
-    page.tsx               home
-    agendar/               serviço → dia → hora → dados → confirmado (+ PIX)
-    sobre/ privacidade/    páginas públicas
-    painel/                área da profissional (protegida por proxy.ts)
-      page.tsx               agenda, por período
-      relatorio/             números do mês
-      bloqueios/             férias, feriado, curso
-      notificacoes/          o que está ligado e o que não está
-      novo/                  agendamento na mão
-    api/
-      whatsapp/              webhook da Meta (recebe mensagem e falha de entrega)
-      lembretes/             cron diário
-      pix/[id]/              gera o QR do PIX
-  components/              cabeçalho, rodapé, seções da home, UI compartilhada
-  data/                    negocio.ts, servicos.ts, fotos.ts — a fonte da verdade
-  lib/
-    agenda.ts                motor de horários (função pura, sem Date por dentro)
-    agendamentos.ts          leitura e escrita da agenda
-    pix.ts                   BR Code do PIX (EMV®QRCPS / manual do BACEN)
-    qr.ts                    desenha o QR sem dependência externa
-    notificacoes.ts          textos, templates da Meta e envio
-    webhook-meta.ts          lê o payload, confere a assinatura HMAC
-    recepcao.ts              decide se quem escreveu é cliente ou a profissional
-    atendente.ts             o caminho das CLIENTES (não pode escrever na agenda)
-    assistente.ts            o caminho DELA (IA com ferramentas e botão)
-    conversas.ts             a janela de 24 h do WhatsApp
-    sessao.ts                sessão do painel (cookie assinado, sem biblioteca)
-  proxy.ts                 protege /painel/*
-supabase/                  schema + migrações numeradas
-ferramentas/               scripts Python de processamento das fotos
-test/                      utilitários de teste (mock do Supabase)
-```
-
-Conteúdo do site — preços, textos, horários, fotos — sai de `src/data/`. Nada de
-regra de negócio fica espalhado por componente.
-
----
-
-## Sobre os testes
-
-573 testes, e quase nenhum testa "a função devolve o valor certo". Eles testam
-**o que dá errado em silêncio**: mensagem que a Meta aceita e não entrega,
-lembrete que sai duas vezes, PIX apontando pra conta errada, template com uma
-variável a menos.
-
-Quando um teste existe, o comentário em cima dele diz **qual erro real o
-originou** — com data. Vale ler antes de mudar o que ele cobra.
-
-O projeto usa teste de mutação à mão como prática: quebra-se a linha de
-propósito e confirma-se que algum teste fica vermelho. Teste que não pega a
-mutação não está protegendo nada.
-
----
-
-## Deploy (Vercel)
-
-1. Importe o repositório.
-2. Configure as variáveis da tabela acima.
-3. Rode o schema e as migrações no Supabase **antes** do primeiro deploy.
-4. Na Meta: webhook em `<site>/api/whatsapp`, com o campo `messages` assinado.
-5. O cron de lembretes (`vercel.json`) roda sozinho, protegido por `CRON_SECRET`.
-
-> Variável nova **só vale no build seguinte**. Depois de mexer nelas, refaça o
-> deploy — isso já mordeu duas vezes aqui.
-
----
-
-## Documentação
-
-| Arquivo | O quê |
+| Comando | O que faz |
 |---|---|
-| [`PROGRESSO.md`](./PROGRESSO.md) | A história do projeto: decisões, o que a cliente respondeu, o que já foi tentado e rejeitado |
-| [`WHATSAPP.md`](./WHATSAPP.md) | Como a Cloud API funciona aqui — janela de 24 h, custos, erros |
-| [`TEMPLATES-WHATSAPP.md`](./TEMPLATES-WHATSAPP.md) | Os 7 templates aprovados na Meta, com o texto exato |
-| [`ASSISTENTE.md`](./ASSISTENTE.md) | O assistente de WhatsApp: o que faz, o que não faz |
-| [`AGENTS.md`](./AGENTS.md) | Aviso sobre o Next.js 16 para quem for mexer no código |
-| [`INCIDENTES.md`](./INCIDENTES.md) | ⚠️ **Leia antes de mexer em notificação.** O que já quebrou no ar, a causa de verdade, e o que já está resolvido |
-| [`vps/README.md`](./vps/README.md) | A cópia reserva na VPS: o que muda sem a Vercel |
+| `npm run dev` | desenvolvimento |
+| `npm run build` · `npm start` | build de produção e servidor |
+| `npm run lint` | ESLint |
+| `npx next typegen && npx tsc --noEmit` | checagem de tipos (o typegen gera os tipos de rota do Next) |
+| `npm test` | Vitest — a suíte inteira roda em ~5 s |
+| `npx vitest run caminho/do/arquivo.test.ts` | um arquivo de teste |
 
 ---
 
-## Licença e reuso
+## Deploy
 
-Projeto privado. O conteúdo de `src/data/`, as fotos em `public/fotos/` e os
-textos são da Karol e **não são reutilizáveis** — trocar `src/data/` é o
-primeiro passo pra adaptar isto a outro negócio.
+**Vercel** (produção), com deploy automático a cada push na `main`:
+
+1. Importe o repositório e configure as variáveis.
+2. Rode o banco (acima) **antes** do primeiro deploy — coluna que falta
+   não dá erro, só faz a funcionalidade sumir.
+3. Na Meta: webhook em `<site>/api/whatsapp`, campo `messages` assinado
+   ([`docs/whatsapp.md`](docs/whatsapp.md)).
+4. O cron de lembretes (`vercel.json`) roda sozinho, protegido por
+   `CRON_SECRET`.
+
+> [!NOTE]
+> Variável nova **só vale no build seguinte**. Depois de mexer nelas, faça
+> redeploy.
+
+Há também uma **cópia reserva em Docker** para uma VPS, em [`vps/`](vps/) —
+ver [`docs/vps.md`](docs/vps.md).
+
+---
+
+## Estrutura
+
+```text
+src/app/          páginas e rotas (site público, /agendar, /painel, /api)
+src/components/   cabeçalho, rodapé, seções da home, UI compartilhada
+src/data/         negocio.ts · servicos.ts · fotos.ts — conteúdo e regras do negócio
+src/lib/          toda a lógica: agenda, WhatsApp, assistente, PIX, sessão
+supabase/         schema + migrações numeradas
+test/             mock do Supabase para os testes
+ferramentas/      scripts de apoio (gabarito do QR, varredura com navegador)
+vps/              Dockerfile e docker-compose da cópia reserva
+docs/             a documentação
+```
+
+Preço, texto, horário e foto saem de `src/data/`. Nada de regra de negócio
+espalhada por componente — trocar `src/data/` é o primeiro passo para
+adaptar o sistema a outro negócio.
+
+> [!NOTE]
+> Projeto privado. O conteúdo de `src/data/`, as fotos em `public/fotos/` e
+> os textos são da Karol e **não são reutilizáveis**.

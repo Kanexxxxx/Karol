@@ -4,7 +4,7 @@
 #   cp ../.env.example .env     <- e preencha quando for a hora
 #   docker compose up -d --build
 #
-# ⚠️ ESTA VPS NAO E SO NOSSA. Ver GUIA-DA-VPS.md na raiz de /opt.
+# ⚠️ ESTA VPS NAO E SO NOSSA. Ver docs/vps.md (e /opt/GUIA-DA-VPS.md no servidor).
 #
 # Em 17/09/2026 ela ja rodava 5 containers do eurora-volkerr, no ar ha
 # semanas, e o nginx DELES e dono das portas 80 e 443. Por isso aqui:
@@ -24,7 +24,7 @@
 # fecha o terminal.
 #
 # QUANDO O DOMINIO CHEGAR: um server block no nginx do volkerr apontando
-# pra 127.0.0.1:3100. Ver GUIA-DA-VPS.md.
+# pra 127.0.0.1:3100. Ver docs/vps.md.
 
 services:
   site:
