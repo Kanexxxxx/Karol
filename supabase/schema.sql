@@ -22,7 +22,9 @@ create table agendamentos (
 
   -- quem
   cliente_nome text not null check (length(trim(cliente_nome)) between 2 and 120),
-  cliente_whatsapp text not null check (cliente_whatsapp ~ '^[0-9]{10,13}$'),
+  -- Sem `not null`, de propósito: agendamento feito no painel pode não ter
+  -- telefone ("Não tenho"), e aí grava null. Ver migracao-07.
+  cliente_whatsapp text check (cliente_whatsapp ~ '^[0-9]{10,13}$'),
 
   -- o que
   servico_id text not null,

@@ -104,8 +104,8 @@ supabase/migracao-05-assistente.sql
 supabase/migracao-06-lembretes-sem-repetir.sql
 ```
 
-As migrações 01 e 02 já estão dentro do `schema.sql` (a 02 falha num banco
-novo), e a 04 é obsoleta. Detalhes em
+As migrações 01, 02 e 07 já estão dentro do `schema.sql` (a 02 falha num
+banco novo), e a 04 é obsoleta. Detalhes em
 [`docs/arquitetura.md`](docs/arquitetura.md#banco-de-dados).
 
 ### Scripts

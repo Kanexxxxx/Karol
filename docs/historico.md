@@ -79,4 +79,4 @@ decisões de negócio, em [`contexto.md`](./contexto.md).
 
 | Data | Marco |
 |---|---|
-| 30/10 | documentação reorganizada em `docs/`; scripts de fotos de cliente removidos |
+| 30/10 | documentação reorganizada em `docs/`; scripts de fotos de cliente removidos; `schema.sql` alinhado com a produção (`migracao-07`) |

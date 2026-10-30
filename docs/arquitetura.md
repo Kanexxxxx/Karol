@@ -121,7 +121,7 @@ No SQL Editor do Supabase, **nesta ordem**:
 
 | Passo | Arquivo | Por quê |
 |---|---|---|
-| 1 | `schema.sql` | tabelas, `sem_choque`, RLS. Já inclui o que as migrações 01 e 02 faziam |
+| 1 | `schema.sql` | tabelas, `sem_choque`, RLS. Já inclui o que as migrações 01, 02 e 07 fazem |
 | 2 | `migracao-03-remarcacoes.sql` | tabela `remarcacoes` |
 | 3 | `migracao-05-assistente.sql` | `acoes_pendentes` e `conversas.historico` |
 | 4 | `migracao-06-lembretes-sem-repetir.sql` | marcas de "já enviei" do lembrete e do agradecimento |
@@ -131,6 +131,12 @@ No SQL Editor do Supabase, **nesta ordem**:
 > bancos criados antes de o `schema.sql` absorvê-las — a 02 falha num banco
 > novo porque `conversas` já existe. A 04 é obsoleta (lembrete de 30 min,
 > removido em 13/09/2026).
+
+**Banco criado com um `schema.sql` anterior a 30/10/2026** (como o de
+teste, `Karol v2`): rode também a `migracao-07-whatsapp-opcional.sql`. Até
+essa data o `schema.sql` dizia `cliente_whatsapp not null`, e o "Não tenho
+o número" do painel falhava. A produção já aceitava `null` — nela a 07 não
+muda nada.
 
 > [!WARNING]
 > **Migração antes do deploy.** Coluna que falta não quebra a tela: a

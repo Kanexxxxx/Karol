@@ -69,6 +69,7 @@ marcado como **conferir**: não dá pra ver pelo repositório.
 | `/agendar/confirmado?ag=<id>` mostra nome e detalhes sem sessão | protegido só pelo UUID (padrão de página de confirmação); não expõe o WhatsApp | — |
 | Conferência de comprovante nunca testada com comprovante real | não há um no repositório | [`assistente.md`](./assistente.md) |
 | "Limpar histórico" no painel | pedido em aberto, nada construído | — |
+| Banco de teste (`Karol v2`) criado com o `schema.sql` antigo: rodar `migracao-07` | é o banco de teste; sem ela, o "Não tenho o número" falha lá | `migracao-07` |
 | Coluna `avisado_30min_em` sem uso | inofensiva; derrubar coluna não tem volta | `migracao-04` |
 
 ### Na VPS — decisões do Kainã

@@ -47,7 +47,9 @@ Karol, que o banco exige"* e passava verde.
 ### O que está no ar
 
 - **Sem telefone grava `null`.** Quem lê converte pra `""` (`paraDados` em
-  `agendamentos.ts`).
+  `agendamentos.ts`). A produção sempre aceitou `null`, mas o `schema.sql`
+  do repositório dizia `not null` até 30/10 — banco criado por ele precisa
+  da `migracao-07`.
 - **O painel pergunta na cara:** "Tenho o número" ou "Não tenho"
   (`EscolhaDoWhatsapp` em `app/painel/novo/Formulario.tsx`).
 - **Guardas em `enviarEvento`:** sem número → não envia; número é o da Karol
