@@ -82,8 +82,8 @@ export function Trabalhos() {
 
   Eram seis fotos de alunas com o certificado — cada uma com o NOME
   COMPLETO escrito à mão no papel, o que obrigou a v1 a ter um script
-  (`ferramentas/anonimizar.py`) só pra pixelizar a metade de baixo de cada
-  certificado antes de publicar.
+  (`ferramentas/anonimizar.py`, hoje só no histórico do git) só pra
+  pixelizar a metade de baixo de cada certificado antes de publicar.
 
   Esse script é a melhor prova de que a seção não cabia num site que não
   quer guardar dado de ninguém: ele existia pra apagar, de dentro de uma
